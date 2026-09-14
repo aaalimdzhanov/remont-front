@@ -14,18 +14,23 @@ export interface SceneBundle {
 // не нужно знать про тени, это ответственность рендер-слоя.
 export function createScene(): SceneBundle {
   const scene = new THREE.Scene()
-  scene.background = new THREE.Color(0xeef1f5)
+  // Светлый нейтральный фон — не белый (чтобы светлые стены/потолок не
+  // сливались с ним и сохранялся контраст), не холодный технический CAD-серый.
+  scene.background = new THREE.Color(0xe7e4dd)
 
   // HemisphereLight мягко подсвечивает интерьер снизу/сверху (имитация
   // рассеянного света из окон/от пола), чтобы внутренние поверхности не
   // выглядели совсем чёрными в тени от направленного света.
-  const hemisphere = new THREE.HemisphereLight(0xf3f6fb, 0xc9c2b4, 0.55)
+  const hemisphere = new THREE.HemisphereLight(0xf3f6fb, 0xd8cdb8, 0.65)
   scene.add(hemisphere)
 
-  const ambient = new THREE.AmbientLight(0xffffff, 0.35)
+  const ambient = new THREE.AmbientLight(0xffffff, 0.5)
   scene.add(ambient)
 
-  const directional = new THREE.DirectionalLight(0xffffff, 1.1)
+  // Мягкий рассеянный directional вместо жёсткого "полуденного" света —
+  // ниже интенсивность и мягкая (PCFSoft) тень с небольшим radius, тени
+  // читаемы, но не режут глаз резкими краями.
+  const directional = new THREE.DirectionalLight(0xffffff, 0.75)
   directional.position.set(8, 12, 6)
   directional.castShadow = true
   directional.shadow.mapSize.set(1024, 1024)
@@ -36,6 +41,7 @@ export function createScene(): SceneBundle {
   directional.shadow.camera.top = 25
   directional.shadow.camera.bottom = -25
   directional.shadow.bias = -0.0015
+  directional.shadow.radius = 4
   scene.add(directional)
 
   return { scene, directionalLight: directional }
@@ -46,7 +52,13 @@ export function createScene(): SceneBundle {
 export function createGridHelper(buildingWidth: number, buildingDepth: number): THREE.GridHelper {
   const margin = 4
   const size = Math.max(4, Math.ceil(Math.max(buildingWidth, buildingDepth) + margin))
-  const grid = new THREE.GridHelper(size, size, 0xb9c1cc, 0xdfe3e8)
+  const grid = new THREE.GridHelper(size, size, 0xcdd2d6, 0xe4e7e9)
+  // Приглушаем сетку полупрозрачностью — она остаётся полезной для
+  // ориентации по масштабу, но не спорит по контрасту со светлыми полом/
+  // стенами (не должна выглядеть как техническая CAD-сетка).
+  const gridMaterial = grid.material as THREE.Material
+  gridMaterial.transparent = true
+  gridMaterial.opacity = 0.5
   // Небольшое техническое смещение вниз по Y (не связано с координатами
   // модели) — без него линии сетки лежат ровно в той же плоскости, что и
   // верх пола (Y=0), и мерцают (z-fighting) при пересечении с ним.

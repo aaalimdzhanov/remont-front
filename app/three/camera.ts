@@ -27,7 +27,9 @@ export function fitCameraToBuilding(
   const fovRadians = (camera.fov * Math.PI) / 180
   const distance = (maxDimension / (2 * Math.tan(fovRadians / 2))) * 1.6
 
-  const direction = new THREE.Vector3(1, 0.85, 1).normalize()
+  // Угол обзора ~38° над горизонтом (в диапазоне 35–45°) — вид современного
+  // interior-планировщика, а не плоский технический top-down CAD-вид.
+  const direction = new THREE.Vector3(1, 1.1, 1).normalize()
   camera.position.copy(center).addScaledVector(direction, distance)
   camera.near = Math.max(0.1, distance / 100)
   camera.far = distance * 20

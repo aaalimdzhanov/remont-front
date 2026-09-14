@@ -13,12 +13,14 @@ import type { DoorSwing, Opening, Wall } from '~/types/building'
 import { pointAlongWall } from '~/geometry/walls'
 import { wallRotationY } from '~/three/wallRenderer'
 
-const DOOR_COLOR = 0xb8955c
-const DOOR_JAMB_COLOR = 0x6b5b4a
-const WINDOW_FRAME_COLOR = 0x8a93a2
-const WINDOW_GLASS_COLOR = 0xa8d8ea
+// Светлое нейтральное "дерево" для полотна, коробка на тон темнее для
+// хорошей читаемости на фоне светлых стен (но без резкого CAD-контраста).
+const DOOR_COLOR = 0xe0c9a3
+const DOOR_JAMB_COLOR = 0x9c8567
+const WINDOW_FRAME_COLOR = 0x9aa1ab
+const WINDOW_GLASS_COLOR = 0xbfe6f2
 const SELECTED_COLOR = 0xd68a1c
-const SWING_ARC_COLOR = 0x8a93a2
+const SWING_ARC_COLOR = 0x9aa1ab
 
 function openingMidpoint(wall: Wall, opening: Opening) {
   return pointAlongWall(wall, opening.position.offset + opening.dimensions.width / 2)
@@ -145,8 +147,8 @@ export function buildWindowMeshes(wall: Wall, opening: Opening): THREE.Object3D[
   const glassMaterial = new THREE.MeshStandardMaterial({
     color: WINDOW_GLASS_COLOR,
     transparent: true,
-    opacity: 0.45,
-    roughness: 0.1,
+    opacity: 0.6,
+    roughness: 0.05,
     metalness: 0,
   })
   const glass = new THREE.Mesh(glassGeometry, glassMaterial)

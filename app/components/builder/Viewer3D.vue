@@ -276,7 +276,7 @@ onBeforeUnmount(() => {
   border: 1px solid #e1e4ea;
   border-radius: 8px;
   overflow: hidden;
-  background: #eef1f5;
+  background: #e7e4dd;
   touch-action: none;
 }
 
@@ -367,14 +367,15 @@ onBeforeUnmount(() => {
 }
 
 .viewer3d__swatch--wall {
-  background: #4b5563;
+  background: #dad4c8;
+  border: 1px solid #cfc8b9;
 }
 
 .viewer3d__swatch--door {
-  background: #b8955c;
+  background: #e0c9a3;
 }
 
 .viewer3d__swatch--window {
-  background: #a8d8ea;
+  background: #bfe6f2;
 }
 </style>

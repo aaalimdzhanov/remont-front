@@ -6,11 +6,13 @@ import * as THREE from 'three'
 import type { Room } from '~/types/building'
 
 const FLOOR_THICKNESS = 0.05
-const FLOOR_COLOR = 0xe4ded1
+// Тёплый нейтральный тон, заметно отличимый от светлых стен.
+const FLOOR_COLOR = 0xd8c7a8
 const FLOOR_SELECTED_COLOR = 0xc9dcae
 
 const CEILING_THICKNESS = 0.05
-const CEILING_COLOR = 0xf7f6f2
+// Почти белый, визуально "лёгкий" потолок.
+const CEILING_COLOR = 0xfbfaf7
 
 export function buildRoomFloorMesh(room: Room): THREE.Mesh | null {
   if (room.geometry.type !== 'rectangle') return null
@@ -42,7 +44,7 @@ export function buildRoomCeilingMesh(room: Room, floorHeight: number): THREE.Mes
   const geometry = new THREE.BoxGeometry(width, CEILING_THICKNESS, length)
   const material = new THREE.MeshStandardMaterial({
     color: CEILING_COLOR,
-    roughness: 0.95,
+    roughness: 0.85,
     metalness: 0,
   })
   const mesh = new THREE.Mesh(geometry, material)

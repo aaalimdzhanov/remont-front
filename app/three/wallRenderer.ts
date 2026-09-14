@@ -12,8 +12,11 @@ import type { Opening, Wall } from '~/types/building'
 import { pointAlongWall, wallLength } from '~/geometry/walls'
 import { splitWallByOpenings } from '~/geometry/openings'
 
-const EXTERIOR_COLOR = 0x4b5563
-const INTERIOR_COLOR = 0x9aa3af
+// Светлый нейтральный серо-белый интерьерный вид (не CAD-техническая
+// серость): наружные стены чуть темнее внутренних перегородок для
+// различимости, но обе остаются светлыми, без металлического блеска.
+const EXTERIOR_COLOR = 0xdad4c8
+const INTERIOR_COLOR = 0xf2efe7
 const SELECTED_COLOR = 0xd68a1c
 const MIN_FILLER_HEIGHT = 1e-3
 
@@ -57,7 +60,7 @@ export function buildWallMeshes(wall: Wall, wallOpenings: Opening[]): THREE.Mesh
 
   const rotationY = wallRotationY(wall)
   const color = wall.type === 'interior' ? INTERIOR_COLOR : EXTERIOR_COLOR
-  const material = new THREE.MeshStandardMaterial({ color, roughness: 0.85, metalness: 0.05 })
+  const material = new THREE.MeshStandardMaterial({ color, roughness: 0.95, metalness: 0 })
 
   const meshes: THREE.Mesh[] = []
 
