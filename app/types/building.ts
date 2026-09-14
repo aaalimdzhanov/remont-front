@@ -125,11 +125,41 @@ export interface WorkRequirement {
   scope: string
 }
 
+// calculated — производные данные (Geometry/Calculation Engine), а не
+// источник истины. Всегда пересчитывается из rooms/walls/openings; UI и
+// внешний код не должны на них ничего строить в обратную сторону.
+export interface BuildingCalculatedAreas {
+  floor: number
+  ceiling: number
+  wallGross: number
+  wallNet: number
+}
+
+export interface BuildingCalculatedOpenings {
+  doors: number
+  windows: number
+  total: number
+}
+
+export interface BuildingCalculatedStatistics {
+  roomCount: number
+  wallCount: number
+  doorCount: number
+  windowCount: number
+}
+
+export interface BuildingCalculated {
+  areas: BuildingCalculatedAreas
+  openings: BuildingCalculatedOpenings
+  statistics: BuildingCalculatedStatistics
+  warnings: string[]
+}
+
 export interface BuildingDocument {
   schema: BuildingSchema
   project: Project
   units: Units
   building: Building
   work_requirements: WorkRequirement[]
-  calculated: Record<string, unknown>
+  calculated: BuildingCalculated
 }

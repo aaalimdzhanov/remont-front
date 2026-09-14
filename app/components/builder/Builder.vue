@@ -31,6 +31,7 @@ function submitBuildingForm() {
     <div v-else class="builder__workspace">
       <div class="builder__toolbar">
         <BuilderRoomTool />
+        <BuilderOpeningTool />
         <label class="builder__json-toggle">
           <input v-model="showJson" type="checkbox">
           Показать JSON
@@ -39,7 +40,10 @@ function submitBuildingForm() {
 
       <div class="builder__main">
         <BuilderPlan2D class="builder__plan" />
-        <BuilderPropertiesPanel class="builder__properties" />
+        <div class="builder__sidebar">
+          <BuilderPropertiesPanel />
+          <BuilderCalculationsSummary />
+        </div>
       </div>
 
       <pre v-if="showJson" class="builder__json">{{ JSON.stringify(buildingDocument, null, 2) }}</pre>
@@ -132,8 +136,11 @@ function submitBuildingForm() {
   flex: 1 1 480px;
 }
 
-.builder__properties {
+.builder__sidebar {
   flex: 0 0 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .builder__json {

@@ -31,7 +31,8 @@ function closeForm() {
 }
 
 function submit() {
-  if (!name.value.trim() || width.value <= 0 || length.value <= 0) return
+  if (!name.value.trim()) return
+  // Размер поджимается к минимуму 0.5 м и привязывается к сетке внутри addRoom.
   addRoom({ name: name.value.trim(), type: type.value, width: width.value, length: length.value })
   closeForm()
 }
@@ -61,11 +62,11 @@ function submit() {
       <div class="room-tool__dimensions">
         <label>
           Ширина, м
-          <input v-model.number="width" type="number" min="0.1" step="0.1" required>
+          <input v-model.number="width" type="number" min="0" step="any" required>
         </label>
         <label>
           Длина, м
-          <input v-model.number="length" type="number" min="0.1" step="0.1" required>
+          <input v-model.number="length" type="number" min="0" step="any" required>
         </label>
       </div>
 
