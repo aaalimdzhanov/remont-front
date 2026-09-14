@@ -25,6 +25,11 @@ export function createRenderer(container: HTMLElement): THREE.WebGLRenderer {
       const renderer = new THREE.WebGLRenderer(options)
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
       renderer.setSize(container.clientWidth, container.clientHeight)
+      // Базовые мягкие тени — сцена простая (десятки объектов), стоимость
+      // на прототипном масштабе незначительная. Если это когда-нибудь
+      // ощутимо просядет по производительности — отключить здесь одной строкой.
+      renderer.shadowMap.enabled = true
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap
       container.appendChild(renderer.domElement)
       return renderer
     } catch (error) {

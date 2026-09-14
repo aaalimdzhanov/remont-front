@@ -8,5 +8,10 @@ export function createOrbitControls(camera: THREE.Camera, domElement: HTMLElemen
   controls.enableDamping = true
   controls.dampingFactor = 0.08
   controls.maxPolarAngle = Math.PI * 0.49 // не даём камере уйти под пол
+  // Разумные значения по умолчанию до первого fitCameraToBuilding (там они
+  // пересчитываются под размер конкретного здания) — не даём улететь на
+  // километры или провалиться камерой в геометрию сразу после создания.
+  controls.minDistance = 0.5
+  controls.maxDistance = 200
   return controls
 }

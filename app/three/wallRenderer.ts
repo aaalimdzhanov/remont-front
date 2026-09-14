@@ -15,6 +15,33 @@ import { splitWallByOpenings } from '~/geometry/openings'
 const EXTERIOR_COLOR = 0x4b5563
 const INTERIOR_COLOR = 0x9aa3af
 const SELECTED_COLOR = 0xd68a1c
+const MIN_FILLER_HEIGHT = 1e-3
+
+function wallUserData(wall: Wall, color: number) {
+  return { kind: 'wall', id: wall.id, baseColor: color, selectedColor: SELECTED_COLOR }
+}
+
+function boxMesh(
+  width: number,
+  height: number,
+  depth: number,
+  centerX: number,
+  centerY: number,
+  centerZ: number,
+  rotationY: number,
+  material: THREE.Material,
+  wall: Wall,
+  color: number,
+): THREE.Mesh {
+  const geometry = new THREE.BoxGeometry(width, height, depth)
+  const mesh = new THREE.Mesh(geometry, material)
+  mesh.position.set(centerX, centerY, centerZ)
+  mesh.rotation.y = rotationY
+  mesh.userData = wallUserData(wall, color)
+  mesh.castShadow = true
+  mesh.receiveShadow = true
+  return mesh
+}
 
 // Угол поворота вокруг Y, при котором локальная ось X бокса (его «длина»)
 // совпадает с направлением start -> end.
@@ -27,22 +54,76 @@ export function wallRotationY(wall: Wall): number {
 export function buildWallMeshes(wall: Wall, wallOpenings: Opening[]): THREE.Mesh[] {
   const length = wallLength(wall)
   const segments = splitWallByOpenings(length, wallOpenings)
-  if (segments.length === 0) return []
 
   const rotationY = wallRotationY(wall)
   const color = wall.type === 'interior' ? INTERIOR_COLOR : EXTERIOR_COLOR
-  const material = new THREE.MeshStandardMaterial({ color })
+  const material = new THREE.MeshStandardMaterial({ color, roughness: 0.85, metalness: 0.05 })
 
-  return segments.map((segment) => {
+  const meshes: THREE.Mesh[] = []
+
+  // Горизонтальные сегменты (слева/справа от проёмов) — стена на всю высоту
+  // там, где вообще нет никакого проёма.
+  for (const segment of segments) {
     const segmentLength = segment.to - segment.from
-    const geometry = new THREE.BoxGeometry(segmentLength, wall.height, wall.thickness)
-    const mesh = new THREE.Mesh(geometry, material.clone())
-
     const midpoint = pointAlongWall(wall, (segment.from + segment.to) / 2)
-    mesh.position.set(midpoint.x, wall.height / 2, midpoint.z)
-    mesh.rotation.y = rotationY
-    mesh.userData = { kind: 'wall', id: wall.id, baseColor: color, selectedColor: SELECTED_COLOR }
+    meshes.push(boxMesh(
+      segmentLength,
+      wall.height,
+      wall.thickness,
+      midpoint.x,
+      wall.height / 2,
+      midpoint.z,
+      rotationY,
+      material.clone(),
+      wall,
+      color,
+    ))
+  }
 
-    return mesh
-  })
+  // splitWallByOpenings режет стену только ПО ДЛИНЕ — сам проём остаётся
+  // сквозной дырой на всю высоту стены (от пола до потолка), а не только на
+  // свою реальную высоту. Для двери это почти незаметно (она обычно почти
+  // всей высоты), а для окна это выглядит как настоящая дыра в стене:
+  // видно насквозь и над, и под рамой. Достраиваем для каждого проёма
+  // узкие «простенок» (ниже подоконника) и «перемычку» (выше проёма)
+  // сегменты той же ширины, что и сам проём.
+  for (const opening of wallOpenings) {
+    const openingWidth = opening.dimensions.width
+    const sillHeight = opening.position.bottom
+    const headerStart = opening.position.bottom + opening.dimensions.height
+    const headerHeight = wall.height - headerStart
+    const midpoint = pointAlongWall(wall, opening.position.offset + openingWidth / 2)
+
+    if (sillHeight > MIN_FILLER_HEIGHT) {
+      meshes.push(boxMesh(
+        openingWidth,
+        sillHeight,
+        wall.thickness,
+        midpoint.x,
+        sillHeight / 2,
+        midpoint.z,
+        rotationY,
+        material.clone(),
+        wall,
+        color,
+      ))
+    }
+
+    if (headerHeight > MIN_FILLER_HEIGHT) {
+      meshes.push(boxMesh(
+        openingWidth,
+        headerHeight,
+        wall.thickness,
+        midpoint.x,
+        headerStart + headerHeight / 2,
+        midpoint.z,
+        rotationY,
+        material.clone(),
+        wall,
+        color,
+      ))
+    }
+  }
+
+  return meshes
 }

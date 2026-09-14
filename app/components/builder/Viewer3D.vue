@@ -28,6 +28,9 @@ const {
 const container = ref<HTMLDivElement | null>(null)
 const hasRooms = computed(() => buildingDocument.value.building.rooms.length > 0)
 const renderError = ref<string | null>(null)
+// Чисто визуальный режим просмотра — Building JSON не меняется, поэтому
+// это обычный ref компонента, а не поле в документе.
+const showCeiling = ref(false)
 
 let scene: THREE.Scene | null = null
 let camera: THREE.PerspectiveCamera | null = null
@@ -61,7 +64,7 @@ function rebuildBuilding() {
     }
 
     const building = buildingDocument.value.building
-    buildingGroup = buildBuildingGroup(building)
+    buildingGroup = buildBuildingGroup(building, { showCeiling: showCeiling.value })
     scene.add(buildingGroup)
 
     gridHelper = createGridHelper(building.dimensions.width, building.dimensions.length)
@@ -80,6 +83,14 @@ function rebuildBuilding() {
     renderError.value = error instanceof Error ? error.message : String(error)
     console.error('[Viewer3D] Не удалось построить 3D-сцену:', error)
   }
+}
+
+// Пересчитывает bounding box заново и подгоняет камеру — в отличие от
+// автоподгонки в rebuildBuilding() (которая срабатывает один раз, чтобы не
+// дёргать камеру при каждой правке), это явное действие пользователя.
+function resetCamera() {
+  if (!camera || !controls) return
+  fitCameraToBuilding(camera, controls, computeBuildingBoundingBox(buildingDocument.value.building))
 }
 
 // Canvas нельзя проинспектировать через DOM — небольшой debug-хук на window
@@ -152,7 +163,7 @@ onMounted(() => {
   // (тогда renderLoop() ниже вообще не запустится и canvas не отрисуется
   // ни разу, оставшись пустым без единого сообщения об ошибке).
   try {
-    scene = createScene()
+    scene = createScene().scene
     camera = createCamera(container.value.clientWidth / Math.max(1, container.value.clientHeight))
     renderer = createRenderer(container.value)
     controls = createOrbitControls(camera, renderer.domElement)
@@ -181,6 +192,8 @@ watch(
   () => rebuildBuilding(),
   { deep: true },
 )
+
+watch(showCeiling, () => rebuildBuilding())
 
 watch([selectedRoomId, selectedWallId, selectedOpeningId], () => {
   if (buildingGroup) applySelectionHighlight(buildingGroup, currentSelectedId())
@@ -226,6 +239,23 @@ onBeforeUnmount(() => {
 <template>
   <div class="viewer3d-wrap">
     <div ref="container" class="viewer3d" />
+
+    <div class="viewer3d__toolbar">
+      <label class="viewer3d__toggle">
+        <input v-model="showCeiling" type="checkbox">
+        Потолок
+      </label>
+      <button type="button" class="viewer3d__reset-btn" @click="resetCamera">
+        Сбросить камеру
+      </button>
+    </div>
+
+    <div v-if="hasRooms" class="viewer3d__legend">
+      <span class="viewer3d__legend-item"><i class="viewer3d__swatch viewer3d__swatch--wall" />Стены</span>
+      <span class="viewer3d__legend-item"><i class="viewer3d__swatch viewer3d__swatch--door" />Двери</span>
+      <span class="viewer3d__legend-item"><i class="viewer3d__swatch viewer3d__swatch--window" />Окна</span>
+    </div>
+
     <p v-if="renderError" class="viewer3d__hint viewer3d__hint--error">
       Ошибка построения 3D-сцены: {{ renderError }}
     </p>
@@ -268,5 +298,83 @@ onBeforeUnmount(() => {
 
 .viewer3d__hint--error {
   background: rgba(224, 85, 79, 0.9);
+}
+
+.viewer3d__toolbar {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #e1e4ea;
+  box-shadow: 0 1px 3px rgba(31, 36, 48, 0.12);
+}
+
+.viewer3d__toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #3a4049;
+  cursor: pointer;
+  user-select: none;
+}
+
+.viewer3d__reset-btn {
+  padding: 5px 10px;
+  border-radius: 5px;
+  border: 1px solid #d6dae1;
+  background: #fff;
+  color: #3a4049;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.viewer3d__reset-btn:hover {
+  background: #f2f4f7;
+}
+
+.viewer3d__legend {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  gap: 12px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #e1e4ea;
+  font-size: 12px;
+  color: #5b6472;
+  pointer-events: none;
+}
+
+.viewer3d__legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.viewer3d__swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.viewer3d__swatch--wall {
+  background: #4b5563;
+}
+
+.viewer3d__swatch--door {
+  background: #b8955c;
+}
+
+.viewer3d__swatch--window {
+  background: #a8d8ea;
 }
 </style>

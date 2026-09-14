@@ -9,19 +9,36 @@
 // вторую систему хранения геометрии — вся истина остаётся в Building JSON.
 
 import * as THREE from 'three'
-import type { Building, Opening } from '~/types/building'
+import type { Building, Opening, Room } from '~/types/building'
 import { DEFAULT_FLOOR_HEIGHT } from '~/geometry/walls'
-import { buildRoomFloorMesh } from '~/three/roomRenderer'
+import { buildRoomCeilingMesh, buildRoomFloorMesh } from '~/three/roomRenderer'
 import { buildWallMeshes } from '~/three/wallRenderer'
 import { buildDoorMeshes, buildWindowMeshes } from '~/three/openingRenderer'
 
-export function buildBuildingGroup(building: Building): THREE.Group {
+export interface BuildBuildingGroupOptions {
+  showCeiling: boolean
+}
+
+// Реальная высота этажа комнаты — та же величина, которой walls.ts уже
+// пользуется при генерации стен (building.floors по room.floor_id, иначе
+// DEFAULT_FLOOR_HEIGHT). Потолок держится на этой высоте, а не на отдельном
+// собственном размере.
+function roomFloorHeight(building: Building, room: Room): number {
+  return building.floors.find(floor => floor.id === room.floor_id)?.height ?? DEFAULT_FLOOR_HEIGHT
+}
+
+export function buildBuildingGroup(building: Building, options: BuildBuildingGroupOptions): THREE.Group {
   const group = new THREE.Group()
   group.name = 'building'
 
   for (const room of building.rooms) {
     const floor = buildRoomFloorMesh(room)
     if (floor) group.add(floor)
+
+    if (options.showCeiling) {
+      const ceiling = buildRoomCeilingMesh(room, roomFloorHeight(building, room))
+      if (ceiling) group.add(ceiling)
+    }
   }
 
   const openingsByWall = new Map<string, Opening[]>()
@@ -56,11 +73,27 @@ export function disposeObject3D(root: THREE.Object3D): void {
   })
 }
 
-// Bounding box здания в мировых координатах Three.js — источник и для
-// размера сетки, и для автоподгонки камеры. Берём габариты здания и высоту
-// первого этажа (или дефолтную) — этого достаточно для одноэтажной модели.
+// Bounding box для автоподгонки камеры — источник для fitCameraToBuilding.
+// Строим его из ФАКТИЧЕСКИХ комнат, а не из заявленного (при создании
+// здания) периметра building.dimensions: комнаты почти никогда не заполняют
+// весь этот периметр (обычно он намного больше и почти пуст), и подгонка по
+// всему периметру уводила камеру далеко и под пологим углом — ровно
+// настолько, что луч клика в центр небольшой комнаты в углу здания начинал
+// проходить сквозь соседнюю стену раньше, чем достигал пола (подтверждено
+// автотестом выбора объектов в 3D). Периметр используется только как
+// запасной вариант, когда комнат ещё нет вообще (пустая сцена).
 export function computeBuildingBoundingBox(building: Building): THREE.Box3 {
   const height = building.floors[0]?.height ?? DEFAULT_FLOOR_HEIGHT
+
+  const box = new THREE.Box3()
+  for (const room of building.rooms) {
+    if (room.geometry.type !== 'rectangle') continue
+    const { position, width, length } = room.geometry
+    box.expandByPoint(new THREE.Vector3(position.x, 0, position.z))
+    box.expandByPoint(new THREE.Vector3(position.x + width, height, position.z + length))
+  }
+  if (!box.isEmpty()) return box
+
   const width = Math.max(building.dimensions.width, 1)
   const depth = Math.max(building.dimensions.length, 1)
   return new THREE.Box3(new THREE.Vector3(0, 0, 0), new THREE.Vector3(width, height, depth))

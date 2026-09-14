@@ -12,7 +12,9 @@ export function createCamera(aspect: number): THREE.PerspectiveCamera {
 }
 
 // Вычисляет позицию камеры так, чтобы весь bounding box был виден, и
-// направляет OrbitControls на его центр.
+// направляет OrbitControls на его центр. Заодно выставляет min/maxDistance
+// от размера конкретного здания (не хардкод) — чтобы нельзя было улететь
+// на километры или влезть камерой внутрь геометрии.
 export function fitCameraToBuilding(
   camera: THREE.PerspectiveCamera,
   controls: OrbitControls,
@@ -32,5 +34,7 @@ export function fitCameraToBuilding(
   camera.updateProjectionMatrix()
 
   controls.target.copy(center)
+  controls.minDistance = Math.max(0.5, maxDimension * 0.15)
+  controls.maxDistance = maxDimension * 6
   controls.update()
 }
