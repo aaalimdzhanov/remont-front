@@ -41,9 +41,14 @@ export function projectPointOntoWall(wall: Pick<Wall, 'start' | 'end'>, point: P
 
 type RectRoom = Room & { geometry: RoomRectangleGeometry }
 type Orientation = 'horizontal' | 'vertical'
+// Структурная сторона комнаты, к которой относится ребро — не зависит от
+// координат и не пересчитывается сравнением с соседями, поэтому годится как
+// стабильная часть identity стены.
+type Side = 'left' | 'right' | 'top' | 'bottom'
 
 interface WallEdge {
   roomId: string
+  side: Side
   orientation: Orientation
   fixed: number // x для вертикального ребра, z для горизонтального
   from: number // начало участка вдоль другой оси
@@ -59,10 +64,10 @@ export function roomToWallEdges(room: RectRoom): WallEdge[] {
   const bottom = position.z + length
 
   return [
-    { roomId: room.id, orientation: 'vertical', fixed: left, from: top, to: bottom },
-    { roomId: room.id, orientation: 'vertical', fixed: right, from: top, to: bottom },
-    { roomId: room.id, orientation: 'horizontal', fixed: top, from: left, to: right },
-    { roomId: room.id, orientation: 'horizontal', fixed: bottom, from: left, to: right },
+    { roomId: room.id, side: 'left', orientation: 'vertical', fixed: left, from: top, to: bottom },
+    { roomId: room.id, side: 'right', orientation: 'vertical', fixed: right, from: top, to: bottom },
+    { roomId: room.id, side: 'top', orientation: 'horizontal', fixed: top, from: left, to: right },
+    { roomId: room.id, side: 'bottom', orientation: 'horizontal', fixed: bottom, from: left, to: right },
   ]
 }
 
@@ -72,6 +77,10 @@ interface MergedSegment {
   from: number
   to: number
   roomIds: string[]
+  // Для каждой участвующей комнаты — какой её стороне соответствует этот
+  // участок. Нужно для identity: у «владельца» стены (см. assignStableWallIds)
+  // берём именно его сторону, а не произвольный порядковый номер.
+  sides: Map<string, Side>
 }
 
 function sameRoomSet(a: string[], b: string[]): boolean {
@@ -102,18 +111,20 @@ function overlayCollinearEdges(edges: WallEdge[]): MergedSegment[] {
     if (to - from <= EPSILON) continue
 
     const mid = (from + to) / 2
-    const coveringRoomIds = edges
-      .filter(edge => edge.from <= mid + EPSILON && edge.to >= mid - EPSILON)
-      .map(edge => edge.roomId)
+    const coveringEdges = edges.filter(edge => edge.from <= mid + EPSILON && edge.to >= mid - EPSILON)
 
-    if (coveringRoomIds.length === 0) continue
+    if (coveringEdges.length === 0) continue
+
+    const sides = new Map<string, Side>()
+    for (const edge of coveringEdges) sides.set(edge.roomId, edge.side)
 
     raw.push({
       orientation: first.orientation,
       fixed: first.fixed,
       from,
       to,
-      roomIds: Array.from(new Set(coveringRoomIds)).sort(),
+      roomIds: Array.from(new Set(coveringEdges.map(edge => edge.roomId))).sort(),
+      sides,
     })
   }
 
@@ -131,26 +142,53 @@ function overlayCollinearEdges(edges: WallEdge[]): MergedSegment[] {
   return merged
 }
 
-// Стабильный id стены: зависит от набора владеющих комнат, ориентации и
-// относительного порядка среди стен с тем же набором+ориентацией (какая из
-// сторон «левая»/«правая» и т.п.) — а НЕ от абсолютных координат. Благодаря
-// этому перемещение/resize комнаты не меняет id её стен, и двери/окна,
-// привязанные к wall_id, не «отвязываются» на каждый пиксель перетаскивания.
+// «Владелец» стены — комната с лексикографически наименьшим id среди тех,
+// что образуют этот участок. Room-id генерируются монотонно (room-001,
+// room-002, ...), поэтому у уже существующей комнаты id всегда меньше, чем
+// у любой добавленной позже — значит владелец уже существующей стены никогда
+// не сменится из-за НОВОЙ комнаты, где бы она ни была создана.
+function wallOwner(segment: MergedSegment): string | undefined {
+  return segment.roomIds[0]
+}
+
+function primaryWallId(segment: MergedSegment): string {
+  const owner = wallOwner(segment)
+  if (!owner) return 'wall-unknown'
+  const side = segment.sides.get(owner) ?? 'left'
+  return `wall-${owner}-${side}`
+}
+
+// Стабильный id стены: «владелец» (см. wallOwner) + его структурная сторона
+// (left/right/top/bottom) — НЕ индекс, НЕ координаты, НЕ порядок генерации.
+//
+// Пока комната-владелец остаётся среди участников этого участка стены, id
+// не меняется — даже если к нему присоединяются или уходят другие комнаты
+// (например: новая комната добавлена в другом месте здания, соседняя комната
+// пристроилась вплотную и стена стала общей, или наоборот). Именно это не
+// даёт дверям/окнам, привязанным через wall_id, «отвязываться» от стены.
 function assignStableWallIds(segments: MergedSegment[]): string[] {
+  const primaryIds = segments.map(primaryWallId)
+
   const groups = new Map<string, number[]>()
-  segments.forEach((segment, index) => {
-    const key = `${segment.roomIds.join('_')}:${segment.orientation}`
-    const list = groups.get(key) ?? []
+  primaryIds.forEach((id, index) => {
+    const list = groups.get(id) ?? []
     list.push(index)
-    groups.set(key, list)
+    groups.set(id, list)
   })
 
-  const ids = new Array<string>(segments.length)
-  for (const [key, indices] of groups) {
-    const sorted = [...indices].sort((a, b) => segments[a]!.fixed - segments[b]!.fixed)
-    sorted.forEach((segmentIndex, order) => {
-      ids[segmentIndex] = `wall-${key.replace(':', '-')}-${order}`
-    })
+  const ids = [...primaryIds]
+  for (const indices of groups.values()) {
+    if (indices.length <= 1) continue
+    // Редкий вырожденный случай: пересекающиеся комнаты могут разбить одну
+    // сторону владельца на несколько физически разных участков с разными
+    // соседями. Расширяем id остальными участниками, чтобы не склеить их —
+    // это всё ещё содержимое (набор комнат), а не индекс/порядок.
+    for (const index of indices) {
+      const segment = segments[index]!
+      const owner = wallOwner(segment)
+      const rest = segment.roomIds.filter(roomId => roomId !== owner).join('_')
+      if (rest) ids[index] = `${ids[index]}-${rest}`
+    }
   }
 
   return ids

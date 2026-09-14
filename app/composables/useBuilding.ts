@@ -92,6 +92,7 @@ export function useBuilding() {
   // нужно согласовать: если стена исчезла — проём удаляется, если изменила
   // длину/высоту — проём поджимается (clamp), но не удаляется.
   function syncWalls() {
+    const previousWalls = document.value.building.walls
     document.value.building.walls = generateWallsFromRooms(
       document.value.building.rooms,
       document.value.building.floors,
@@ -99,6 +100,7 @@ export function useBuilding() {
     document.value.building.openings = reconcileOpeningsWithWalls(
       document.value.building.openings,
       document.value.building.walls,
+      previousWalls,
     )
     if (selectedWallId.value && !document.value.building.walls.some(wall => wall.id === selectedWallId.value)) {
       selectedWallId.value = null
