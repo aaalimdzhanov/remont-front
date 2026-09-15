@@ -8,7 +8,7 @@ import type { Room } from '~/types/building'
 const FLOOR_THICKNESS = 0.05
 // Тёплый нейтральный тон, заметно отличимый от светлых стен.
 const FLOOR_COLOR = 0xd8c7a8
-const FLOOR_SELECTED_COLOR = 0xc9dcae
+const FLOOR_SELECTED_COLOR = 0xddceb8 // светлее FLOOR_COLOR, тот же тёплый accent-тон, что и 2D/wall/opening selection
 
 const CEILING_THICKNESS = 0.05
 // Почти белый, визуально "лёгкий" потолок.

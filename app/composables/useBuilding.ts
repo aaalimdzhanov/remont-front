@@ -21,7 +21,10 @@ function snapRoomSize(value: number): number {
   return Math.max(MIN_ROOM_SIZE, snapToGrid(value))
 }
 
-function createEmptyDocument(): BuildingDocument {
+// Экспортируется отдельно (не только как приватный дефолт useState) —
+// нужен persistence-слою для "New Project" (создать пустой Building JSON и
+// сразу сохранить его на backend, получив канонический id).
+export function createEmptyBuildingDocument(): BuildingDocument {
   const building: BuildingDocument['building'] = {
     id: 'building-001',
     type: 'house',
@@ -61,7 +64,16 @@ function nextId(prefix: string, existingIds: string[]): string {
  * (на будущих этапах) будут строиться поверх неё же, без отдельных копий.
  */
 export function useBuilding() {
-  const document = useState<BuildingDocument>('building-document', createEmptyDocument)
+  const document = useState<BuildingDocument>('building-document', createEmptyBuildingDocument)
+  // Монотонный счётчик мутаций (не Building JSON, не сохраняется в документ).
+  // Это единственный примитив, который useBuilding предоставляет для
+  // отслеживания изменений — увеличивается в touch() при каждой прикладной
+  // мутации и никогда не уменьшается/не сбрасывается loadDocument(). Понятие
+  // "isDirty"/save-status как таковое здесь НЕ живёт: это persistence-забота
+  // (revision относительно того, что реально подтверждено backend'ом), поэтому
+  // считается в useProjectPersistence сравнением documentRevision с тем, что
+  // было сохранено — см. секцию 6/9/31 архитектуры проекта.
+  const documentRevision = useState<number>('building-document-revision', () => 0)
   const selectedRoomId = useState<string | null>('selected-room-id', () => null)
   const selectedWallId = useState<string | null>('selected-wall-id', () => null)
   const selectedOpeningId = useState<string | null>('selected-opening-id', () => null)
@@ -203,6 +215,44 @@ export function useBuilding() {
       .map(opening => (opening.type === 'door' ? 'Дверь' : 'Окно'))
   }
 
+  // Единая точка "это прикладная мутация". Вызывается из каждого мутатора
+  // ниже — не через глубокий watch всего document (это не отличило бы
+  // прикладную правку от служебных перезаписей вроде loadDocument()), а
+  // централизованно, в местах, где мутация действительно происходит.
+  // documentRevision — единственный сигнал "что-то изменилось", который
+  // useBuilding экспортирует; persistence-слой сравнивает его с revision,
+  // которую подтвердил backend, и решает сам, что считать "сохранено".
+  function touch() {
+    documentRevision.value++
+  }
+
+  // Заменяет весь Building JSON целиком (после load/create/save с backend).
+  // Не мутатор в обычном смысле — не увеличивает documentRevision и
+  // сбрасывает selection (id из предыдущего проекта не имеют смысла в новом).
+  function loadDocument(next: BuildingDocument) {
+    document.value = next
+    selectedRoomId.value = null
+    selectedWallId.value = null
+    selectedOpeningId.value = null
+    pendingOpeningType.value = null
+  }
+
+  // Синхронизирует только canonical project.id внутри документа (например,
+  // после первого successful create, когда backend выдал реальный UUID) —
+  // НЕ мутатор: не трогает documentRevision и не сбрасывает selection, в
+  // отличие от loadDocument(). Отдельная узкая функция вместо прямого
+  // присваивания document.value.project.id = ... персистенс-слоем, чтобы
+  // Building JSON по-прежнему менялся только через именованные функции
+  // useBuilding, а не в обход них.
+  function syncCanonicalProjectId(id: string) {
+    document.value.project.id = id
+  }
+
+  function renameProject(name: string) {
+    document.value.project.name = name
+    touch()
+  }
+
   function createBuilding(width: number, length: number) {
     document.value.building.dimensions.width = width
     document.value.building.dimensions.length = length
@@ -215,6 +265,7 @@ export function useBuilding() {
         height: DEFAULT_FLOOR_HEIGHT,
       })
     }
+    touch()
   }
 
   function addRoom(params: { name: string, type: RoomType, width: number, length: number }) {
@@ -238,6 +289,7 @@ export function useBuilding() {
     document.value.building.rooms.push(room)
     selectedRoomId.value = room.id
     syncWalls()
+    touch()
   }
 
   function moveRoom(id: string, x: number, z: number) {
@@ -246,6 +298,7 @@ export function useBuilding() {
     room.geometry.position.x = x
     room.geometry.position.z = z
     syncWalls()
+    touch()
   }
 
   function resizeRoom(id: string, width: number, length: number) {
@@ -256,18 +309,21 @@ export function useBuilding() {
     room.geometry.width = snapRoomSize(width)
     room.geometry.length = snapRoomSize(length)
     syncWalls()
+    touch()
   }
 
   function renameRoom(id: string, name: string) {
     const room = document.value.building.rooms.find(r => r.id === id)
     if (!room) return
     room.name = name
+    touch()
   }
 
   function removeRoom(id: string) {
     document.value.building.rooms = document.value.building.rooms.filter(r => r.id !== id)
     if (selectedRoomId.value === id) selectedRoomId.value = null
     syncWalls()
+    touch()
   }
 
   function selectRoom(id: string | null) {
@@ -337,6 +393,7 @@ export function useBuilding() {
     document.value.building.openings.push(opening)
     selectOpening(opening.id)
     syncCalculated()
+    touch()
   }
 
   // Плавное перемещение вдоль стены (используется во время drag) — только
@@ -352,6 +409,7 @@ export function useBuilding() {
     const wallLen = wallLength(wall)
     const maxOffset = Math.max(0, wallLen - opening.dimensions.width)
     opening.position.offset = Math.min(Math.max(offset, 0), maxOffset)
+    touch()
   }
 
   function resizeOpening(id: string, width: number, height: number) {
@@ -367,6 +425,7 @@ export function useBuilding() {
     opening.position.offset = clampOpeningPosition(opening.position.offset, opening.dimensions.width, wallLen)
     opening.position.bottom = clampSillHeight(opening.position.bottom, opening.dimensions.height, wall.height)
     syncCalculated()
+    touch()
   }
 
   function setOpeningSillHeight(id: string, bottom: number) {
@@ -375,17 +434,23 @@ export function useBuilding() {
     const wall = document.value.building.walls.find(w => w.id === opening.wall_id)
     if (!wall) return
     opening.position.bottom = clampSillHeight(bottom, opening.dimensions.height, wall.height)
+    touch()
   }
 
   function removeOpening(id: string) {
     document.value.building.openings = document.value.building.openings.filter(o => o.id !== id)
     if (selectedOpeningId.value === id) selectedOpeningId.value = null
     syncCalculated()
+    touch()
   }
 
   return {
     document,
     hasBuilding,
+    documentRevision,
+    loadDocument,
+    syncCanonicalProjectId,
+    renameProject,
     selectedRoomId,
     selectedRoom,
     selectedWallId,

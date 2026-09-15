@@ -224,87 +224,98 @@ const openingConflictLabels = computed(() =>
 .properties-panel {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 16px;
-  border: 1px solid #e1e4ea;
-  border-radius: 8px;
-  background: #fff;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel);
+  background: var(--color-surface);
   min-width: 220px;
 }
 
 .properties-panel__title {
-  margin: 0 0 4px;
-  font-size: 15px;
+  margin: 0 0 var(--space-1);
+  font-size: var(--font-h3-size);
+  line-height: var(--font-h3-line);
   font-weight: 600;
-  color: #1f2430;
+  color: var(--color-text);
 }
 
 .properties-panel label {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  font-size: 12px;
-  color: #5b6472;
+  gap: var(--space-1);
+  font-size: var(--font-small-size);
+  color: var(--color-text-secondary);
 }
 
 .properties-panel input {
-  padding: 6px 8px;
-  border: 1px solid #d6dae1;
-  border-radius: 4px;
-  font-size: 14px;
+  height: 36px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-input);
+  font-family: var(--font-family);
+  font-size: var(--font-body-size);
+  color: var(--color-text);
+}
+
+.properties-panel input:focus {
+  outline: none;
+  border-color: var(--color-primary);
 }
 
 .properties-panel__delete {
-  margin-top: 8px;
-  padding: 8px 12px;
-  border-radius: 6px;
-  border: 1px solid #e0554f;
-  background: #fff;
-  color: #e0554f;
-  font-size: 14px;
+  margin-top: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-button);
+  border: 1px solid var(--color-error);
+  background: var(--color-surface);
+  color: var(--color-error);
+  font-family: var(--font-family);
+  font-size: var(--font-body-size);
   cursor: pointer;
 }
 
 .properties-panel__delete:hover {
-  background: #fdecec;
+  background: var(--color-error-subtle);
 }
 
 .properties-panel__status {
-  margin-top: 8px;
-  padding-top: 10px;
-  border-top: 1px solid #edf0f3;
+  margin-top: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  font-size: 12px;
-  color: #5b6472;
+  gap: var(--space-2);
+  font-size: var(--font-caption-size);
+  color: var(--color-text-secondary);
 }
 
 .properties-panel__status-row {
   display: flex;
-  gap: 6px;
+  gap: var(--space-2);
 }
 
 .properties-panel__status-label {
-  color: #8a93a2;
+  color: var(--color-text-muted);
 }
 
 .properties-panel__ok {
-  margin: 4px 0 0;
-  color: #2f9e5c;
-  font-size: 12px;
+  margin: var(--space-1) 0 0;
+  color: var(--color-success);
+  font-size: var(--font-caption-size);
 }
 
 .properties-panel__conflict {
-  margin: 4px 0 0;
-  color: #d33a30;
-  font-size: 12px;
+  margin: var(--space-1) 0 0;
+  color: var(--color-error);
+  font-size: var(--font-caption-size);
 }
 
 .properties-panel--empty {
-  color: #8a93a2;
-  font-size: 14px;
+  color: var(--color-text-muted);
+  font-size: var(--font-body-size);
   justify-content: center;
   align-items: center;
+  text-align: center;
 }
 </style>

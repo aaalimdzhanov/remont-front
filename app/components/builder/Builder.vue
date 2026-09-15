@@ -3,7 +3,7 @@ const { document: buildingDocument, hasBuilding, createBuilding } = useBuilding(
 
 const width = ref(10)
 const length = ref(12)
-const showJson = ref(true)
+const showJson = ref(false)
 const viewMode = ref<'2d' | '3d'>('2d')
 
 function submitBuildingForm() {
@@ -15,51 +15,63 @@ function submitBuildingForm() {
 <template>
   <div class="builder">
     <div v-if="!hasBuilding" class="builder__setup">
-      <h2>Создание здания</h2>
-      <form class="builder__setup-form" @submit.prevent="submitBuildingForm">
-        <label>
-          Ширина, м
-          <input v-model.number="width" type="number" min="1" step="0.1" required>
-        </label>
-        <label>
-          Длина, м
-          <input v-model.number="length" type="number" min="1" step="0.1" required>
-        </label>
-        <button type="submit">Создать здание</button>
-      </form>
+      <div class="card builder__setup-card">
+        <h2 class="text-h2">
+          Создание здания
+        </h2>
+        <p class="text-secondary builder__setup-hint">
+          Укажите внешние размеры здания, чтобы начать планировку.
+        </p>
+        <form class="builder__setup-form" @submit.prevent="submitBuildingForm">
+          <label class="field">
+            <span class="field__label">Ширина, м</span>
+            <input v-model.number="width" type="number" min="1" step="0.1" class="input" required>
+          </label>
+          <label class="field">
+            <span class="field__label">Длина, м</span>
+            <input v-model.number="length" type="number" min="1" step="0.1" class="input" required>
+          </label>
+          <button type="submit" class="btn btn-primary">
+            Создать здание
+          </button>
+        </form>
+      </div>
     </div>
 
     <div v-else class="builder__workspace">
-      <div class="builder__toolbar">
+      <aside class="builder__tools panel">
         <BuilderRoomTool />
         <BuilderOpeningTool />
+      </aside>
 
-        <div class="builder__view-switch">
-          <button
-            type="button"
-            class="builder__view-btn"
-            :class="{ 'builder__view-btn--active': viewMode === '2d' }"
-            @click="viewMode = '2d'"
-          >
-            План
-          </button>
-          <button
-            type="button"
-            class="builder__view-btn"
-            :class="{ 'builder__view-btn--active': viewMode === '3d' }"
-            @click="viewMode = '3d'"
-          >
-            3D
+      <div class="builder__canvas-area">
+        <div class="builder__canvas-toolbar">
+          <div class="builder__view-switch">
+            <button
+              type="button"
+              class="builder__view-btn"
+              :class="{ 'builder__view-btn--active': viewMode === '2d' }"
+              @click="viewMode = '2d'"
+            >
+              <UiIcon name="grid-2d" :size="16" />
+              2D
+            </button>
+            <button
+              type="button"
+              class="builder__view-btn"
+              :class="{ 'builder__view-btn--active': viewMode === '3d' }"
+              @click="viewMode = '3d'"
+            >
+              <UiIcon name="cube-3d" :size="16" />
+              3D
+            </button>
+          </div>
+
+          <button type="button" class="btn btn-ghost btn-sm" @click="showJson = !showJson">
+            {{ showJson ? 'Скрыть JSON' : 'Building JSON' }}
           </button>
         </div>
 
-        <label class="builder__json-toggle">
-          <input v-model="showJson" type="checkbox">
-          Показать JSON
-        </label>
-      </div>
-
-      <div class="builder__main">
         <BuilderPlan2D v-if="viewMode === '2d'" class="builder__plan" />
         <div v-else class="builder__plan">
           <ClientOnly>
@@ -72,114 +84,102 @@ function submitBuildingForm() {
           </ClientOnly>
         </div>
 
-        <div class="builder__sidebar">
-          <BuilderPropertiesPanel />
-          <BuilderCalculationsSummary />
-        </div>
+        <pre v-if="showJson" class="builder__json">{{ JSON.stringify(buildingDocument, null, 2) }}</pre>
       </div>
 
-      <pre v-if="showJson" class="builder__json">{{ JSON.stringify(buildingDocument, null, 2) }}</pre>
+      <div class="builder__sidebar">
+        <BuilderPropertiesPanel />
+        <BuilderCalculationsSummary />
+      </div>
     </div>
   </div>
 </template>
 
 <style scoped>
 .builder {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  padding: var(--space-6);
 }
 
 .builder__setup {
-  padding: 20px;
-  border: 1px solid #e1e4ea;
-  border-radius: 8px;
-  background: #fff;
-  max-width: 360px;
+  display: flex;
+  justify-content: center;
+  padding-top: var(--space-16);
 }
 
-.builder__setup h2 {
-  margin: 0 0 12px;
-  font-size: 16px;
-  color: #1f2430;
+.builder__setup-card {
+  padding: var(--space-8);
+  max-width: 360px;
+  width: 100%;
+}
+
+.builder__setup-hint {
+  margin: var(--space-2) 0 var(--space-6);
 }
 
 .builder__setup-form {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-}
-
-.builder__setup-form label {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 12px;
-  color: #5b6472;
-}
-
-.builder__setup-form input {
-  padding: 7px 8px;
-  border: 1px solid #d6dae1;
-  border-radius: 4px;
-  font-size: 14px;
-}
-
-.builder__setup-form button {
-  margin-top: 4px;
-  padding: 8px 12px;
-  border-radius: 6px;
-  border: 1px solid #2f7fd1;
-  background: #2f7fd1;
-  color: #fff;
-  font-size: 14px;
-  cursor: pointer;
+  gap: var(--space-4);
 }
 
 .builder__workspace {
+  display: grid;
+  grid-template-columns: 168px 1fr 260px;
+  gap: var(--space-5);
+  align-items: start;
+}
+
+.builder__tools {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  position: sticky;
+  top: var(--space-4);
 }
 
-.builder__toolbar {
+.builder__canvas-area {
   display: flex;
-  align-items: center;
-  gap: 16px;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
 }
 
-.builder__json-toggle {
+.builder__canvas-toolbar {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: #5b6472;
-  cursor: pointer;
+  justify-content: space-between;
+  gap: var(--space-3);
 }
 
 .builder__view-switch {
   display: flex;
-  border: 1px solid #d6dae1;
-  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-button);
   overflow: hidden;
 }
 
 .builder__view-btn {
-  padding: 7px 14px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
   border: none;
-  background: #fff;
-  font-size: 13px;
+  background: var(--color-surface);
+  font-family: var(--font-family);
+  font-size: var(--font-small-size);
   cursor: pointer;
-  color: #5b6472;
+  color: var(--color-text-secondary);
 }
 
 .builder__view-btn + .builder__view-btn {
-  border-left: 1px solid #d6dae1;
+  border-left: 1px solid var(--color-border);
 }
 
 .builder__view-btn--active {
-  background: #2f7fd1;
-  color: #fff;
+  background: var(--color-primary-subtle);
+  color: var(--color-text);
+  font-weight: 500;
 }
 
 .builder__viewer-fallback {
@@ -187,22 +187,15 @@ function submitBuildingForm() {
   align-items: center;
   justify-content: center;
   height: 480px;
-  border: 1px solid #e1e4ea;
-  border-radius: 8px;
-  color: #8a93a2;
-  font-size: 14px;
-}
-
-.builder__main {
-  display: flex;
-  gap: 16px;
-  align-items: flex-start;
-  flex-wrap: wrap;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel);
+  color: var(--color-text-muted);
+  font-size: var(--font-body-size);
+  background: var(--color-surface);
 }
 
 .builder__plan {
-  flex: 1 1 480px;
-  /* Без этого флекс-элемент не может сжаться уже своего контента: канвас
+  /* Без этого флекс/grid-элемент не может сжаться уже своего контента: канвас
      3D-сцены передаёт свой width-атрибут как контентный минимум, из-за чего
      ResizeObserver в Viewer3D.vue раз за разом чуть увеличивал контейнер,
      canvas подстраивался под новый размер — и так по кругу, без остановки
@@ -211,22 +204,77 @@ function submitBuildingForm() {
 }
 
 .builder__sidebar {
-  flex: 0 0 240px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-4);
+  position: sticky;
+  top: var(--space-4);
 }
 
 .builder__json {
   margin: 0;
-  padding: 12px;
-  border: 1px solid #e1e4ea;
-  border-radius: 8px;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel);
   background: #1f2430;
   color: #d7e0ea;
   font-size: 12px;
   line-height: 1.5;
   overflow-x: auto;
   max-height: 400px;
+}
+
+@media (max-width: 1100px) {
+  .builder__workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .builder__tools {
+    position: static;
+  }
+
+  .builder__sidebar {
+    position: static;
+  }
+}
+
+/* Mobile composition, не "сжатый desktop": инструменты — компактная
+   горизонтальная прокручиваемая полоса над канвасом (а не левая колонка,
+   которая на узком экране просто налезала бы на остальное), свойства и
+   расчёты — блоками под канвасом. Editor logic не меняется, только layout. */
+@media (max-width: 640px) {
+  .builder {
+    padding: var(--space-3);
+  }
+
+  .builder__workspace {
+    gap: var(--space-3);
+  }
+
+  .builder__tools {
+    flex-direction: row;
+    overflow-x: auto;
+    gap: var(--space-2);
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .builder__tools :deep(.tool-btn) {
+    flex: 0 0 auto;
+    width: auto;
+  }
+
+  .builder__tools :deep(.room-tool__form),
+  .builder__tools :deep(.opening-tool__hint) {
+    position: fixed;
+    left: var(--space-3);
+    right: var(--space-3);
+    bottom: var(--space-3);
+    z-index: 20;
+    box-shadow: var(--shadow-modal);
+  }
+
+  .builder__canvas-toolbar {
+    flex-wrap: wrap;
+  }
 }
 </style>

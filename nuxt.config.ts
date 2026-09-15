@@ -1,5 +1,41 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
-  devtools: { enabled: true }
+  devtools: { enabled: true },
+  css: ['~/assets/css/main.css'],
+  app: {
+    head: {
+      link: [
+        { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
+        { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: 'anonymous' },
+        {
+          rel: 'stylesheet',
+          href: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap',
+        },
+      ],
+    },
+  },
+  runtimeConfig: {
+    public: {
+      // Переопределяется через NUXT_PUBLIC_API_BASE_URL (см. .env.example).
+      // Никогда не хардкодить http://localhost:8080 в компонентах/составных.
+      apiBaseUrl: 'http://localhost:8080',
+    },
+  },
+  // Session restore зависит от HttpOnly refresh-cookie, которую сервер в
+  // этой архитектуре не форвардит в SSR-запрос (см. middleware/auth.ts,
+  // middleware/guest.ts — сознательно client-only). Без этого SSR рендерил
+  // бы auth-зависимые страницы "как будто unauthenticated", а клиентский
+  // редирект после этого вызывал бы hydration mismatch (подтверждено вручную:
+  // /projects без сессии сначала SSR-рендерил пустой список, потом
+  // JS-редиректил на /auth/login поверх уже отрисованного DOM). ssr:false
+  // именно для этих routes — самый простой способ убрать причину, не отключая
+  // SSR для всего приложения и не добавляя cookie-forwarding.
+  routeRules: {
+    '/': { ssr: false },
+    '/auth/login': { ssr: false },
+    '/auth/register': { ssr: false },
+    '/projects': { ssr: false },
+    '/projects/**': { ssr: false },
+  },
 })

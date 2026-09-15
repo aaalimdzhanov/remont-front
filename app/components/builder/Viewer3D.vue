@@ -273,10 +273,10 @@ onBeforeUnmount(() => {
 .viewer3d {
   width: 100%;
   height: 480px;
-  border: 1px solid #e1e4ea;
-  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel);
   overflow: hidden;
-  background: #e7e4dd;
+  background: #E7E4DD;
   touch-action: none;
 }
 
@@ -286,70 +286,70 @@ onBeforeUnmount(() => {
   top: 50%;
   transform: translate(-50%, -50%);
   margin: 0;
-  padding: 8px 16px;
-  border-radius: 6px;
-  background: rgba(31, 36, 48, 0.75);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-input);
+  background: rgba(37, 37, 37, 0.75);
   color: #fff;
-  font-size: 14px;
+  font-size: var(--font-body-size);
   pointer-events: none;
   max-width: 80%;
   text-align: center;
 }
 
 .viewer3d__hint--error {
-  background: rgba(224, 85, 79, 0.9);
+  background: rgba(201, 85, 77, 0.92);
 }
 
 .viewer3d__toolbar {
   position: absolute;
-  top: 10px;
-  left: 10px;
+  top: var(--space-2);
+  left: var(--space-2);
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 6px 10px;
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid #e1e4ea;
-  box-shadow: 0 1px 3px rgba(31, 36, 48, 0.12);
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-input);
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-card);
 }
 
 .viewer3d__toggle {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: #3a4049;
+  gap: var(--space-2);
+  font-size: var(--font-small-size);
+  color: var(--color-text);
   cursor: pointer;
   user-select: none;
 }
 
 .viewer3d__reset-btn {
-  padding: 5px 10px;
-  border-radius: 5px;
-  border: 1px solid #d6dae1;
-  background: #fff;
-  color: #3a4049;
-  font-size: 12px;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-input);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--font-caption-size);
   cursor: pointer;
 }
 
 .viewer3d__reset-btn:hover {
-  background: #f2f4f7;
+  background: var(--color-surface-subtle);
 }
 
 .viewer3d__legend {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  top: var(--space-2);
+  right: var(--space-2);
   display: flex;
-  gap: 12px;
-  padding: 6px 10px;
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid #e1e4ea;
-  font-size: 12px;
-  color: #5b6472;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-input);
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--color-border);
+  font-size: var(--font-caption-size);
+  color: var(--color-text-secondary);
   pointer-events: none;
 }
 

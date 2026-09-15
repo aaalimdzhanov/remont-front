@@ -40,19 +40,20 @@ function submit() {
 
 <template>
   <div class="room-tool">
-    <button v-if="!isOpen" type="button" class="room-tool__trigger" @click="openForm">
-      + Комната
+    <button v-if="!isOpen" type="button" class="tool-btn" @click="openForm">
+      <UiIcon name="room" :size="18" />
+      Помещение
     </button>
 
     <form v-else class="room-tool__form" @submit.prevent="submit">
-      <label>
-        Название
-        <input v-model="name" type="text" required>
+      <label class="field">
+        <span class="field__label">Название</span>
+        <input v-model="name" type="text" class="input" required>
       </label>
 
-      <label>
-        Тип
-        <select v-model="type">
+      <label class="field">
+        <span class="field__label">Тип</span>
+        <select v-model="type" class="input">
           <option v-for="opt in roomTypes" :key="opt.value" :value="opt.value">
             {{ opt.label }}
           </option>
@@ -60,88 +61,50 @@ function submit() {
       </label>
 
       <div class="room-tool__dimensions">
-        <label>
-          Ширина, м
-          <input v-model.number="width" type="number" min="0" step="any" required>
+        <label class="field">
+          <span class="field__label">Ширина, м</span>
+          <input v-model.number="width" type="number" min="0" step="any" class="input" required>
         </label>
-        <label>
-          Длина, м
-          <input v-model.number="length" type="number" min="0" step="any" required>
+        <label class="field">
+          <span class="field__label">Длина, м</span>
+          <input v-model.number="length" type="number" min="0" step="any" class="input" required>
         </label>
       </div>
 
       <div class="room-tool__actions">
-        <button type="submit">Добавить</button>
-        <button type="button" class="room-tool__cancel" @click="closeForm">Отмена</button>
+        <button type="submit" class="btn btn-primary btn-sm room-tool__submit">
+          Добавить
+        </button>
+        <button type="button" class="btn btn-secondary btn-sm room-tool__submit" @click="closeForm">
+          Отмена
+        </button>
       </div>
     </form>
   </div>
 </template>
 
 <style scoped>
-.room-tool__trigger {
-  padding: 8px 14px;
-  border-radius: 6px;
-  border: 1px solid #2f7fd1;
-  background: #2f7fd1;
-  color: #fff;
-  font-size: 14px;
-  cursor: pointer;
-}
-
-.room-tool__trigger:hover {
-  background: #2a72bd;
-}
-
 .room-tool__form {
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 12px;
-  padding: 12px;
-  border: 1px solid #e1e4ea;
-  border-radius: 8px;
-  background: #fafbfc;
-}
-
-.room-tool__form label {
-  display: flex;
   flex-direction: column;
-  gap: 4px;
-  font-size: 12px;
-  color: #5b6472;
-}
-
-.room-tool__form input,
-.room-tool__form select {
-  padding: 6px 8px;
-  border: 1px solid #d6dae1;
-  border-radius: 4px;
-  font-size: 14px;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel);
+  background: var(--color-surface-subtle);
 }
 
 .room-tool__dimensions {
   display: flex;
-  gap: 12px;
+  gap: var(--space-2);
 }
 
 .room-tool__actions {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
-.room-tool__actions button {
-  padding: 7px 12px;
-  border-radius: 6px;
-  border: 1px solid #d6dae1;
-  background: #fff;
-  cursor: pointer;
-  font-size: 14px;
-}
-
-.room-tool__actions button[type='submit'] {
-  border-color: #2f7fd1;
-  background: #2f7fd1;
-  color: #fff;
+.room-tool__submit {
+  flex: 1;
 }
 </style>

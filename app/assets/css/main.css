@@ -1,0 +1,347 @@
+/*
+ * REMONT Design System v1 — единая точка правды для цветов/spacing/radius/
+ * тени/типографики. Импортируется один раз глобально (nuxt.config.ts).
+ * Компоненты должны использовать эти переменные и утилитарные классы ниже,
+ * а не повторять одинаковые hex-значения в десятках scoped <style> блоков.
+ */
+
+:root {
+  /* ---- Color: surfaces & text ---- */
+  --color-bg: #F5F3EF;
+  --color-surface: #FFFFFF;
+  --color-surface-subtle: #FAF9F7;
+
+  --color-text: #252525;
+  --color-text-secondary: #6F6B64;
+  --color-text-muted: #96918A;
+
+  --color-border: #E4E0D9;
+  --color-border-strong: #D5CFC5;
+
+  /* ---- Color: brand ---- */
+  --color-primary: #A88B68;
+  --color-primary-hover: #967A59;
+  --color-primary-subtle: #F1EBE2;
+
+  /* ---- Color: state ---- */
+  --color-success: #5E9B68;
+  --color-success-subtle: #EAF3EC;
+  --color-error: #C9554D;
+  --color-error-subtle: #FBEAE9;
+  --color-warning: #B28A50;
+  --color-warning-subtle: #F5EDE2;
+
+  /* ---- Spacing (шаг 8px) ---- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* ---- Radius ---- */
+  --radius-input: 8px;
+  --radius-button: 8px;
+  --radius-card: 10px;
+  --radius-card-lg: 12px;
+  --radius-modal: 12px;
+  --radius-panel: 10px;
+
+  /* ---- Shadows (мягкие, иерархия строится spacing+border, не тенью) ---- */
+  --shadow-card: 0 2px 10px rgba(37, 37, 37, 0.07);
+  --shadow-modal: 0 12px 40px rgba(37, 37, 37, 0.18);
+
+  /* ---- Typography ---- */
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  --font-display-size: 40px;
+  --font-display-line: 48px;
+  --font-h1-size: 30px;
+  --font-h1-line: 38px;
+  --font-h2-size: 24px;
+  --font-h2-line: 30px;
+  --font-h3-size: 18px;
+  --font-h3-line: 24px;
+  --font-body-lg-size: 16px;
+  --font-body-lg-line: 24px;
+  --font-body-size: 14px;
+  --font-body-line: 20px;
+  --font-small-size: 13px;
+  --font-small-line: 18px;
+  --font-caption-size: 12px;
+  --font-caption-line: 16px;
+
+  /* ---- Motion ---- */
+  --transition-fast: 150ms ease;
+  --transition-base: 200ms ease;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#__nuxt {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-family);
+  font-size: var(--font-body-size);
+  line-height: var(--font-body-line);
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4, p, ul, ol, figure {
+  margin: 0;
+}
+
+ul, ol {
+  padding: 0;
+  list-style: none;
+}
+
+a {
+  color: inherit;
+}
+
+button {
+  font-family: inherit;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+/* ==================================================
+   Typography scale (utility classes)
+   ================================================== */
+.text-display { font-size: var(--font-display-size); line-height: var(--font-display-line); font-weight: 600; }
+.text-h1 { font-size: var(--font-h1-size); line-height: var(--font-h1-line); font-weight: 600; }
+.text-h2 { font-size: var(--font-h2-size); line-height: var(--font-h2-line); font-weight: 600; }
+.text-h3 { font-size: var(--font-h3-size); line-height: var(--font-h3-line); font-weight: 600; }
+.text-body-lg { font-size: var(--font-body-lg-size); line-height: var(--font-body-lg-line); }
+.text-small { font-size: var(--font-small-size); line-height: var(--font-small-line); }
+.text-caption { font-size: var(--font-caption-size); line-height: var(--font-caption-line); }
+.text-secondary { color: var(--color-text-secondary); }
+.text-muted { color: var(--color-text-muted); }
+
+.brand-wordmark {
+  display: inline-block;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+/* ==================================================
+   Buttons — один набор классов для всего приложения,
+   вместо повторения border/background в каждом компоненте.
+   ================================================== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  height: 40px;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-button);
+  border: 1px solid transparent;
+  font-family: var(--font-family);
+  font-size: var(--font-body-size);
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+  white-space: nowrap;
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.btn-primary {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
+}
+
+.btn-secondary {
+  background: var(--color-surface);
+  border-color: var(--color-border-strong);
+  color: var(--color-text);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--color-surface-subtle);
+}
+
+.btn-ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--color-text-secondary);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background: var(--color-surface-subtle);
+  color: var(--color-text);
+}
+
+.btn-danger {
+  background: var(--color-error);
+  border-color: var(--color-error);
+  color: #fff;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #b34840;
+  border-color: #b34840;
+}
+
+.btn-sm {
+  height: 32px;
+  padding: 0 var(--space-3);
+  font-size: var(--font-small-size);
+}
+
+.btn-icon {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+/* ==================================================
+   Inputs
+   ================================================== */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.field__label {
+  font-size: var(--font-small-size);
+  color: var(--color-text-secondary);
+}
+
+.input {
+  height: 44px;
+  width: 100%;
+  padding: 0 var(--space-3);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-input);
+  font-family: var(--font-family);
+  font-size: var(--font-body-size);
+  color: var(--color-text);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-subtle);
+}
+
+.input.input--error {
+  border-color: var(--color-error);
+}
+
+.input.input--error:focus {
+  box-shadow: 0 0 0 3px var(--color-error-subtle);
+}
+
+/* ==================================================
+   Card / Panel
+   ================================================== */
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+
+.panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel);
+}
+
+/* ==================================================
+   Editor tool rail — vertical icon+label tool buttons (RoomTool/OpeningTool)
+   ================================================== */
+.tool-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  height: 40px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-button);
+  border: 1px solid transparent;
+  background: transparent;
+  font-family: var(--font-family);
+  font-size: var(--font-body-size);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.tool-btn:hover {
+  background: var(--color-surface-subtle);
+  color: var(--color-text);
+}
+
+.tool-btn--active {
+  background: var(--color-primary-subtle);
+  color: var(--color-text);
+  font-weight: 500;
+}
+
+/* ==================================================
+   Status pill (save status, warnings — spacing+color, no giant badges)
+   ================================================== */
+.status-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-caption-size);
+}
+
+.status-dot--success { color: var(--color-success); }
+.status-dot--neutral { color: var(--color-text-muted); }
+.status-dot--warning { color: var(--color-warning); }
+.status-dot--error { color: var(--color-error); }

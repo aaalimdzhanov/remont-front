@@ -408,10 +408,10 @@ function onOpeningPointerUp(event: PointerEvent) {
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  background: #ffffff;
-  border: 1px solid #e1e4ea;
-  border-radius: 8px;
-  padding: 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel);
+  padding: var(--space-4);
   min-height: 320px;
 }
 
@@ -423,19 +423,20 @@ function onOpeningPointerUp(event: PointerEvent) {
 }
 
 .plan2d__building {
-  fill: #fafbfc;
-  stroke: #2b3440;
+  fill: #FAFAF8;
+  stroke: #343434;
   stroke-width: 2;
 }
 
 .plan2d__grid line {
-  stroke: #edf0f3;
+  /* Сетка не должна конкурировать со стенами — максимально тихая. */
+  stroke: #ECE9E3;
   stroke-width: 1;
 }
 
 .plan2d__room-rect {
-  fill: #cfe8ff;
-  stroke: #2f7fd1;
+  fill: #F2EFE9;
+  stroke: var(--color-border-strong);
   stroke-width: 1.5;
   cursor: grab;
 }
@@ -445,36 +446,36 @@ function onOpeningPointerUp(event: PointerEvent) {
 }
 
 .plan2d__room-rect--selected {
-  fill: #a9d6ff;
-  stroke: #1a5fa8;
+  fill: var(--color-primary-subtle);
+  stroke: var(--color-primary);
   stroke-width: 2.5;
 }
 
 .plan2d__room-rect--conflict {
-  fill: #ffd4d1;
-  stroke: #d33a30;
+  fill: var(--color-error-subtle);
+  stroke: var(--color-error);
   stroke-width: 2;
   stroke-dasharray: 4 3;
 }
 
 .plan2d__room-rect--conflict.plan2d__room-rect--selected {
-  fill: #ffc0ba;
-  stroke: #b8281f;
+  fill: var(--color-error-subtle);
+  stroke: var(--color-error);
   stroke-width: 2.5;
 }
 
 .plan2d__wall {
-  fill: #4b5563;
+  fill: #343434;
   stroke: none;
   cursor: pointer;
 }
 
 .plan2d__wall--interior {
-  fill: #9aa3af;
+  fill: #8A8681;
 }
 
 .plan2d__wall--selected {
-  fill: #d68a1c;
+  fill: var(--color-primary);
 }
 
 .plan2d__wall--pickable {
@@ -491,29 +492,29 @@ function onOpeningPointerUp(event: PointerEvent) {
 }
 
 .plan2d__opening--door {
-  fill: #f1e0c6;
-  stroke: #b8955c;
+  fill: #EDE3D3;
+  stroke: #B08D5E;
 }
 
 .plan2d__opening--window {
-  fill: #cdeaf7;
-  stroke: #4fa9c9;
+  fill: #E3EEF1;
+  stroke: #8CB0BC;
 }
 
 .plan2d__opening--selected {
   stroke-width: 2.5;
-  stroke: #d68a1c;
+  stroke: var(--color-primary);
 }
 
 .plan2d__opening--conflict {
-  fill: #ffd4d1;
-  stroke: #d33a30;
+  fill: var(--color-error-subtle);
+  stroke: var(--color-error);
   stroke-dasharray: 4 3;
 }
 
 .plan2d__door-leaf,
 .plan2d__door-arc {
-  stroke: #7a5c33;
+  stroke: #8C6F45;
   stroke-width: 1.5;
   fill: none;
   pointer-events: none;
@@ -521,7 +522,7 @@ function onOpeningPointerUp(event: PointerEvent) {
 
 .plan2d__room-label {
   font-size: 13px;
-  fill: #1f2430;
+  fill: var(--color-text);
   text-anchor: middle;
   dominant-baseline: middle;
   pointer-events: none;
@@ -529,7 +530,7 @@ function onOpeningPointerUp(event: PointerEvent) {
 }
 
 .plan2d__empty {
-  color: #8a93a2;
-  font-size: 14px;
+  color: var(--color-text-muted);
+  font-size: var(--font-body-size);
 }
 </style>

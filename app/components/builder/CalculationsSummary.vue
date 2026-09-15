@@ -66,45 +66,46 @@ const calculated = computed(() => buildingDocument.value.calculated)
 
 <style scoped>
 .calculations {
-  padding: 16px;
-  border: 1px solid #e1e4ea;
-  border-radius: 8px;
-  background: #fff;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel);
+  background: var(--color-surface);
 }
 
 .calculations__title {
-  margin: 0 0 12px;
-  font-size: 15px;
+  margin: 0 0 var(--space-3);
+  font-size: var(--font-h3-size);
+  line-height: var(--font-h3-line);
   font-weight: 600;
-  color: #1f2430;
+  color: var(--color-text);
 }
 
 .calculations__areas {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  margin-bottom: 14px;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
 }
 
 .calculations__row {
   display: flex;
   justify-content: space-between;
-  gap: 12px;
-  font-size: 13px;
-  color: #5b6472;
+  gap: var(--space-3);
+  font-size: var(--font-small-size);
+  color: var(--color-text-secondary);
 }
 
 .calculations__row--emphasis {
-  padding-top: 6px;
-  border-top: 1px solid #edf0f3;
-  color: #1f2430;
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text);
   font-weight: 600;
 }
 
 .calculations__stats {
   display: flex;
   flex-wrap: wrap;
-  gap: 16px;
+  gap: var(--space-4);
 }
 
 .calculations__stat {
@@ -115,28 +116,28 @@ const calculated = computed(() => buildingDocument.value.calculated)
 }
 
 .calculations__stat-value {
-  font-size: 18px;
+  font-size: var(--font-h3-size);
   font-weight: 600;
-  color: #1f2430;
+  color: var(--color-text);
 }
 
 .calculations__stat-label {
-  font-size: 11px;
-  color: #8a93a2;
+  font-size: var(--font-caption-size);
+  color: var(--color-text-muted);
 }
 
 .calculations__warnings {
-  margin: 14px 0 0;
-  padding: 10px 12px;
-  border-radius: 6px;
-  background: #fff4de;
-  border: 1px solid #e8c67a;
-  color: #6b5116;
-  font-size: 12px;
+  margin: var(--space-4) 0 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-input);
+  background: var(--color-warning-subtle);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  font-size: var(--font-caption-size);
   list-style: none;
 }
 
 .calculations__warnings li + li {
-  margin-top: 4px;
+  margin-top: var(--space-1);
 }
 </style>
