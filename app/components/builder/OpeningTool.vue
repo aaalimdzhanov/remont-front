@@ -5,11 +5,11 @@ const { pendingOpeningType, beginPlacingOpening, cancelPlacingOpening } = useBui
 <template>
   <div class="opening-tool">
     <template v-if="!pendingOpeningType">
-      <button type="button" class="tool-btn" @click="beginPlacingOpening('door')">
+      <button type="button" class="tool-btn" data-tool="door" @click="beginPlacingOpening('door')">
         <UiIcon name="door" :size="18" />
         Дверь
       </button>
-      <button type="button" class="tool-btn" @click="beginPlacingOpening('window')">
+      <button type="button" class="tool-btn" data-tool="window" @click="beginPlacingOpening('window')">
         <UiIcon name="window" :size="18" />
         Окно
       </button>

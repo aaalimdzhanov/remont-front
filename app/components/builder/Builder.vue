@@ -1,5 +1,6 @@
 <script setup lang="ts">
-const { document: buildingDocument, hasBuilding, createBuilding } = useBuilding()
+const { document: buildingDocument, hasBuilding, createBuilding, cancelPlacingOpening, deleteSelected, selectedObject, clearSelection } = useBuilding()
+const { showDimensions, toggleDimensions, roomDrawActive, deactivateRoomDraw } = useEditorView()
 
 const width = ref(10)
 const length = ref(12)
@@ -10,6 +11,71 @@ function submitBuildingForm() {
   if (width.value <= 0 || length.value <= 0) return
   createBuilding(width.value, length.value)
 }
+
+// Инструмент "Выделить" должен снимать любой активный режим ожидания клика —
+// и "+ Дверь"/"+ Окно" (уже было), и рисование помещения протяжкой (новое).
+function activateSelectTool() {
+  cancelPlacingOpening()
+  deactivateRoomDraw()
+}
+
+// Клавиатурные шорткаты (V/R/D/O/M/Delete/Escape) — только в 2D-режиме и
+// только пока фокус не в поле ввода (иначе, например, буква "р" при наборе
+// "Гостиная" переключала бы инструмент вместо ввода текста). W/T/Ctrl+Z не
+// назначены — в редакторе нет инструмента стен, текстовых аннотаций и истории
+// отмены (см. итоговый отчёт — это осознанно отложено, а не забыто).
+function isTypingTarget(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) return false
+  if (target.isContentEditable) return true
+  return ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)
+}
+
+function triggerTool(tool: string) {
+  document.querySelector<HTMLElement>(`[data-tool="${tool}"]`)?.click()
+}
+
+function onKeydown(event: KeyboardEvent) {
+  if (viewMode.value !== '2d') return
+  if (isTypingTarget(event.target) || event.metaKey || event.ctrlKey || event.altKey) return
+
+  switch (event.key) {
+    case 'v':
+    case 'V':
+      activateSelectTool()
+      break
+    case 'r':
+    case 'R':
+      triggerTool('room')
+      break
+    case 'd':
+    case 'D':
+      triggerTool('door')
+      break
+    case 'o':
+    case 'O':
+      triggerTool('window')
+      break
+    case 'm':
+    case 'M':
+      toggleDimensions()
+      break
+    case 'Delete':
+    case 'Backspace':
+      event.preventDefault()
+      deleteSelected()
+      break
+    case 'Escape':
+      // Во время рисования помещения — отменяет текущий preview, ничего не
+      // создавая (Plan2D сбрасывает свою локальную drag-протяжку по watch за
+      // roomDrawActive). Если рисование не активно — снимает режим ожидания
+      // клика для двери/окна, если он был включён. Building JSON не трогается.
+      activateSelectTool()
+      break
+  }
+}
+
+onMounted(() => window.addEventListener('keydown', onKeydown))
+onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 </script>
 
 <template>
@@ -40,8 +106,29 @@ function submitBuildingForm() {
 
     <div v-else class="builder__workspace">
       <aside class="builder__tools panel">
+        <button
+          type="button"
+          class="tool-btn"
+          data-tool="select"
+          aria-label="Инструмент выделения (V)"
+          @click="activateSelectTool"
+        >
+          <UiIcon name="select" :size="18" />
+          Выделить
+        </button>
         <BuilderRoomTool />
         <BuilderOpeningTool />
+        <button
+          type="button"
+          class="tool-btn"
+          :class="{ 'tool-btn--active': showDimensions }"
+          aria-label="Показать или скрыть размеры (M)"
+          :aria-pressed="showDimensions"
+          @click="toggleDimensions"
+        >
+          <UiIcon name="dimension" :size="18" />
+          Размеры
+        </button>
       </aside>
 
       <div class="builder__canvas-area">
@@ -84,13 +171,38 @@ function submitBuildingForm() {
           </ClientOnly>
         </div>
 
+        <BuilderStatusBar v-if="viewMode === '2d'" />
+
         <pre v-if="showJson" class="builder__json">{{ JSON.stringify(buildingDocument, null, 2) }}</pre>
       </div>
 
       <div class="builder__sidebar">
-        <BuilderPropertiesPanel />
+        <!-- На мобильном (см. @media 640px ниже) эта же панель становится
+             bottom sheet, а не просто блоком под канвасом: открывается по
+             выделению объекта, закрывается кнопкой/тапом по фону — на
+             десктопе класс и кнопка закрытия ничего не меняют. -->
+        <div class="builder__properties" :class="{ 'builder__properties--sheet': selectedObject }">
+          <button
+            v-if="selectedObject"
+            type="button"
+            class="btn btn-ghost btn-sm builder__sheet-close"
+            aria-label="Закрыть панель свойств"
+            @click="clearSelection"
+          >
+            <UiIcon name="close" :size="14" />
+            Закрыть
+          </button>
+          <BuilderPropertiesPanel />
+        </div>
         <BuilderCalculationsSummary />
       </div>
+
+      <div
+        v-if="selectedObject"
+        class="builder__sheet-backdrop"
+        aria-hidden="true"
+        @click="clearSelection"
+      />
     </div>
   </div>
 </template>
@@ -211,6 +323,14 @@ function submitBuildingForm() {
   top: var(--space-4);
 }
 
+.builder__sheet-close {
+  display: none;
+}
+
+.builder__sheet-backdrop {
+  display: none;
+}
+
 .builder__json {
   margin: 0;
   padding: var(--space-3);
@@ -263,7 +383,7 @@ function submitBuildingForm() {
     width: auto;
   }
 
-  .builder__tools :deep(.room-tool__form),
+  .builder__tools :deep(.room-tool__hint),
   .builder__tools :deep(.opening-tool__hint) {
     position: fixed;
     left: var(--space-3);
@@ -275,6 +395,37 @@ function submitBuildingForm() {
 
   .builder__canvas-toolbar {
     flex-wrap: wrap;
+  }
+
+  /* Properties Panel как bottom sheet: открывается по выделению объекта,
+     не перекрывает экран целиком (max-height), закрывается кнопкой или
+     тапом по затемнённому фону — а не остаётся просто блоком под канвасом. */
+  .builder__properties--sheet {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 30;
+    max-height: 70vh;
+    overflow-y: auto;
+    background: var(--color-surface);
+    border-top-left-radius: var(--radius-modal);
+    border-top-right-radius: var(--radius-modal);
+    box-shadow: var(--shadow-modal);
+    padding-top: var(--space-2);
+  }
+
+  .builder__properties--sheet .builder__sheet-close {
+    display: flex;
+    margin: 0 var(--space-2) var(--space-2) auto;
+  }
+
+  .builder__sheet-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 25;
+    background: rgba(37, 37, 37, 0.28);
   }
 }
 </style>

@@ -1,5 +1,6 @@
 import type { BuildingDocument, Opening, OpeningType, Room, RoomRectangleGeometry, RoomType, Wall } from '~/types/building'
-import { MIN_ROOM_SIZE, snapToGrid } from '~/geometry/snapping'
+import { clamp, GRID_SIZE, MIN_ROOM_SIZE, snapToGrid } from '~/geometry/snapping'
+import type { RectBounds } from '~/geometry/validation'
 import { isRectanglesIntersecting, rectBoundsOfGeometry } from '~/geometry/validation'
 import { DEFAULT_FLOOR_HEIGHT, generateWallsFromRooms, wallLength } from '~/geometry/walls'
 import { calculateBuildingStatistics } from '~/geometry/calculations'
@@ -46,6 +47,12 @@ export function createEmptyBuildingDocument(): BuildingDocument {
     work_requirements: [],
     calculated: calculateBuildingStatistics(building),
   }
+}
+
+export type SelectedObjectType = 'room' | 'wall' | 'door' | 'window'
+export interface SelectedObjectRef {
+  type: SelectedObjectType
+  id: string
 }
 
 function nextId(prefix: string, existingIds: string[]): string {
@@ -96,6 +103,17 @@ export function useBuilding() {
   const selectedOpening = computed<Opening | null>(
     () => document.value.building.openings.find(opening => opening.id === selectedOpeningId.value) ?? null,
   )
+
+  // Unified selection view для Properties Panel/status bar/dimensions — НЕ
+  // второй selection state, а чистая производная от тех же трёх refs выше
+  // (selectedRoomId/selectedWallId/selectedOpeningId остаются единственным
+  // источником истины; single source of truth сохраняется).
+  const selectedObject = computed<SelectedObjectRef | null>(() => {
+    if (selectedRoomId.value) return { type: 'room', id: selectedRoomId.value }
+    if (selectedWallId.value) return { type: 'wall', id: selectedWallId.value }
+    if (selectedOpening.value) return { type: selectedOpening.value.type === 'door' ? 'door' : 'window', id: selectedOpening.value.id }
+    return null
+  })
 
   // Стены — производная геометрия комнат, а не независимые данные: пересчитываем
   // building.walls целиком при любом изменении состава/позиции/размеров комнат,
@@ -268,9 +286,19 @@ export function useBuilding() {
     touch()
   }
 
-  function addRoom(params: { name: string, type: RoomType, width: number, length: number }) {
+  // position — опционально (по умолчанию угол здания {0,0}, как и раньше):
+  // используется при создании комнаты протяжкой на плане (Plan2D), где
+  // пользователь указывает и размер, и место одним движением. Клампится в
+  // границы здания и привязывается к сетке так же, как moveRoom() делает это
+  // при отпускании мыши — единая точка правды по позиции комнаты.
+  function addRoom(params: { name: string, type: RoomType, width: number, length: number, position?: { x: number, z: number } }) {
     const floor = document.value.building.floors[0]
     if (!floor) return
+
+    const width = snapRoomSize(params.width)
+    const length = snapRoomSize(params.length)
+    const maxX = Math.max(0, document.value.building.dimensions.width - width)
+    const maxZ = Math.max(0, document.value.building.dimensions.length - length)
 
     const room: Room = {
       id: nextId('room', document.value.building.rooms.map(r => r.id)),
@@ -279,9 +307,12 @@ export function useBuilding() {
       type: params.type,
       geometry: {
         type: 'rectangle',
-        width: snapRoomSize(params.width),
-        length: snapRoomSize(params.length),
-        position: { x: 0, z: 0 },
+        width,
+        length,
+        position: {
+          x: clamp(snapToGrid(params.position?.x ?? 0), 0, maxX),
+          z: clamp(snapToGrid(params.position?.z ?? 0), 0, maxZ),
+        },
         rotation: 0,
       },
     }
@@ -290,6 +321,18 @@ export function useBuilding() {
     selectedRoomId.value = room.id
     syncWalls()
     touch()
+  }
+
+  // Проверка "поместится ли прямоугольник без пересечений с существующими
+  // комнатами" ДО создания — переиспользует ту же geometry-функцию, что и
+  // intersectingRoomIds выше (isRectanglesIntersecting/rectBoundsOfGeometry),
+  // чтобы preview во время рисования и реальная проверка после создания не
+  // могли разойтись. Используется Plan2D для invalid-состояния preview.
+  function wouldRectIntersectRooms(bounds: RectBounds): boolean {
+    return document.value.building.rooms.some((room) => {
+      if (room.geometry.type !== 'rectangle') return false
+      return isRectanglesIntersecting(bounds, rectBoundsOfGeometry(room.geometry))
+    })
   }
 
   function moveRoom(id: string, x: number, z: number) {
@@ -316,6 +359,29 @@ export function useBuilding() {
     const room = document.value.building.rooms.find(r => r.id === id)
     if (!room) return
     room.name = name
+    touch()
+  }
+
+  // Тип помещения задаётся при создании (addRoom), но раньше не был
+  // редактируемым после — Properties Panel это чинит без изменения модели
+  // (RoomType уже существует в схеме).
+  function setRoomType(id: string, type: RoomType) {
+    const room = document.value.building.rooms.find(r => r.id === id)
+    if (!room) return
+    room.type = type
+    touch()
+  }
+
+  // Высота потолка в текущей модели — свойство ЭТАЖА (все комнаты этажа
+  // делят одно значение), а не отдельного помещения: Properties Panel не
+  // придумывает новое per-room поле, а честно редактирует существующее
+  // building.floors[].height. Меняет высоту стен (см. generateWallsFromRooms)
+  // и производные calculated-значения через syncWalls().
+  function setFloorHeight(floorId: string, height: number) {
+    const floor = document.value.building.floors.find(f => f.id === floorId)
+    if (!floor) return
+    floor.height = Math.max(GRID_SIZE, snapToGrid(height))
+    syncWalls()
     touch()
   }
 
@@ -437,6 +503,25 @@ export function useBuilding() {
     touch()
   }
 
+  // Направление открывания двери — существующее поле Opening.swing.direction
+  // (используется 2D/3D для рисования дуги открывания), просто раньше не
+  // было доступно для редактирования из UI.
+  function setDoorSwingDirection(id: string, direction: 'left' | 'right') {
+    const opening = document.value.building.openings.find(o => o.id === id && o.type === 'door')
+    if (!opening) return
+    opening.swing = { direction, angle: opening.swing?.angle ?? 90 }
+    touch()
+  }
+
+  // Удаляет текущий selected object (room или opening) — используется
+  // клавишей Delete/Backspace в Properties Panel. Стену напрямую удалить
+  // нельзя (она производная от комнат — см. generateWallsFromRooms), поэтому
+  // для выбранной стены это не делает ничего.
+  function deleteSelected() {
+    if (selectedRoomId.value) removeRoom(selectedRoomId.value)
+    else if (selectedOpeningId.value) removeOpening(selectedOpeningId.value)
+  }
+
   function removeOpening(id: string) {
     document.value.building.openings = document.value.building.openings.filter(o => o.id !== id)
     if (selectedOpeningId.value === id) selectedOpeningId.value = null
@@ -457,26 +542,32 @@ export function useBuilding() {
     selectedWall,
     selectedOpeningId,
     selectedOpening,
+    selectedObject,
     pendingOpeningType,
     createBuilding,
     addRoom,
     moveRoom,
     resizeRoom,
     renameRoom,
+    setRoomType,
+    setFloorHeight,
     removeRoom,
     selectRoom,
     selectWall,
     selectOpening,
     clearSelection,
+    deleteSelected,
     beginPlacingOpening,
     cancelPlacingOpening,
     addOpening,
     moveOpening,
     resizeOpening,
     setOpeningSillHeight,
+    setDoorSwingDirection,
     removeOpening,
     isRoomIntersecting,
     getIntersectingRoomNames,
+    wouldRectIntersectRooms,
     isOpeningIntersecting,
     getIntersectingOpeningLabels,
   }
