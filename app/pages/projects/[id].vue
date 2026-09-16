@@ -7,10 +7,15 @@
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
+const { document: buildingDocument } = useBuilding()
 const { loadProject, isDirty, error, cleanup } = useProjectPersistence()
 const { isLoggingOut } = useAuth()
 
-useHead({ title: 'Remont — 2D Builder' })
+// Реактивный заголовок: как только loadProject() подгрузит документ, вкладка
+// показывает реальное имя проекта (см. пример "my house — ishonchliusta" в
+// задаче на branding migration) — titleTemplate в nuxt.config добавляет
+// суффикс бренда сам, здесь достаточно короткого title.
+useHead({ title: computed(() => buildingDocument.value.project.name) })
 
 type Phase = 'loading' | 'not-found' | 'error' | 'ready'
 const phase = ref<Phase>('loading')

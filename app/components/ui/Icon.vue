@@ -6,6 +6,7 @@ type IconName =
   | 'select' | 'wall' | 'door' | 'window' | 'room' | 'dimension'
   | 'grid-2d' | 'cube-3d' | 'chevron-left' | 'close' | 'trash'
   | 'logout' | 'plus' | 'check' | 'alert' | 'more'
+  | 'search' | 'edit' | 'user' | 'sort'
 
 const props = withDefaults(defineProps<{ name: IconName, size?: number }>(), {
   size: 18,
@@ -28,6 +29,10 @@ const paths: Record<IconName, string> = {
   check: 'M4 12l5 5L20 6',
   alert: 'M12 3l9 16H3l9-16z M12 10v4 M12 17h.01',
   more: 'M5 12h.01M12 12h.01M19 12h.01',
+  search: 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14z M21 21l-4.35-4.35',
+  edit: 'M4 20h4L18.5 9.5a2.121 2.121 0 0 0-3-3L5 17v3z M13.5 6.5l4 4',
+  user: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M4 20c0-4 3.5-6 8-6s8 2 8 6',
+  sort: 'M4 6h16M7 12h10M10 18h4',
 }
 </script>
 

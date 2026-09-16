@@ -1,6 +1,6 @@
 <script setup lang="ts">
 definePageMeta({ middleware: 'guest', layout: 'auth' })
-useHead({ title: 'Вход — REMONT' })
+useHead({ title: 'Вход' })
 
 const RESEND_COOLDOWN_SECONDS = 60
 

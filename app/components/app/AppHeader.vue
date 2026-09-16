@@ -2,92 +2,56 @@
 // Единый header для authenticated-приложения (/projects, /projects/new) —
 // не дублируется на каждой странице, живёт один раз в layouts/app.vue.
 // Editor (/projects/{id}) использует свой EditorHeader, не этот.
-const { user, logout } = useAuth()
-
-const maskedUserPhone = computed(() => (user.value ? maskPhone(user.value.phone) : ''))
-
-async function handleLogout() {
-  await logout()
-  await navigateTo('/auth/login')
-}
+//
+// Mobile-first Dashboard (см. задание): убрана постоянная nav-ссылка
+// "Проекты" (единственное направление и так открыто по умолчанию — see
+// header reference: "[logo] ... [avatar]", без текстовых пунктов меню) и
+// инлайн телефон/"Выйти" — теперь это ProfileMenu под аватаром.
+//
+// variant="header" (знак + подпись "ishonchliusta", без tagline) — здесь
+// достаточно места и на desktop, и на mobile (справа только аватар), в
+// отличие от EditorHeader.vue (Builder), где рядом ещё название проекта,
+// статус сохранения и кнопки — там компактный variant="compact" остаётся
+// как есть, этот файл его не трогает.
 </script>
 
 <template>
   <header class="app-header">
-    <div class="app-header__left">
-      <NuxtLink to="/projects" class="brand-wordmark app-header__brand">
-        REMONT
-      </NuxtLink>
-      <NuxtLink to="/projects" class="app-header__nav-link app-header__nav-link--active">
-        Проекты
-      </NuxtLink>
-    </div>
+    <NuxtLink to="/projects" class="app-header__brand">
+      <UiBrandLogo variant="header" />
+    </NuxtLink>
 
-    <div class="app-header__right">
-      <span v-if="maskedUserPhone" class="app-header__phone text-caption text-muted">
-        {{ maskedUserPhone }}
-      </span>
-      <button type="button" class="btn btn-ghost btn-sm" @click="handleLogout">
-        <UiIcon name="logout" :size="16" />
-        Выйти
-      </button>
-    </div>
+    <AppProfileMenu />
   </header>
 </template>
 
 <style scoped>
 .app-header {
-  height: 64px;
+  min-height: 56px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
-  padding: 0 var(--space-6);
+  padding: var(--space-2) var(--space-4);
+  padding-top: max(var(--space-2), env(safe-area-inset-top));
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
 }
 
-.app-header__left {
-  display: flex;
-  align-items: center;
-  gap: var(--space-8);
-  min-width: 0;
-}
-
 .app-header__brand {
   flex-shrink: 0;
-}
-
-.app-header__nav-link {
-  font-size: var(--font-body-size);
-  color: var(--color-text-secondary);
-  text-decoration: none;
-}
-
-.app-header__nav-link--active {
-  color: var(--color-text);
-  font-weight: 500;
-}
-
-.app-header__right {
   display: flex;
   align-items: center;
-  gap: var(--space-4);
-  flex-shrink: 0;
+  text-decoration: none;
+  color: inherit;
 }
 
-.app-header__phone {
-  white-space: nowrap;
-}
-
-@media (max-width: 640px) {
+@media (min-width: 768px) {
   .app-header {
-    padding: 0 var(--space-4);
-  }
-
-  .app-header__phone {
-    display: none;
+    min-height: 64px;
+    padding: 0 var(--space-6);
+    padding-top: env(safe-area-inset-top);
   }
 }
 </style>

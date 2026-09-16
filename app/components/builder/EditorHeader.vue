@@ -92,8 +92,8 @@ async function handleLogout() {
 <template>
   <header class="editor-header">
     <div class="editor-header__left">
-      <NuxtLink to="/projects" class="brand-wordmark editor-header__brand">
-        REMONT
+      <NuxtLink to="/projects" class="editor-header__brand">
+        <UiBrandLogo variant="compact" />
       </NuxtLink>
       <NuxtLink to="/projects" class="editor-header__back">
         <UiIcon name="chevron-left" :size="16" />

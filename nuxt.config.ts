@@ -5,6 +5,10 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
   app: {
     head: {
+      title: 'ishonchliusta',
+      // %s подставляется из useHead({ title }) конкретной страницы — единая
+      // точка суффикса бренда вместо "— ishonchliusta" в конце каждого title.
+      titleTemplate: '%s — ishonchliusta',
       link: [
         { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
         { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: 'anonymous' },
@@ -12,6 +16,8 @@ export default defineNuxtConfig({
           rel: 'stylesheet',
           href: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap',
         },
+        { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
+        { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' },
       ],
     },
   },

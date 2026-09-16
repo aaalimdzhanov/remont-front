@@ -19,7 +19,7 @@ const DOOR_COLOR = 0xe0c9a3
 const DOOR_JAMB_COLOR = 0x9c8567
 const WINDOW_FRAME_COLOR = 0x9aa1ab
 const WINDOW_GLASS_COLOR = 0xbfe6f2
-const SELECTED_COLOR = 0xa88b68 // REMONT brand accent — совпадает с 2D-выделением (var(--color-primary))
+const SELECTED_COLOR = 0xff6a00 // brand accent — совпадает с 2D-выделением (var(--color-primary))
 const SWING_ARC_COLOR = 0x9aa1ab
 
 function openingMidpoint(wall: Wall, opening: Opening) {

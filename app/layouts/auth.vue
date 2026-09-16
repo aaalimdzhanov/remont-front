@@ -1,22 +1,20 @@
 <script setup lang="ts">
 // Минимальный layout для /auth/login и /auth/register: белая поверхность,
-// много воздуха, REMONT сверху, центральная карточка. Никакого sidebar/
-// editor header — auth-страницы сами решают, что показывать внутри карточки.
+// много воздуха, полный лок-ап ishonchliusta сверху (включает tagline —
+// отдельного текста под ним больше нет), центральная карточка. Никакого
+// sidebar/editor header — auth-страницы сами решают, что показывать внутри
+// карточки.
 </script>
 
 <template>
   <div class="auth-layout">
     <header class="auth-layout__brand">
-      <span class="brand-wordmark">REMONT</span>
+      <UiBrandLogo />
     </header>
 
     <main class="auth-layout__content">
       <slot />
     </main>
-
-    <p class="auth-layout__tagline text-caption text-muted">
-      Больше, чем ремонт.
-    </p>
   </div>
 </template>
 
@@ -43,10 +41,6 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-}
-
-.auth-layout__tagline {
-  padding-top: var(--space-10);
 }
 
 @media (max-width: 480px) {

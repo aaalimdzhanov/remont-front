@@ -5,7 +5,7 @@
 import type { BuildingType } from '~/types/building'
 
 definePageMeta({ middleware: 'auth', layout: 'app' })
-useHead({ title: 'Новый проект — REMONT' })
+useHead({ title: 'Новый проект' })
 
 const { createProject, isCreating, error, clearError } = useProjectPersistence()
 

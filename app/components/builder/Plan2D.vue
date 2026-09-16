@@ -818,7 +818,7 @@ const roomDrawDimensionSpecs = computed<DimensionSpec[]>(() => {
 
 .plan2d__building {
   fill: #FAFAF8;
-  stroke: #343434;
+  stroke: var(--color-graphite);
   stroke-width: 2;
 }
 
@@ -908,7 +908,7 @@ const roomDrawDimensionSpecs = computed<DimensionSpec[]>(() => {
 }
 
 .plan2d__wall {
-  fill: #343434;
+  fill: var(--color-graphite);
   stroke: none;
   cursor: pointer;
 }

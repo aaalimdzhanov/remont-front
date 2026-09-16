@@ -30,6 +30,11 @@ const KNOWN_ERROR_MESSAGES: Record<string, string> = {
   verification_expired: 'Срок действия кода истёк.',
   verification_attempts_exceeded: 'Превышено количество попыток.',
   verification_not_found: 'Код не найден. Запросите новый код.',
+  // Код уже был подтверждён ранее (например, повторная отправка формы) —
+  // backend отдаёт 400 verification_consumed, раньше не было в этом списке,
+  // из-за чего пользователю показывалось сырое "Verification code already
+  // used" (см. body?.error?.message fallback ниже).
+  verification_consumed: 'Этот код уже был использован. Запросите новый код.',
   sms_cooldown_active: 'Слишком частый запрос. Попробуйте позже.',
   user_already_exists: 'Пользователь с таким номером уже существует.',
   user_not_found: 'Пользователь не найден.',
@@ -54,7 +59,12 @@ function hasResponse(value: unknown): value is FetchErrorLike & { response: NonN
 // Нормализует любую ошибку запроса ($fetch/ofetch FetchError при HTTP-ошибке,
 // упавший до ответа network error, что угодно ещё) в единый ApiError. UI-слой
 // работает только с этой формой, независимо от первопричины.
-export function toApiError(error: unknown): ApiError {
+// requestUrl — куда именно ушёл запрос (baseURL+path): включается в сообщение
+// ТОЛЬКО для network_error (когда ответа не было вообще), чтобы сразу было
+// видно, к какому адресу приложение реально стучалось — самая частая причина
+// "backend работает, а фронт говорит недоступен" это несовпадение хоста
+// (например, браузер видит другой "localhost", чем сам backend-процесс).
+export function toApiError(error: unknown, requestUrl?: string): ApiError {
   if (hasResponse(error)) {
     const status = error.response.status
     // 401 — всегда один и тот же дружелюбный смысл для пользователя ("войдите
@@ -88,13 +98,26 @@ export function toApiError(error: unknown): ApiError {
     return { status, code: 'http_error', message: httpStatusMessage(status), details: body }
   }
 
-  // Запрос не дошёл до ответа вообще: backend недоступен, DNS/сеть и т.п.
-  const message = error instanceof Error ? error.message : undefined
+  // Запрос не дошёл до ответа вообще: backend недоступен, DNS/сеть, CORS-блок
+  // и т.п. — ofetch в этом случае бросает ошибку без .response. Показываем
+  // фактический адрес запроса прямо в сообщении (это публичный runtimeConfig,
+  // не секрет) — иначе "backend недоступен" при реально запущенном backend
+  // невозможно отличить от "фронтенд стучится не туда, куда думает пользователь"
+  // (например, браузер резолвит localhost иначе, чем сам backend-процесс).
+  const rawMessage = error instanceof Error ? `${error.name}: ${error.message}` : String(error)
+  const urlSuffix = requestUrl ? ` (${requestUrl})` : ''
+  // Браузер намеренно не различает "сервер недоступен" и "запрос заблокирован
+  // CORS" — оба случая одинаково бросают TypeError без .response (ограничение
+  // платформы, не наше). Поэтому в dev дополнительно показываем сырой текст
+  // браузерной ошибки прямо в сообщении — это и есть "не скрывать реальную
+  // ошибку во время разработки" (см. задание, секция 6). В production эта
+  // техническая деталь не нужна конечному пользователю.
+  const devSuffix = import.meta.dev ? ` [${rawMessage}]` : ''
   return {
     status: 0,
     code: 'network_error',
-    message: 'Не удалось подключиться к серверу. Проверьте, что backend запущен, и повторите попытку.',
-    details: message,
+    message: `Не удалось подключиться к серверу${urlSuffix}. Проверьте, что backend запущен и доступен по этому адресу, и повторите попытку.${devSuffix}`,
+    details: rawMessage,
   }
 }
 
@@ -175,6 +198,9 @@ export interface ApiRequestOptions {
 export async function apiFetch<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
   const config = useRuntimeConfig()
   const withAuth = options.auth ?? true
+  // Только для диагностики network_error в toApiError() — не влияет на сам
+  // запрос ($fetch получает baseURL/path отдельно, как и раньше).
+  const requestUrl = `${config.public.apiBaseUrl}${path}`
 
   function buildHeaders(): Record<string, string> {
     if (withAuth && accessToken.value) {
@@ -203,10 +229,10 @@ export async function apiFetch<T>(path: string, options: ApiRequestOptions = {})
         try {
           return await attempt() // повторяем ровно один раз с новым токеном
         } catch (retryError) {
-          throw toApiError(retryError)
+          throw toApiError(retryError, requestUrl)
         }
       }
     }
-    throw toApiError(error)
+    throw toApiError(error, requestUrl)
   }
 }

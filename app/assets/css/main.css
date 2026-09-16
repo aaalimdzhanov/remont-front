@@ -18,10 +18,17 @@
   --color-border: #E4E0D9;
   --color-border-strong: #D5CFC5;
 
-  /* ---- Color: brand ---- */
-  --color-primary: #A88B68;
-  --color-primary-hover: #967A59;
-  --color-primary-subtle: #F1EBE2;
+  /* ---- Color: brand (ishonchliusta) ----
+     --color-primary — единственный "accent"-слот дизайн-системы (кнопки,
+     selection, фокус, ссылки) уже использовался везде через var(), поэтому
+     ребрендинг — это смена ЗНАЧЕНИЯ трёх токенов ниже, а не второй набор
+     цветов поверх существующего. --color-graphite — новый токен: тёмный
+     архитектурный цвет стен на 2D-плане (см. Plan2D.vue), отдельно от
+     --color-text (это про UI-текст, не про геометрию чертежа). */
+  --color-primary: #FF6A00;
+  --color-primary-hover: #E05A00;
+  --color-primary-subtle: #FFEDE0;
+  --color-graphite: #17212B;
 
   /* ---- Color: state ---- */
   --color-success: #5E9B68;
@@ -139,16 +146,6 @@ img {
 .text-caption { font-size: var(--font-caption-size); line-height: var(--font-caption-line); }
 .text-secondary { color: var(--color-text-secondary); }
 .text-muted { color: var(--color-text-muted); }
-
-.brand-wordmark {
-  display: inline-block;
-  font-size: 16px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--color-text);
-  text-decoration: none;
-}
 
 /* ==================================================
    Buttons — один набор классов для всего приложения,

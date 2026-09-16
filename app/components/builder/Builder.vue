@@ -6,6 +6,9 @@ const width = ref(10)
 const length = ref(12)
 const showJson = ref(false)
 const viewMode = ref<'2d' | '3d'>('2d')
+// import.meta.dev внутри template-выражения (v-if) не парсится компилятором
+// Vue SFC (там не ES-module контекст) — выносим в обычную переменную скрипта.
+const isDev = import.meta.dev
 
 function submitBuildingForm() {
   if (width.value <= 0 || length.value <= 0) return
@@ -154,7 +157,12 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             </button>
           </div>
 
-          <button type="button" class="btn btn-ghost btn-sm" @click="showJson = !showJson">
+          <!-- Dev-only raw Building JSON viewer — никогда не показывается в
+               production UI (см. задание "Убрать Building JSON из UI").
+               import.meta.dev — compile-time константа Vite/Nuxt: в
+               production-сборке эта ветка удаляется целиком, а не просто
+               скрывается CSS-ом. -->
+          <button v-if="isDev" type="button" class="btn btn-ghost btn-sm" @click="showJson = !showJson">
             {{ showJson ? 'Скрыть JSON' : 'Building JSON' }}
           </button>
         </div>
@@ -173,7 +181,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 
         <BuilderStatusBar v-if="viewMode === '2d'" />
 
-        <pre v-if="showJson" class="builder__json">{{ JSON.stringify(buildingDocument, null, 2) }}</pre>
+        <pre v-if="isDev && showJson" class="builder__json">{{ JSON.stringify(buildingDocument, null, 2) }}</pre>
       </div>
 
       <div class="builder__sidebar">
@@ -381,6 +389,15 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
   .builder__tools :deep(.tool-btn) {
     flex: 0 0 auto;
     width: auto;
+  }
+
+  /* .opening-tool (Дверь+Окно) сам по себе — вертикальный flex-контейнер
+     (нужно для desktop-колонки инструментов). Внутри горизонтальной
+     прокручиваемой mobile-строки его тоже нужно развернуть в row — иначе
+     Дверь/Окно складываются в отдельный "двухэтажный" блок внутри общей
+     строки вместо того, чтобы встать в один ряд с остальными кнопками. */
+  .builder__tools :deep(.opening-tool) {
+    flex-direction: row;
   }
 
   .builder__tools :deep(.room-tool__hint),
