@@ -16,12 +16,14 @@ vi.mock('~/api/auth', () => authApi)
 // же, как и в остальном тестовом наборе: vi.resetModules() + динамический
 // re-import.
 let useAuth: typeof import('~/composables/useAuth')['useAuth']
+let useUserMode: typeof import('~/composables/useUserMode')['useUserMode']
 
 beforeEach(async () => {
   vi.resetModules()
   resetShimState()
   vi.clearAllMocks()
   ;({ useAuth } = await import('~/composables/useAuth'))
+  ;({ useUserMode } = await import('~/composables/useUserMode'))
 })
 
 function makeUser(overrides: Record<string, unknown> = {}) {
@@ -135,6 +137,22 @@ describe('useAuth', () => {
 
     expect(isAuthenticated.value).toBe(false)
     expect(accessToken.value).toBeNull()
+  })
+
+  it('9. logout resets User Mode back to "client" (см. useUserMode.ts) — a UI preference, not carried across sessions', async () => {
+    authApi.loginVerify.mockResolvedValueOnce(session('tok-mode'))
+    authApi.me.mockResolvedValueOnce(makeUser())
+    const { login, logout } = useAuth()
+    const { mode, setMode } = useUserMode()
+    await login('+998901234567', '123456')
+
+    setMode('contractor')
+    expect(mode.value).toBe('contractor')
+
+    authApi.logout.mockResolvedValueOnce(undefined)
+    await logout()
+
+    expect(mode.value).toBe('client')
   })
 
   it('concurrent initialize() calls are single-flight: one refresh + one /me pair', async () => {

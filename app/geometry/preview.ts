@@ -97,3 +97,54 @@ export function buildBuildingPreview(building: Building): BuildingPreview {
 
   return { hasContent: true, viewBoxWidth: width, viewBoxHeight: length, roomRects, wallRects, doorRects, windowRects }
 }
+
+// Отдельный, самостоятельный тип/функция для превью ОДНОЙ комнаты (Work
+// Builder — экран выбора помещения/расчёта, см. задание). Сознательно не
+// расширяет BuildingPreview/buildBuildingPreview выше — та форма завязана на
+// viewBox от (0,0) для всего здания (см. ProjectPreview.vue), тогда как
+// комната может находиться где угодно в координатах здания и её собственный
+// viewBox должен начинаться от её position, а не от нуля. Трогать
+// ProjectPreview.vue/Dashboard эта функция не должна вообще — только новый
+// экспорт в этом же файле, использующий те же геометрические хелперы.
+export interface RoomPreview {
+  viewBoxX: number
+  viewBoxY: number
+  viewBoxWidth: number
+  viewBoxHeight: number
+  roomRect: PreviewRect
+  wallRects: PreviewRect[]
+  doorRects: PreviewRect[]
+  windowRects: PreviewRect[]
+}
+
+// null — комната не найдена или её геометрия не rectangle (полигональные
+// комнаты пока не поддерживаются нигде во фронтенде, см. app/types/building.ts).
+export function buildRoomPreview(building: Building, roomId: string): RoomPreview | null {
+  const room = building.rooms.find(r => r.id === roomId)
+  if (!room || room.geometry.type !== 'rectangle') return null
+
+  const { position, width, length } = room.geometry
+  const roomRect: PreviewRect = { x: position.x, y: position.z, width, height: length }
+
+  const wallRects: PreviewRect[] = []
+  const doorRects: PreviewRect[] = []
+  const windowRects: PreviewRect[] = []
+
+  // Только стены, граничащие с этой комнатой (room_ids) — не всё здание.
+  for (const wall of building.walls) {
+    if (!wall.room_ids.includes(roomId)) continue
+    const wallOpenings = openingsOnWall(building.openings, wall.id)
+    const spans = splitWallByOpenings(wallLength(wall), wallOpenings)
+    for (const span of spans) {
+      wallRects.push(segmentRect(pointAlongWall(wall, span.from), pointAlongWall(wall, span.to), wall.thickness))
+    }
+    for (const opening of wallOpenings) {
+      const from = pointAlongWall(wall, opening.position.offset)
+      const to = pointAlongWall(wall, opening.position.offset + opening.dimensions.width)
+      const rect = segmentRect(from, to, wall.thickness)
+      ;(opening.type === 'door' ? doorRects : windowRects).push(rect)
+    }
+  }
+
+  return { viewBoxX: position.x, viewBoxY: position.z, viewBoxWidth: width, viewBoxHeight: length, roomRect, wallRects, doorRects, windowRects }
+}

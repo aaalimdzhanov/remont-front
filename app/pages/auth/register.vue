@@ -5,6 +5,7 @@ useHead({ title: 'Регистрация' })
 const RESEND_COOLDOWN_SECONDS = 60
 
 const { sendSMS, register, isLoading, error, clearError } = useAuth()
+const route = useRoute()
 
 const step = ref<'phone' | 'code'>('phone')
 const phone = ref('')
@@ -31,7 +32,8 @@ async function handleResend() {
 
 async function handleCodeSubmit(code: string) {
   const ok = await register(phone.value, code)
-  if (ok) await navigateTo('/projects')
+  // ?redirect= — см. login.vue / utils/authRedirect.ts.
+  if (ok) await navigateTo(resolveAuthRedirect(route.query.redirect))
 }
 
 function handleBack() {
@@ -71,7 +73,7 @@ function handleBack() {
     </p>
 
     <p v-if="step === 'phone'" class="auth-card__switch text-small">
-      Уже есть аккаунт? <NuxtLink to="/auth/login" class="auth-card__link">
+      Уже есть аккаунт? <NuxtLink :to="{ path: '/auth/login', query: route.query }" class="auth-card__link">
         Войти
       </NuxtLink>
     </p>

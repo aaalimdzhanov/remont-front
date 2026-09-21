@@ -249,6 +249,11 @@ img {
   color: var(--color-text-secondary);
 }
 
+.field__error {
+  font-size: var(--font-small-size);
+  color: var(--color-error);
+}
+
 .input {
   height: 44px;
   width: 100%;

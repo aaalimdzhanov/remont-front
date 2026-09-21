@@ -7,9 +7,17 @@ type IconName =
   | 'grid-2d' | 'cube-3d' | 'chevron-left' | 'close' | 'trash'
   | 'logout' | 'plus' | 'check' | 'alert' | 'more'
   | 'search' | 'edit' | 'user' | 'sort'
+  | 'layers' | 'ceiling' | 'bolt' | 'faucet' | 'hammer' | 'roller' | 'grid' | 'refresh'
+  | 'folder' | 'list' | 'fit' | 'store' | 'coins' | 'home' | 'star'
 
-const props = withDefaults(defineProps<{ name: IconName, size?: number }>(), {
+// filled — только для 'star' (рейтинг, см. RatingStars.vue): все остальные
+// иконки в проекте всегда stroke-only (fill:none), это не меняется —
+// filled лишь переопределяет fill для ОДНОГО конкретного экземпляра, не
+// трогая остальные использования той же иконки (readonly/interactive
+// звёзды в одном ряду одновременно показывают и filled, и не-filled).
+const props = withDefaults(defineProps<{ name: IconName, size?: number, filled?: boolean }>(), {
   size: 18,
+  filled: false,
 })
 
 const paths: Record<IconName, string> = {
@@ -33,6 +41,21 @@ const paths: Record<IconName, string> = {
   edit: 'M4 20h4L18.5 9.5a2.121 2.121 0 0 0-3-3L5 17v3z M13.5 6.5l4 4',
   user: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M4 20c0-4 3.5-6 8-6s8 2 8 6',
   sort: 'M4 6h16M7 12h10M10 18h4',
+  layers: 'M12 3l9 5-9 5-9-5 9-5z M3 13l9 5 9-5',
+  ceiling: 'M3 6h18 M7 6v4 M12 6v4 M17 6v4',
+  bolt: 'M13 2L4 14h6l-1 8 9-12h-6l1-8z',
+  faucet: 'M12 3c4 4.5 7 8.2 7 11.5A7 7 0 1 1 5 14.5C5 11.2 8 7.5 12 3z',
+  hammer: 'M17 3l4 4-3 3-4-4z M14.2 8.8L4 19l1 1 10.2-10.2',
+  roller: 'M4 4h12v5H4z M13 6h3.5a1.5 1.5 0 0 1 1.5 1.5V9h-2 M9 9v5 M6 14h6v4H6z',
+  grid: 'M4 4h7v7H4z M13 4h7v7h-7z M4 13h7v7H4z M13 13h7v7h-7z',
+  refresh: 'M4 12a8 8 0 0 1 14-5.3L20 9 M20 12a8 8 0 0 1-14 5.3L4 15 M20 4v5h-5 M4 20v-5h5',
+  folder: 'M4 6a1 1 0 0 1 1-1h4l2 2h8a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6z',
+  list: 'M4 6h16 M4 12h16 M4 18h10',
+  fit: 'M4 9V4h5 M20 9V4h-5 M4 15v5h5 M20 15v5h-5',
+  store: 'M4 10l1-5h14l1 5 M4 10a2 2 0 0 0 4 0 M8 10a2 2 0 0 0 4 0 M12 10a2 2 0 0 0 4 0 M16 10a2 2 0 0 0 4 0 M5 10v9h14v-9',
+  coins: 'M9 8a5 3 0 1 0 0-.01 M4 8v4a5 3 0 0 0 10 0 M9 12v4a5 3 0 0 0 10 0v-4',
+  home: 'M4 11l8-7 8 7 M6 9.5V20h12V9.5 M10 20v-6h4v6',
+  star: 'M12 3.5l2.6 5.4 5.9.8-4.3 4.2 1 5.9-5.2-2.8-5.2 2.8 1-5.9-4.3-4.2 5.9-.8z',
 }
 </script>
 
@@ -41,7 +64,7 @@ const paths: Record<IconName, string> = {
     :width="props.size"
     :height="props.size"
     viewBox="0 0 24 24"
-    fill="none"
+    :fill="filled ? 'currentColor' : 'none'"
     stroke="currentColor"
     stroke-width="1.8"
     stroke-linecap="round"

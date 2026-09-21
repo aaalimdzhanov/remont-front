@@ -1,14 +1,16 @@
 <script setup lang="ts">
-const { document: buildingDocument, hasBuilding, createBuilding, cancelPlacingOpening, deleteSelected, selectedObject, clearSelection } = useBuilding()
+const { hasBuilding, createBuilding, cancelPlacingOpening, deleteSelected, selectedObject, clearSelection, pendingOpeningType } = useBuilding()
 const { showDimensions, toggleDimensions, roomDrawActive, deactivateRoomDraw } = useEditorView()
 
 const width = ref(10)
 const length = ref(12)
-const showJson = ref(false)
 const viewMode = ref<'2d' | '3d'>('2d')
-// import.meta.dev внутри template-выражения (v-if) не парсится компилятором
-// Vue SFC (там не ES-module контекст) — выносим в обычную переменную скрипта.
-const isDev = import.meta.dev
+
+// "Выделить" — активный инструмент по умолчанию, пока не включён режим
+// рисования помещения или ожидания клика для двери/окна (см. RoomTool.vue/
+// OpeningTool.vue — у них уже есть свой active-индикатор через те же
+// roomDrawActive/pendingOpeningType, здесь просто зеркальное условие).
+const isSelectToolActive = computed(() => !roomDrawActive.value && !pendingOpeningType.value)
 
 function submitBuildingForm() {
   if (width.value <= 0 || length.value <= 0) return
@@ -112,8 +114,10 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
         <button
           type="button"
           class="tool-btn"
+          :class="{ 'tool-btn--active': isSelectToolActive }"
           data-tool="select"
           aria-label="Инструмент выделения (V)"
+          :aria-pressed="isSelectToolActive"
           @click="activateSelectTool"
         >
           <UiIcon name="select" :size="18" />
@@ -121,17 +125,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
         </button>
         <BuilderRoomTool />
         <BuilderOpeningTool />
-        <button
-          type="button"
-          class="tool-btn"
-          :class="{ 'tool-btn--active': showDimensions }"
-          aria-label="Показать или скрыть размеры (M)"
-          :aria-pressed="showDimensions"
-          @click="toggleDimensions"
-        >
-          <UiIcon name="dimension" :size="18" />
-          Размеры
-        </button>
       </aside>
 
       <div class="builder__canvas-area">
@@ -157,13 +150,25 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             </button>
           </div>
 
-          <!-- Dev-only raw Building JSON viewer — никогда не показывается в
-               production UI (см. задание "Убрать Building JSON из UI").
-               import.meta.dev — compile-time константа Vite/Nuxt: в
-               production-сборке эта ветка удаляется целиком, а не просто
-               скрывается CSS-ом. -->
-          <button v-if="isDev" type="button" class="btn btn-ghost btn-sm" @click="showJson = !showJson">
-            {{ showJson ? 'Скрыть JSON' : 'Building JSON' }}
+          <!-- "Размеры" — та же showDimensions/toggleDimensions из
+               useEditorView(), что и клавиша M (см. onKeydown выше) и что
+               раньше показывалась отдельной кнопкой в левой панели
+               инструментов: один и тот же state, просто здесь ей место
+               рядом с переключателем вида, а не среди инструментов
+               рисования. Building JSON (техническая деталь архитектуры)
+               сюда больше не выводится — пользователь не должен её видеть,
+               сам документ никуда не делся (см. useBuilding()). -->
+          <button
+            type="button"
+            class="builder__dimensions-toggle"
+            :class="{ 'builder__dimensions-toggle--active': showDimensions }"
+            aria-label="Показать или скрыть размеры (M)"
+            :aria-pressed="showDimensions"
+            @click="toggleDimensions"
+          >
+            <UiIcon v-if="showDimensions" name="check" :size="14" />
+            <UiIcon v-else name="dimension" :size="16" />
+            Размеры
           </button>
         </div>
 
@@ -180,8 +185,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
         </div>
 
         <BuilderStatusBar v-if="viewMode === '2d'" />
-
-        <pre v-if="isDev && showJson" class="builder__json">{{ JSON.stringify(buildingDocument, null, 2) }}</pre>
       </div>
 
       <div class="builder__sidebar">
@@ -339,17 +342,31 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
   display: none;
 }
 
-.builder__json {
-  margin: 0;
-  padding: var(--space-3);
+.builder__dimensions-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 32px;
+  padding: 0 var(--space-3);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-panel);
-  background: #1f2430;
-  color: #d7e0ea;
-  font-size: 12px;
-  line-height: 1.5;
-  overflow-x: auto;
-  max-height: 400px;
+  border-radius: var(--radius-button);
+  background: var(--color-surface);
+  font-family: var(--font-family);
+  font-size: var(--font-small-size);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.builder__dimensions-toggle:hover {
+  border-color: var(--color-border-strong);
+  color: var(--color-text);
+}
+
+.builder__dimensions-toggle--active {
+  background: var(--color-primary-subtle);
+  border-color: var(--color-primary);
+  color: var(--color-text);
+  font-weight: 500;
 }
 
 @media (max-width: 1100px) {
@@ -379,25 +396,46 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
     gap: var(--space-3);
   }
 
+  /* 4 равные колонки (25% каждая), а не flex-row + justify-content:center —
+     тот подход центрировал ГРУППУ как единый блок, но сами колонки внутри
+     оставались неравными (ширина каждой кнопки зависела от длины текста).
+     minmax(0,1fr) даёт колонкам одинаковую ширину и позволяет им сжиматься
+     ниже natural content width, не создавая horizontal overflow. */
   .builder__tools {
-    flex-direction: row;
-    overflow-x: auto;
-    gap: var(--space-2);
-    -webkit-overflow-scrolling: touch;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--space-1);
+    padding: var(--space-2);
   }
 
-  .builder__tools :deep(.tool-btn) {
-    flex: 0 0 auto;
-    width: auto;
-  }
-
-  /* .opening-tool (Дверь+Окно) сам по себе — вертикальный flex-контейнер
-     (нужно для desktop-колонки инструментов). Внутри горизонтальной
-     прокручиваемой mobile-строки его тоже нужно развернуть в row — иначе
-     Дверь/Окно складываются в отдельный "двухэтажный" блок внутри общей
-     строки вместо того, чтобы встать в один ряд с остальными кнопками. */
+  /* .room-tool/.opening-tool — обёртки, нужные для desktop-колонки (там это
+     просто div с одной/двумя кнопками). На mobile display:contents убирает
+     сам div из раскладки, и его кнопки (в т.ч. обе — Дверь и Окно) становятся
+     прямыми grid-элементами .builder__tools — иначе "Дверь"+"Окно" оказались
+     бы зажаты вдвоём в одну четверть ширины вместо того, чтобы занять по
+     отдельной равной колонке каждая. Их fixed-position hint-блоки (см. ниже)
+     это не затрагивает — position:fixed выводит их из grid-раскладки. */
+  .builder__tools :deep(.room-tool),
   .builder__tools :deep(.opening-tool) {
-    flex-direction: row;
+    display: contents;
+  }
+
+  /* Компактная квадратная кнопка (иконка сверху, подпись снизу), каждая
+     занимает свою колонку целиком и центрирует содержимое внутри неё. */
+  .builder__tools :deep(.tool-btn) {
+    width: 100%;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    height: 52px;
+    padding: var(--space-1);
+    font-size: 11px;
+    line-height: 1.2;
+    white-space: normal;
+    text-align: center;
   }
 
   .builder__tools :deep(.room-tool__hint),
@@ -443,6 +481,16 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
     inset: 0;
     z-index: 25;
     background: rgba(37, 37, 37, 0.28);
+  }
+}
+
+/* <768px: ProjectBottomNav (EditorHeader.vue) занимает низ экрана —
+   содержимое страницы не должно прятаться под ней. Отдельный breakpoint от
+   640px выше, т.к. именно на этой ширине появляется/пропадает bottom nav
+   (см. ProjectBottomNav.vue), а не там, где меняется раскладка инструментов. */
+@media (max-width: 767px) {
+  .builder {
+    padding-bottom: calc(var(--space-3) + 64px + env(safe-area-inset-bottom));
   }
 }
 </style>

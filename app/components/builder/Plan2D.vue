@@ -26,7 +26,7 @@ const {
   isOpeningIntersecting,
   wouldRectIntersectRooms,
 } = useBuilding()
-const { zoom, panX, panY, showDimensions, fitToken, cursorPosition, roomDrawActive, deactivateRoomDraw } = useEditorView()
+const { zoom, panX, panY, showDimensions, fitToken, cursorPosition, roomDrawActive, deactivateRoomDraw, requestFit } = useEditorView()
 
 const PX_PER_METER = 60
 const MARGIN = 40
@@ -592,6 +592,7 @@ const roomDrawDimensionSpecs = computed<DimensionSpec[]>(() => {
       v-if="svgWidth > 0 && svgHeight > 0"
       ref="svgEl"
       :viewBox="viewBox"
+      preserveAspectRatio="xMidYMid meet"
       class="plan2d__svg"
       :class="{ 'plan2d__svg--drawing': roomDrawActive }"
       @pointerdown="onBackgroundPointerDown"
@@ -794,11 +795,22 @@ const roomDrawDimensionSpecs = computed<DimensionSpec[]>(() => {
     <p v-else class="plan2d__empty">
       Здание ещё не создано
     </p>
+
+    <!-- <768px: замена полной StatusBar-строки (см. StatusBar.vue) — тот же
+         requestFit() из useEditorView(), что и десктопная кнопка "Fit",
+         просто как компактный floating control прямо на канвасе (см. mobile
+         UX reference). Zoom in/out на mobile выполняется жестом (pinch/wheel
+         уже поддержан существующим onWheel), отдельные +/- кнопки для этого
+         на маленьком экране не нужны. -->
+    <button type="button" class="plan2d__fit-btn" aria-label="Показать всё здание" @click="requestFit">
+      <UiIcon name="fit" :size="20" />
+    </button>
   </div>
 </template>
 
 <style scoped>
 .plan2d {
+  position: relative;
   display: flex;
   justify-content: center;
   align-items: flex-start;
@@ -809,11 +821,60 @@ const roomDrawDimensionSpecs = computed<DimensionSpec[]>(() => {
   min-height: 320px;
 }
 
+.plan2d__fit-btn {
+  display: none;
+}
+
 .plan2d__svg {
   width: 100%;
   max-width: 720px;
   height: auto;
   touch-action: none;
+}
+
+/* <768px: план — самая важная часть mobile Builder'а (см. задание), не
+   маленькая схема в большом пустом canvas. width:100%/height:auto (desktop)
+   масштабирует SVG только по ширине контейнера — по высоте он использует
+   ровно столько места, сколько диктует aspect ratio здания, независимо от
+   того, сколько вертикального пространства реально свободно на экране.
+   Явная height здесь (не auto) даёт SVG использовать И ширину, И высоту
+   контейнера — preserveAspectRatio="xMidYMid meet" вписывает реальную
+   геометрию (без искажений, без изменения Building JSON/координат) в
+   получившийся бокс, увеличивая план настолько, насколько позволяет более
+   тесное из двух измерений, вместо того чтобы всегда следовать только
+   за шириной. */
+@media (max-width: 767px) {
+  .plan2d {
+    height: 48vh;
+    min-height: 280px;
+    padding: var(--space-2);
+  }
+
+  .plan2d__svg {
+    height: 100%;
+    max-width: 100%;
+  }
+
+  .plan2d__fit-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    right: var(--space-4);
+    bottom: var(--space-4);
+    width: 44px;
+    height: 44px;
+    border: 1px solid var(--color-border);
+    border-radius: 50%;
+    background: var(--color-surface);
+    color: var(--color-text-secondary);
+    box-shadow: var(--shadow-card);
+    cursor: pointer;
+  }
+
+  .plan2d__fit-btn:hover {
+    color: var(--color-text);
+  }
 }
 
 .plan2d__building {

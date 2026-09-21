@@ -13,30 +13,52 @@
 // отличие от EditorHeader.vue (Builder), где рядом ещё название проекта,
 // статус сохранения и кнопки — там компактный variant="compact" остаётся
 // как есть, этот файл его не трогает.
+//
+// Mode-aware nav (AppModeNav, см. задание "User Mode v1") заменяет прежнюю
+// одиночную иконку-ссылку на /marketplace: она была единственной точкой входа
+// в Marketplace, но теперь та же цель (и её contractor-эквивалент "Заявки")
+// уже входит в AppModeNav — держать обе означало бы две ссылки на один и тот
+// же route рядом друг с другом. Этот компонент по-прежнему переиспользуется
+// как единственный "глобальный" ряд и на Dashboard, и на mobile-версии
+// Builder/Work Builder header'ов (EditorHeader.vue/WorkBuilderHeader.vue),
+// поэтому mode-nav показывается everywhere этот header есть, без добавления
+// второго отдельного header'а.
 </script>
 
 <template>
   <header class="app-header">
-    <NuxtLink to="/projects" class="app-header__brand">
-      <UiBrandLogo variant="header" />
-    </NuxtLink>
+    <div class="app-header__top">
+      <NuxtLink to="/projects" class="app-header__brand">
+        <UiBrandLogo variant="header" />
+      </NuxtLink>
 
-    <AppProfileMenu />
+      <div class="app-header__actions">
+        <AppProfileMenu />
+      </div>
+    </div>
+
+    <AppModeNav class="app-header__mode-nav" />
   </header>
 </template>
 
 <style scoped>
 .app-header {
-  min-height: 56px;
   flex-shrink: 0;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
+  flex-direction: column;
+  gap: var(--space-2);
   padding: var(--space-2) var(--space-4);
   padding-top: max(var(--space-2), env(safe-area-inset-top));
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
+}
+
+.app-header__top {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
 }
 
 .app-header__brand {
@@ -47,11 +69,21 @@
   color: inherit;
 }
 
+.app-header__actions {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.app-header__mode-nav {
+  padding-bottom: 2px;
+}
+
 @media (min-width: 768px) {
   .app-header {
-    min-height: 64px;
-    padding: 0 var(--space-6);
-    padding-top: env(safe-area-inset-top);
+    padding: var(--space-3) var(--space-6);
+    padding-top: max(var(--space-3), env(safe-area-inset-top));
   }
 }
 </style>

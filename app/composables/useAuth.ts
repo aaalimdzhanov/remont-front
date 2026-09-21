@@ -5,6 +5,12 @@
 // переиспользует его как одно из своих полей и решает, когда его менять.
 import { accessToken as sharedAccessToken, isApiError, setAuthFailureListener, toApiError } from '~/api/client'
 import { loginVerify, logout as apiLogout, me as apiMe, refresh as apiRefresh, registerVerify, sendSMS as apiSendSMS } from '~/api/auth'
+// Явный импорт (а не полагаться на Nuxt auto-import, как обычно в этом
+// проекте) — единственный случай, где один composable вызывает другой:
+// auto-import работает в реальном Nuxt-сборке, но не в чистом Vitest (см.
+// tests/setup.ts — там стабятся только известные глобалы), поэтому явный
+// import нужен, чтобы logout() ниже резолвился и в тестах тоже.
+import { useUserMode } from '~/composables/useUserMode'
 import type { ApiError, AuthPurpose, AuthUser } from '~/api/types'
 
 // Регистрируем listener один раз на весь модуль (не при каждом вызове
@@ -141,6 +147,10 @@ export function useAuth() {
       user.value = null
       error.value = null
       isLoading.value = false
+      // User Mode — UI preference, не auth state (см. useUserMode.ts), но
+      // следующий пользователь на этом устройстве не должен унаследовать
+      // "Мастер" от предыдущей сессии (см. задание, секция PERSISTENCE).
+      useUserMode().resetMode()
     }
   }
 

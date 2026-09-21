@@ -99,4 +99,14 @@ const zoomPercent = computed(() => Math.round(zoom.value * 100))
     gap: var(--space-2);
   }
 }
+
+/* <768px: X/Y/объект/zoom% — desktop-ориентированная детализация, лишняя на
+   маленьком экране (см. mobile UX reference — там вместо этой строки только
+   один floating "Fit"-контрол прямо на канвасе, см. Plan2D.vue). Сам functionality
+   (zoom in/out/Fit) никуда не делся — просто не показан этой строкой на mobile. */
+@media (max-width: 767px) {
+  .status-bar {
+    display: none;
+  }
+}
 </style>

@@ -39,6 +39,32 @@ const KNOWN_ERROR_MESSAGES: Record<string, string> = {
   user_already_exists: 'Пользователь с таким номером уже существует.',
   user_not_found: 'Пользователь не найден.',
   invalid_phone: 'Некорректный номер телефона.',
+  // Contractor / ContractorService (см. contractor_handler.go,
+  // contractor_service_handler.go) — коды один-в-один из writeContractorError/
+  // writeContractorServiceError на backend.
+  contractor_not_found: 'Профиль исполнителя не найден.',
+  contractor_already_exists: 'Профиль исполнителя уже создан.',
+  contractor_service_not_found: 'Услуга не найдена.',
+  contractor_service_already_exists: 'Такая услуга уже добавлена.',
+  work_type_not_found: 'Вид работы не найден.',
+  work_type_inactive: 'Этот вид работы больше не активен.',
+  invalid_price: 'Цена не может быть отрицательной.',
+  invalid_price_range: 'Цена «до» не может быть меньше цены «от».',
+  // Order (см. order_handler.go writeOrderError) — коды один-в-один.
+  offer_not_accepted: 'Это предложение ещё не принято.',
+  offer_not_found: 'Предложение не найдено.',
+  order_already_exists: 'Заказ по этому предложению уже создан.',
+  order_not_found: 'Заказ не найден.',
+  invalid_order_transition: 'Такой переход статуса сейчас недоступен.',
+  invalid_order_status: 'Недопустимый статус заказа.',
+  marketplace_request_not_open: 'Эта заявка уже закрыта или отменена.',
+  marketplace_request_not_found: 'Заявка не найдена.',
+  // Review (см. review_handler.go writeReviewError) — коды один-в-один.
+  order_not_completed: 'Отзыв можно оставить только после завершения заказа.',
+  review_already_exists: 'Вы уже оставили отзыв по этому заказу.',
+  review_not_found: 'Отзыв не найден.',
+  invalid_rating: 'Оценка должна быть от 1 до 5.',
+  invalid_comment: 'Комментарий слишком длинный (максимум 2000 символов).',
 }
 
 function httpStatusMessage(status: number): string {
@@ -178,7 +204,7 @@ function performRefresh(): Promise<boolean> {
 }
 
 export interface ApiRequestOptions {
-  method?: 'GET' | 'POST' | 'PUT' | 'DELETE'
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
   body?: object
   signal?: AbortSignal
   // Приложить Authorization: Bearer <accessToken> и участвовать в 401-retry.

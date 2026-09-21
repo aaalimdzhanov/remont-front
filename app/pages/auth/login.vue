@@ -5,6 +5,7 @@ useHead({ title: 'Вход' })
 const RESEND_COOLDOWN_SECONDS = 60
 
 const { sendSMS, login, isLoading, error, clearError } = useAuth()
+const route = useRoute()
 
 const step = ref<'phone' | 'code'>('phone')
 const phone = ref('')
@@ -28,7 +29,10 @@ async function handleResend() {
 
 async function handleCodeSubmit(code: string) {
   const ok = await login(phone.value, code)
-  if (ok) await navigateTo('/projects')
+  // ?redirect= — см. задание "Public Marketplace v1", секция AUTH GATE:
+  // гость, попавший сюда с /marketplace/requests/{id} через MarketplaceAuthGate,
+  // должен после входа вернуться туда же, а не всегда на /projects.
+  if (ok) await navigateTo(resolveAuthRedirect(route.query.redirect))
 }
 
 function handleBack() {
@@ -72,7 +76,7 @@ function handleBack() {
     </div>
 
     <p v-if="step === 'phone'" class="auth-card__switch text-small">
-      Нет аккаунта? <NuxtLink to="/auth/register" class="auth-card__link">
+      Нет аккаунта? <NuxtLink :to="{ path: '/auth/register', query: route.query }" class="auth-card__link">
         Зарегистрироваться
       </NuxtLink>
     </p>

@@ -43,5 +43,11 @@ export default defineNuxtConfig({
     '/auth/register': { ssr: false },
     '/projects': { ssr: false },
     '/projects/**': { ssr: false },
+    '/marketplace': { ssr: false },
+    '/marketplace/**': { ssr: false },
+    '/orders': { ssr: false },
+    '/orders/**': { ssr: false },
+    '/reviews': { ssr: false },
+    '/reviews/**': { ssr: false },
   },
 })
