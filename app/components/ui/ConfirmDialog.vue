@@ -11,10 +11,15 @@ withDefaults(defineProps<{
   confirmText?: string
   cancelText?: string
   danger?: boolean
+  // Блокирует confirm-кнопку, пока действие выполняется (см. задание Draft
+  // → Publish, секция PUBLISH FLOW: "disable button... не допускать double
+  // click") — cancel остаётся кликабельным, закрыть диалог можно всегда.
+  confirmDisabled?: boolean
 }>(), {
   confirmText: 'Подтвердить',
   cancelText: 'Отмена',
   danger: false,
+  confirmDisabled: false,
 })
 const emit = defineEmits<{ confirm: [], cancel: [] }>()
 </script>
@@ -37,6 +42,7 @@ const emit = defineEmits<{ confirm: [], cancel: [] }>()
             type="button"
             class="btn"
             :class="danger ? 'btn-danger' : 'btn-primary'"
+            :disabled="confirmDisabled"
             @click="emit('confirm')"
           >
             {{ confirmText }}
@@ -86,11 +92,51 @@ const emit = defineEmits<{ confirm: [], cancel: [] }>()
   color: var(--color-text-secondary);
 }
 
+/* Колонка на mobile — некоторые вызывающие используют длинные подписи
+   ("Оставить как черновик"/"Опубликовать заявку", см. Draft → Publish v1),
+   которые не помещаются в ряд рядом друг с другом (у .btn white-space:
+   nowrap, см. main.css) и обрезались бы/наезжали друг на друга. Брейкпоинт
+   768px — тот же, что и везде в проекте для mobile/desktop (см.
+   EditorHeader.vue/MarketplaceFilters.vue и ещё 16 мест), а не собственное
+   произвольное число: предыдущая версия использовала 480px и именно в
+   зазоре 480-768px реально ловился баг (см. скриншот в задании) — ряд уже
+   включался, но max-width панели (380px) для этой пары длинных подписей
+   не хватало, и кнопка вылезала за левый край панели. Это воспроизводилось
+   на любой ширине, включая 1280 — там кнопки визуально помещались в
+   viewport, но всё равно вылезали за собственную границу панели, просто
+   незаметно на фоне тёмного оверлея; отдельно проверено getBoundingClientRect
+   кнопок относительно .confirm-dialog__panel, не только viewport. */
 .confirm-dialog__actions {
   display: flex;
-  justify-content: flex-end;
+  flex-direction: column;
   gap: var(--space-2);
   margin-top: var(--space-2);
+}
+
+.confirm-dialog__actions .btn {
+  width: 100%;
+}
+
+@media (min-width: 768px) {
+  /* Шире, чем базовые 380px, — специально, чтобы длинные подписи реально
+     помещались в один ряд (см. комментарий выше), а не просто выглядели
+     помещающимися издалека на широких viewport. flex-wrap: wrap —
+     страховка на случай ещё более длинных подписей в будущем: тогда ряд
+     аккуратно перенесётся на вторую строку (оба края остаются внутри
+     панели), а не вылезет за её границу, как было в исходном баге. */
+  .confirm-dialog__panel {
+    max-width: 480px;
+  }
+
+  .confirm-dialog__actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .confirm-dialog__actions .btn {
+    width: auto;
+  }
 }
 
 @keyframes confirm-dialog-fade {

@@ -11,6 +11,7 @@ import {
   contractorCardPriceLabel,
   contractorServicesLabel,
   filterContractorsByWorkType,
+  formatLocation,
   marketplaceRequestStatusLabel,
   normalizePriceInput,
   offerStatusLabel,
@@ -20,8 +21,9 @@ import {
 import type { OpenMarketplaceRequest, PublicContractorProfile, PublicContractorService, WorkCategory, WorkType } from '~/api/types'
 
 describe('marketplaceRequestStatusLabel', () => {
-  it('maps all 3 real backend statuses (see domain/marketplacerequest)', () => {
-    expect(marketplaceRequestStatusLabel('open')).toBe('Открыта')
+  it('maps all 4 real backend statuses, including draft (Draft → Publish v1, see domain/marketplacerequest)', () => {
+    expect(marketplaceRequestStatusLabel('draft')).toBe('Черновик')
+    expect(marketplaceRequestStatusLabel('open')).toBe('Опубликована')
     expect(marketplaceRequestStatusLabel('cancelled')).toBe('Отменена')
     expect(marketplaceRequestStatusLabel('closed')).toBe('Закрыта')
   })
@@ -105,9 +107,9 @@ describe('price input normalization/validation — never float, never parseFloat
 
 describe('filterOpenRequests — client-side only (endpoint takes no query params)', () => {
   const requests: OpenMarketplaceRequest[] = [
-    { id: 'r1', workTypeId: 'wt-wall', workType: 'Поклейка обоев', quantity: 10, unit: 'm2', createdAt: '2026-09-10T10:00:00Z' },
-    { id: 'r2', workTypeId: 'wt-floor', workType: 'Укладка ламината', quantity: 40, unit: 'm2', createdAt: '2026-09-15T10:00:00Z' },
-    { id: 'r3', workTypeId: 'wt-wall', workType: 'Поклейка обоев', quantity: 25, unit: 'm2', createdAt: '2026-09-12T10:00:00Z' },
+    { id: 'r1', workTypeId: 'wt-wall', workType: 'Поклейка обоев', quantity: 10, unit: 'm2', createdAt: '2026-09-10T10:00:00Z', location: null },
+    { id: 'r2', workTypeId: 'wt-floor', workType: 'Укладка ламината', quantity: 40, unit: 'm2', createdAt: '2026-09-15T10:00:00Z', location: null },
+    { id: 'r3', workTypeId: 'wt-wall', workType: 'Поклейка обоев', quantity: 25, unit: 'm2', createdAt: '2026-09-12T10:00:00Z', location: null },
   ]
   const categoryMap: Record<string, string> = { 'wt-wall': 'cat-walls', 'wt-floor': 'cat-floors' }
 
@@ -231,7 +233,7 @@ describe('contractorCardPriceLabel', () => {
 describe('uniqueContractorWorkTypes', () => {
   const svc = (id: string, name: string): PublicContractorService => ({ workTypeId: id, workType: name, priceFrom: null, priceTo: null })
   const contractor = (id: string, services: PublicContractorService[]): PublicContractorProfile => ({
-    id, name: `Contractor ${id}`, description: '', services, rating: null, reviewsCount: 0,
+    id, name: `Contractor ${id}`, description: '', services, rating: null, reviewsCount: 0, location: null,
   })
 
   it('returns an empty list when there are no contractors', () => {
@@ -265,7 +267,7 @@ describe('uniqueContractorWorkTypes', () => {
 describe('filterContractorsByWorkType', () => {
   const svc = (id: string): PublicContractorService => ({ workTypeId: id, workType: `Type ${id}`, priceFrom: null, priceTo: null })
   const contractor = (id: string, services: PublicContractorService[]): PublicContractorProfile => ({
-    id, name: `Contractor ${id}`, description: '', services, rating: null, reviewsCount: 0,
+    id, name: `Contractor ${id}`, description: '', services, rating: null, reviewsCount: 0, location: null,
   })
   const contractors = [
     contractor('c1', [svc('wt1')]),
@@ -288,5 +290,34 @@ describe('filterContractorsByWorkType', () => {
 
   it('returns an empty array when nobody offers the selected work type', () => {
     expect(filterContractorsByWorkType(contractors, 'wt-does-not-exist')).toEqual([])
+  })
+})
+
+// Location/Address v1 — formatLocation() presentation helper. Только реальный
+// Location | null (city/district), никогда fallback-строк вроде "Адрес не
+// указан" (см. задание: "НЕ придумывать значение").
+describe('formatLocation', () => {
+  it('joins city and district with a comma when both are present', () => {
+    expect(formatLocation({ city: 'Ташкент', district: 'Юнусабад' })).toBe('Ташкент, Юнусабад')
+  })
+
+  it('returns only the city when district is empty', () => {
+    expect(formatLocation({ city: 'Ташкент', district: '' })).toBe('Ташкент')
+  })
+
+  it('returns only the district when city is empty', () => {
+    expect(formatLocation({ city: '', district: 'Юнусабад' })).toBe('Юнусабад')
+  })
+
+  it('returns null when location itself is null (no fake fallback text)', () => {
+    expect(formatLocation(null)).toBeNull()
+  })
+
+  it('returns null when both city and district are empty', () => {
+    expect(formatLocation({ city: '', district: '' })).toBeNull()
+  })
+
+  it('trims whitespace-only fields the same as empty', () => {
+    expect(formatLocation({ city: '  ', district: 'Юнусабад' })).toBe('Юнусабад')
   })
 })

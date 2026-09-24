@@ -12,8 +12,13 @@ import type {
   ContractorService,
   ContractorServiceDto,
   CreateContractorPayload,
+  PortfolioItem,
+  PortfolioItemDto,
   PublicContractorProfile,
   PublicContractorProfileDto,
+  PublicPortfolioItem,
+  PublicPortfolioItemDto,
+  ReorderPortfolioPayload,
   UpdateContractorServicePayload,
 } from './types'
 
@@ -98,11 +103,72 @@ export async function deleteContractorService(id: string): Promise<void> {
   await apiFetch<void>(`/api/v1/contractor/services/${encodeURIComponent(id)}`, { method: 'DELETE' })
 }
 
+// ---- Portfolio — /api/v1/contractor/portfolio (см. portfolio_handler.go).
+// Как и /api/v1/contractor/services, нет {contractor_id} нигде в пути —
+// backend сам резолвит "чей" портфолио из JWT (см. задание, секция
+// SECURITY: "frontend не должен передавать contractor_id").
+function toPortfolioItem(dto: PortfolioItemDto): PortfolioItem {
+  return {
+    id: dto.id,
+    imageUrl: dto.image_url,
+    title: dto.title,
+    description: dto.description,
+    sortOrder: dto.sort_order,
+    createdAt: dto.created_at,
+    updatedAt: dto.updated_at,
+  }
+}
+
+export async function listPortfolioItems(): Promise<PortfolioItem[]> {
+  const items = await apiFetch<PortfolioItemDto[]>('/api/v1/contractor/portfolio')
+  return items.map(toPortfolioItem)
+}
+
+// multipart/form-data — file обязателен, title/description опциональны
+// (backend читает их через r.FormValue, пустая строка означает "не
+// заполнено", см. portfolio_handler.go Create). Content-Type с boundary
+// выставляет сам браузер — apiFetch()/$fetch не трогает body типа FormData
+// (см. задание, секция 4: "не устанавливать вручную multipart/form-data").
+export async function uploadPortfolioItem(file: File, title: string, description: string): Promise<PortfolioItem> {
+  const formData = new FormData()
+  formData.append('file', file)
+  if (title) formData.append('title', title)
+  if (description) formData.append('description', description)
+  const dto = await apiFetch<PortfolioItemDto>('/api/v1/contractor/portfolio', { method: 'POST', body: formData })
+  return toPortfolioItem(dto)
+}
+
+export async function deletePortfolioItem(id: string): Promise<void> {
+  await apiFetch<void>(`/api/v1/contractor/portfolio/${encodeURIComponent(id)}`, { method: 'DELETE' })
+}
+
+// Backend ожидает ВЕСЬ список (id, sort_order) за один запрос, не дельту
+// одного передвинутого элемента (см. api/types.ts ReorderPortfolioPayload и
+// application/portfolio.Service.ReorderPortfolioItems — ErrEmptyReorder на
+// пустой список). Response — уже пересчитанный backend'ом порядок (см.
+// portfolio_handler.go Reorder: возвращает items.ListByContractor после
+// применения), поэтому composable просто заменяет им локальный state, а не
+// пересобирает порядок сам.
+export async function reorderPortfolioItems(payload: ReorderPortfolioPayload): Promise<PortfolioItem[]> {
+  const items = await apiFetch<PortfolioItemDto[]>('/api/v1/contractor/portfolio/reorder', { method: 'PATCH', body: payload })
+  return items.map(toPortfolioItem)
+}
+
 // ---- Public Contractor Profile — GET /api/v1/contractors/{id} (см.
 // public_contractor_handler.go). Публичный, без авторизации (auth: false,
 // тот же паттерн, что и listOpenMarketplaceRequests в api/marketplace.ts) —
 // это НЕ /api/v1/contractor (self-profile, требует auth), маппер и DTO
 // сознательно отдельные (более узкий allowlist полей, см. api/types.ts).
+function toPublicPortfolioItem(dto: PublicPortfolioItemDto): PublicPortfolioItem {
+  return {
+    id: dto.id,
+    imageUrl: dto.image_url,
+    title: dto.title,
+    description: dto.description,
+    sortOrder: dto.sort_order,
+  }
+}
+
 function toPublicContractorProfile(dto: PublicContractorProfileDto): PublicContractorProfile {
   return {
     id: dto.id,
@@ -116,6 +182,10 @@ function toPublicContractorProfile(dto: PublicContractorProfileDto): PublicContr
     })),
     rating: dto.rating ?? null,
     reviewsCount: dto.reviews_count,
+    location: dto.location,
+    // null (список мастеров) остаётся null — не схлопывать в [] (см.
+    // api/types.ts PublicContractorProfileDto.portfolio).
+    portfolio: dto.portfolio ? dto.portfolio.map(toPublicPortfolioItem) : null,
   }
 }
 

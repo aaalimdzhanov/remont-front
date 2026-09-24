@@ -17,6 +17,15 @@ const { createProject, isCreating, error, clearError } = useProjectPersistence()
 const name = ref('')
 const validationError = ref<string | null>(null)
 
+// Project Location v1 — выбирается ДО submit и уходит в тот же POST
+// /api/v1/projects, что и name/building (см. задание, секция CREATE PROJECT
+// SEMANTICS: "не local draft -> потом Save -> POST", location либо есть в
+// самом создающем запросе, либо её нет вовсе — city пустой означает
+// location=null, ничего не выдумываем). ProjectLocationFields сама сбрасывает
+// district при смене city.
+const locationCity = ref('')
+const locationDistrict = ref('')
+
 function handleInput() {
   if (validationError.value) validationError.value = null
   if (error.value) clearError()
@@ -31,7 +40,8 @@ async function handleCreate() {
     return
   }
 
-  const id = await createProject({ name: trimmed, type: 'house' })
+  const location = locationCity.value ? { city: locationCity.value, district: locationDistrict.value } : null
+  const id = await createProject({ name: trimmed, type: 'house', location })
   if (id) await navigateTo(`/projects/${id}`)
 }
 
@@ -46,7 +56,7 @@ function handleBack() {
       <button type="button" class="new-project__back" aria-label="Назад к проектам" @click="handleBack">
         <UiIcon name="chevron-left" :size="20" />
       </button>
-      <NuxtLink to="/projects" class="new-project__brand">
+      <NuxtLink to="/marketplace" class="new-project__brand">
         <UiBrandLogo variant="header" />
       </NuxtLink>
     </header>
@@ -82,6 +92,14 @@ function handleBack() {
             {{ validationError }}
           </span>
         </label>
+
+        <div class="new-project__location">
+          <span class="field__label">Местоположение объекта</span>
+          <p class="text-caption text-muted new-project__location-hint">
+            Где находится объект ремонта?
+          </p>
+          <ProjectLocationFields v-model:city="locationCity" v-model:district="locationDistrict" />
+        </div>
 
         <p v-if="error" class="new-project__api-error">
           {{ error.message }}
@@ -169,6 +187,16 @@ function handleBack() {
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
+}
+
+.new-project__location {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.new-project__location-hint {
+  margin: 0 0 var(--space-2);
 }
 
 .new-project__spacer {

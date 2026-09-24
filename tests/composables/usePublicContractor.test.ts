@@ -17,7 +17,7 @@ beforeEach(async () => {
 })
 
 const profile = {
-  id: 'c1', name: 'Азиз', description: 'Ремонт квартир', services: [], rating: 4.5, reviewsCount: 2,
+  id: 'c1', name: 'Азиз', description: 'Ремонт квартир', services: [], rating: 4.5, reviewsCount: 2, location: null,
 }
 
 describe('usePublicContractor — initial state', () => {

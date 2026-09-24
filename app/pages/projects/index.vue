@@ -76,7 +76,11 @@ async function handleRename(id: string, name: string) {
   const detail = projectDetails[id]
   if (!detail) return
   try {
-    const result = await updateProject(id, { name, status: detail.status, building: detail.building })
+    // location: detail.location — PUT здесь full-replace на backend (см.
+    // Project Location v1: application/project/service.go Update() doc
+    // comment), поэтому переименование карточки обязано прислать текущий
+    // location обратно, иначе молча стёрло бы его.
+    const result = await updateProject(id, { name, status: detail.status, building: detail.building, location: detail.location })
     projectDetails[id] = result
     const summary = projects.value.find(p => p.id === id)
     if (summary) {

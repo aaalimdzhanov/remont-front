@@ -101,6 +101,17 @@ async function handleLogout() {
         {{ maskedPhone }}
       </p>
 
+      <NuxtLink
+        v-if="isContractor"
+        to="/marketplace/contractor"
+        class="profile-menu__link"
+        role="menuitem"
+        @click="close"
+      >
+        <UiIcon name="camera" :size="16" />
+        Мои работы
+      </NuxtLink>
+
       <div class="profile-menu__section" role="group" aria-label="Режим">
         <p class="profile-menu__section-label text-caption text-muted">
           Режим
@@ -201,6 +212,23 @@ async function handleLogout() {
 
 .profile-menu__phone {
   margin: 0 0 0 var(--space-1);
+}
+
+.profile-menu__link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-input);
+  font-family: var(--font-family);
+  font-size: var(--font-body-size);
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.profile-menu__link:hover {
+  background: var(--color-surface-subtle);
 }
 
 .profile-menu__section {

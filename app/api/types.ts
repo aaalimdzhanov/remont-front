@@ -12,7 +12,13 @@ export interface ApiError {
 }
 
 // Ровно то, что возвращает GET/POST/PUT /api/v1/projects/{id} — см.
-// projectResponse в remont-back/internal/interfaces/http/dto.go.
+// projectResponse в remont-back/internal/interfaces/http/dto.go. location —
+// Project Location v1 (coarse city/district | null, source of truth для
+// "где находится объект ремонта" — НЕ Contractor.ServiceLocation, это два
+// независимых понятия, см. api/contractor.ts PublicContractorProfile).
+// Использует общий тип Location (см. ниже), а не второй DTO. Building JSON
+// остаётся единственным источником истины для геометрии — location в него
+// не добавляется, backend хранит его отдельным полем Project.
 export interface ProjectDto {
   id: string
   name: string
@@ -20,6 +26,7 @@ export interface ProjectDto {
   building: BuildingDocument
   created_at: string
   updated_at: string
+  location: Location | null
 }
 
 // GET /api/v1/projects — метаданные без Building JSON (projectListItem).
@@ -35,12 +42,14 @@ export interface CreateProjectPayload {
   name: string
   status: string
   building: BuildingDocument
+  location: Location | null
 }
 
 export interface UpdateProjectPayload {
   name: string
   status: string
   building: BuildingDocument
+  location: Location | null
 }
 
 // Нормализованные формы для остального фронтенда (camelCase).
@@ -51,6 +60,7 @@ export interface Project {
   building: BuildingDocument
   createdAt: string
   updatedAt: string
+  location: Location | null
 }
 
 export interface ProjectSummary {
@@ -93,6 +103,20 @@ export interface AuthUser {
   phone: string
   createdAt: string
   updatedAt: string
+}
+
+// ---- Location (Location/Address v1) ----
+// см. internal/interfaces/http/dto.go (locationResponse) — общая coarse
+// city/district-форма, которую backend отдаёт и для Contractor.service_location
+// (см. PublicContractorProfile ниже), и для Project (owner-only
+// /api/v1/projects/{id}, вне Marketplace-контракта). city/district совпадают
+// дословно в snake_case и camelCase, поэтому один тип на обе стороны
+// границы — без отдельного *Dto (тот же приём, что и WorkUnit выше).
+// Никогда не расширять latitude/longitude/полным адресом — backend
+// сознательно этого не отдаёт (см. locationResponse doc comment).
+export interface Location {
+  city: string
+  district: string
 }
 
 // ---- Work Catalog (/api/v1/work-categories, /api/v1/work-types) ----
@@ -190,14 +214,32 @@ export interface ProjectWork {
 // - openMarketplaceRequestResponse (публичная, ListOpen — только status=open,
 //   status в ответе вообще нет) — work_type_id + work_type.
 // - publicMarketplaceRequestResponse (публичная, GET /marketplace-requests/{id},
-//   Marketplace Request Detail v2 — ЛЮБОЙ статус) — то же самое, что
+//   Marketplace Request Detail v2 — ЛЮБОЙ статус, КРОМЕ draft — backend
+//   исключает draft на уровне SQL (WHERE mr.status != 'draft'), отдавая тот
+//   же 404, что и для несуществующего id) — то же самое, что
 //   OpenMarketplaceRequest, плюс явное поле status.
+//
+// Draft → Publish v1 (см. marketplace_request.go Publish()): New() теперь
+// создаёт заявку в 'draft', а не 'open' — видна владельцу приватно (ListMine/
+// Get), но не в ListOpen и не через публичный GetPublicByID, пока владелец
+// не вызовет POST .../marketplace-request/publish. 'draft' добавлен в один
+// и тот же MarketplaceRequestStatus, используемый и приватной, и публичной
+// формой — второй тип не заводим (публичная форма просто никогда не
+// придёт со значением 'draft' по факту, а не по типу).
 //
 // Ни одна публичная форма НИКОГДА не содержит project_work_id/project_id/
 // room_id/owner_id — контрактор/гость в принципе не может узнать, чей это
 // проект. Ни в одну из форм НЕЛЬЗЯ добавлять от себя имя клиента/проекта/
 // комнаты — backend их сознательно не отдаёт.
-export type MarketplaceRequestStatus = 'open' | 'cancelled' | 'closed'
+//
+// location (Project Location в Marketplace v1) — есть ТОЛЬКО у двух
+// публичных форм (Open/Public), см. openMarketplaceRequestResponse/
+// publicMarketplaceRequestResponse: coarse city/district, тот же общий
+// Location-тип и toLocationResponse(), что уже отдают Project/Contractor —
+// не второй DTO. null, если у Project нет location. Приватная
+// MarketplaceRequestDto его не содержит вообще (marketplaceRequestResponse
+// на backend этого поля не имеет).
+export type MarketplaceRequestStatus = 'draft' | 'open' | 'cancelled' | 'closed'
 
 export interface MarketplaceRequestDto {
   id: string
@@ -226,6 +268,7 @@ export interface OpenMarketplaceRequestDto {
   quantity: number
   unit: WorkUnit
   created_at: string
+  location: Location | null
 }
 
 export interface OpenMarketplaceRequest {
@@ -235,6 +278,7 @@ export interface OpenMarketplaceRequest {
   quantity: number
   unit: WorkUnit
   createdAt: string
+  location: Location | null
 }
 
 // GET /api/v1/marketplace-requests/{id} — публичный, любой статус (Marketplace
@@ -247,6 +291,7 @@ export interface PublicMarketplaceRequestDto {
   unit: WorkUnit
   status: MarketplaceRequestStatus
   created_at: string
+  location: Location | null
 }
 
 export interface PublicMarketplaceRequest {
@@ -257,6 +302,7 @@ export interface PublicMarketplaceRequest {
   unit: WorkUnit
   status: MarketplaceRequestStatus
   createdAt: string
+  location: Location | null
 }
 
 // ---- Marketplace Offers ----
@@ -374,7 +420,10 @@ export interface ContractorService {
 // по одному только id, поэтому urlallowlist полей сознательно у́же, чем у
 // приватного /api/v1/contractor. rating/reviews_count — тот же самый живой
 // агрегат из Review, что и в OrderContractorSummary (см. выше) — то же
-// поведение null/omitempty при отсутствии отзывов.
+// поведение null/omitempty при отсутствии отзывов. location — Location/
+// Address v1 (см. public_contractor_dto.go): где мастер оказывает услуги,
+// НЕ адрес проживания — city/district или null, если контрактор его не
+// указал (backend возвращает null, а не выдуманный fallback).
 export interface PublicContractorServiceDto {
   work_type_id: string
   work_type: string
@@ -389,6 +438,59 @@ export interface PublicContractorService {
   priceTo: number | null
 }
 
+// ---- Portfolio (/api/v1/contractor/portfolio) ----
+// см. internal/interfaces/http/portfolio_dto.go. Owner-facing форма
+// (create/list/reorder — portfolioItemResponse) содержит timestamps;
+// публичная форма ниже (publicPortfolioItemResponse, встроена в
+// PublicContractorProfileDto) — нет. Та же пара "приватная форма шире
+// публичной", что уже есть у MarketplaceRequestDto/PublicMarketplaceRequestDto
+// выше — два разных типа, не один "оптимистичный" с необязательными полями.
+// image_url — уже готовый публичный URL от backend (ImageStorage), фронтенд
+// его не конструирует и не трогает (см. api/contractor.ts).
+export interface PortfolioItemDto {
+  id: string
+  image_url: string
+  title: string
+  description: string
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
+export interface PortfolioItem {
+  id: string
+  imageUrl: string
+  title: string
+  description: string
+  sortOrder: number
+  createdAt: string
+  updatedAt: string
+}
+
+// Тело PATCH /api/v1/contractor/portfolio/reorder — см.
+// reorderPortfolioRequest на backend: плоский список ВСЕХ элементов
+// портфолио с их новым sort_order (backend отклоняет пустой список —
+// ErrEmptyReorder), не дельта одного передвинутого элемента.
+export interface ReorderPortfolioPayload {
+  items: Array<{ id: string, sort_order: number }>
+}
+
+export interface PublicPortfolioItemDto {
+  id: string
+  image_url: string
+  title: string
+  description: string
+  sort_order: number
+}
+
+export interface PublicPortfolioItem {
+  id: string
+  imageUrl: string
+  title: string
+  description: string
+  sortOrder: number
+}
+
 export interface PublicContractorProfileDto {
   id: string
   name: string
@@ -396,6 +498,12 @@ export interface PublicContractorProfileDto {
   services: PublicContractorServiceDto[]
   rating?: number | null
   reviews_count: number
+  location: Location | null
+  // null — список мастеров (GET /contractors), portfolio сознательно не
+  // резолвится backend'ом ради каждого элемента (см. секция PERFORMANCE) —
+  // НЕ то же самое, что "пустое портфолио" (пустой массив) на detail-запросе
+  // одного мастера (GET /contractors/{id}). Не схлопывать эти два случая.
+  portfolio: PublicPortfolioItemDto[] | null
 }
 
 export interface PublicContractorProfile {
@@ -405,6 +513,8 @@ export interface PublicContractorProfile {
   services: PublicContractorService[]
   rating: number | null
   reviewsCount: number
+  location: Location | null
+  portfolio: PublicPortfolioItem[] | null
 }
 
 // ---- Order (/api/v1/orders, /api/v1/marketplace-offers/{id}/order) ----

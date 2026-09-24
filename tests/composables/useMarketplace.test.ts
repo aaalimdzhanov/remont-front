@@ -7,6 +7,7 @@ const marketplaceApi = {
   getPublicMarketplaceRequest: vi.fn(),
   cancelMarketplaceRequest: vi.fn(),
   closeMarketplaceRequest: vi.fn(),
+  publishMarketplaceRequest: vi.fn(),
   listMyMarketplaceRequests: vi.fn(),
   listOpenMarketplaceRequests: vi.fn(),
   createOffer: vi.fn(),
@@ -24,6 +25,10 @@ const contractorApi = {
   addContractorService: vi.fn(),
   updateContractorService: vi.fn(),
   deleteContractorService: vi.fn(),
+  listPortfolioItems: vi.fn(),
+  uploadPortfolioItem: vi.fn(),
+  deletePortfolioItem: vi.fn(),
+  reorderPortfolioItems: vi.fn(),
 }
 vi.mock('~/api/contractor', () => contractorApi)
 
@@ -42,8 +47,9 @@ beforeEach(async () => {
   ;({ useMarketplace } = await import('~/composables/useMarketplace'))
 })
 
-const openReq = { id: 'r1', workTypeId: 'wt1', workType: 'Поклейка обоев', quantity: 35.5, unit: 'm2' as const, createdAt: 'c1' }
+const openReq = { id: 'r1', workTypeId: 'wt1', workType: 'Поклейка обоев', quantity: 35.5, unit: 'm2' as const, createdAt: 'c1', location: null }
 const privateReq = { id: 'r1', projectWorkId: 'pw1', quantity: 35.5, unit: 'm2' as const, status: 'open' as const, createdAt: 'c1', updatedAt: 'u1' }
+const draftReq = { id: 'r1', projectWorkId: 'pw1', quantity: 35.5, unit: 'm2' as const, status: 'draft' as const, createdAt: 'c1', updatedAt: 'u1' }
 const offer = { id: 'o1', marketplaceRequestId: 'r1', contractorId: 'ct1', price: 1500000, comment: null, status: 'pending' as const, createdAt: 'c1', updatedAt: 'u1' }
 
 describe('useMarketplace — work request status cache (ProjectWorkCard)', () => {
@@ -92,6 +98,77 @@ describe('useMarketplace — creating a request ("Найти мастера")', 
     expect(marketplaceApi.createMarketplaceRequest).toHaveBeenCalledTimes(1)
     resolve(privateReq)
     await first
+  })
+})
+
+// Draft → Publish v1 — createRequestForWork now yields 'draft' (see
+// api/marketplace.ts), and publishRequest is the only way to move it to
+// 'open'. Same requestActionId guard family as cancel/close.
+describe('useMarketplace — publishing a draft request', () => {
+  it('createRequestForWork returns a draft, not an open request', async () => {
+    marketplaceApi.createMarketplaceRequest.mockResolvedValueOnce(draftReq)
+    const mp = useMarketplace()
+    const result = await mp.createRequestForWork('p1', 'pw1')
+    expect(result?.status).toBe('draft')
+  })
+
+  it('publishRequest updates myRequests/workRequestCache to the now-open request', async () => {
+    marketplaceApi.createMarketplaceRequest.mockResolvedValueOnce(draftReq)
+    const mp = useMarketplace()
+    await mp.createRequestForWork('p1', 'pw1')
+
+    marketplaceApi.publishMarketplaceRequest.mockResolvedValueOnce({ ...draftReq, status: 'open' })
+    const result = await mp.publishRequest('p1', 'pw1')
+
+    expect(result?.status).toBe('open')
+    expect(mp.myRequests.value[0]?.status).toBe('open')
+    expect(mp.workRequestCache.value.pw1).toMatchObject({ status: 'open' })
+  })
+
+  it('publishRequest POSTs to the project/work-scoped publish path', async () => {
+    marketplaceApi.publishMarketplaceRequest.mockResolvedValueOnce({ ...draftReq, status: 'open' })
+    const mp = useMarketplace()
+    await mp.publishRequest('p1', 'pw1')
+    expect(marketplaceApi.publishMarketplaceRequest).toHaveBeenCalledWith('p1', 'pw1')
+  })
+
+  it('guards against a double-click publish while one is already in flight', async () => {
+    let resolve: (v: unknown) => void = () => {}
+    marketplaceApi.publishMarketplaceRequest.mockReturnValueOnce(new Promise((r) => { resolve = r }))
+    const mp = useMarketplace()
+    const first = mp.publishRequest('p1', 'pw1')
+    const second = await mp.publishRequest('p1', 'pw1')
+    expect(second).toBeNull()
+    expect(marketplaceApi.publishMarketplaceRequest).toHaveBeenCalledTimes(1)
+    resolve({ ...draftReq, status: 'open' })
+    await first
+  })
+
+  it('a 409 invalid_transition surfaces via publishRequestError and refreshes the real current status', async () => {
+    marketplaceApi.publishMarketplaceRequest.mockRejectedValueOnce({ status: 409, code: 'invalid_transition', message: 'This marketplace request cannot change to that status from its current state' })
+    marketplaceApi.getMarketplaceRequestForWork.mockResolvedValueOnce({ ...draftReq, status: 'cancelled' })
+    const mp = useMarketplace()
+
+    const result = await mp.publishRequest('p1', 'pw1')
+
+    expect(result).toBeNull()
+    expect(mp.publishRequestError.value?.code).toBe('invalid_transition')
+    // publishRequest re-fetches the real state instead of leaving the UI
+    // thinking it is still a publishable draft (see задание, секция ERROR
+    // HANDLING: "обновить данные request; показать актуальный статус").
+    expect(marketplaceApi.getMarketplaceRequestForWork).toHaveBeenCalledWith('p1', 'pw1')
+    await vi.waitFor(() => expect(mp.workRequestCache.value.pw1).toMatchObject({ status: 'cancelled' }))
+  })
+
+  it('a network/500 error also surfaces via publishRequestError, not a silent failure', async () => {
+    marketplaceApi.publishMarketplaceRequest.mockRejectedValueOnce({ status: 500, code: 'internal_error', message: 'boom' })
+    marketplaceApi.getMarketplaceRequestForWork.mockRejectedValueOnce({ status: 500, code: 'internal_error', message: 'boom' })
+    const mp = useMarketplace()
+
+    const result = await mp.publishRequest('p1', 'pw1')
+
+    expect(result).toBeNull()
+    expect(mp.publishRequestError.value?.code).toBe('internal_error')
   })
 })
 
@@ -145,7 +222,7 @@ describe('useMarketplace — loadOpenRequests as a guest (no auth-required calls
 // call pages/marketplace/requests/[id].vue makes for ANY viewer (guest,
 // owner, or contractor) to learn what the request actually is. See задание,
 // секция TESTS: "guest; client owner; contractor; stranger; 404; retry".
-const publicReq = { id: 'r1', workTypeId: 'wt1', workType: 'Поклейка обоев', quantity: 35.5, unit: 'm2' as const, status: 'open' as const, createdAt: 'c1' }
+const publicReq = { id: 'r1', workTypeId: 'wt1', workType: 'Поклейка обоев', quantity: 35.5, unit: 'm2' as const, status: 'open' as const, createdAt: 'c1', location: null }
 
 describe('useMarketplace — loadRequestDetail (public, any status)', () => {
   it('populates requestDetail on success', async () => {
@@ -327,6 +404,135 @@ describe('useMarketplace — ContractorService list (Мои услуги)', () =
   })
 })
 
+describe('useMarketplace — Portfolio ("Мои работы")', () => {
+  const item1 = { id: 'p1', imageUrl: 'http://host/p1.jpg', title: 'Ремонт кухни', description: 'До и после', sortOrder: 0, createdAt: 'c1', updatedAt: 'u1' }
+  const item2 = { id: 'p2', imageUrl: 'http://host/p2.jpg', title: 'Ремонт ванной', description: '', sortOrder: 1, createdAt: 'c2', updatedAt: 'u2' }
+
+  it('loadPortfolio populates portfolio from listPortfolioItems', async () => {
+    contractorApi.listPortfolioItems.mockResolvedValueOnce([item1, item2])
+    const mp = useMarketplace()
+    await mp.loadPortfolio()
+    expect(mp.portfolio.value).toEqual([item1, item2])
+  })
+
+  it('loadPortfolio surfaces a load failure via portfolioError without touching the list', async () => {
+    contractorApi.listPortfolioItems.mockRejectedValueOnce({ status: 500, code: 'internal_error', message: 'boom' })
+    const mp = useMarketplace()
+    await mp.loadPortfolio()
+    expect(mp.portfolio.value).toEqual([])
+    expect(mp.portfolioError.value?.code).toBe('internal_error')
+  })
+
+  it('uploadPortfolio appends the backend-returned item to the list — no extra GET', async () => {
+    contractorApi.uploadPortfolioItem.mockResolvedValueOnce(item1)
+    const mp = useMarketplace()
+    const file = new File([new Uint8Array(10)], 'kitchen.jpg', { type: 'image/jpeg' })
+    const created = await mp.uploadPortfolio(file, 'Ремонт кухни', 'До и после')
+    expect(created).toEqual(item1)
+    expect(mp.portfolio.value).toEqual([item1])
+    expect(contractorApi.listPortfolioItems).not.toHaveBeenCalled()
+  })
+
+  it('uploadPortfolio surfaces an error via uploadPortfolioError and leaves the list untouched', async () => {
+    contractorApi.uploadPortfolioItem.mockRejectedValueOnce({ status: 415, code: 'unsupported_media_type', message: 'Only JPEG, PNG, and WebP images are allowed' })
+    const mp = useMarketplace()
+    const file = new File([new Uint8Array(10)], 'kitchen.gif', { type: 'image/gif' })
+    const created = await mp.uploadPortfolio(file, '', '')
+    expect(created).toBeNull()
+    expect(mp.portfolio.value).toEqual([])
+    expect(mp.uploadPortfolioError.value?.code).toBe('unsupported_media_type')
+  })
+
+  it('guards against a double-submit upload while one is already in flight', async () => {
+    let resolve: (v: unknown) => void = () => {}
+    contractorApi.uploadPortfolioItem.mockReturnValueOnce(new Promise((r) => { resolve = r }))
+    const mp = useMarketplace()
+    const file = new File([new Uint8Array(10)], 'kitchen.jpg', { type: 'image/jpeg' })
+    const first = mp.uploadPortfolio(file, '', '')
+    const second = await mp.uploadPortfolio(file, '', '')
+    expect(second).toBeNull()
+    expect(contractorApi.uploadPortfolioItem).toHaveBeenCalledTimes(1)
+    resolve(item1)
+    await first
+  })
+
+  it('deletePortfolio removes the item from the list on success', async () => {
+    const mp = useMarketplace()
+    mp.portfolio.value = [item1, item2]
+    contractorApi.deletePortfolioItem.mockResolvedValueOnce(undefined)
+    const ok = await mp.deletePortfolio('p1')
+    expect(ok).toBe(true)
+    expect(mp.portfolio.value).toEqual([item2])
+  })
+
+  it('deletePortfolio keeps the item on a failed delete and surfaces portfolioActionError', async () => {
+    const mp = useMarketplace()
+    mp.portfolio.value = [item1]
+    contractorApi.deletePortfolioItem.mockRejectedValueOnce({ status: 404, code: 'portfolio_item_not_found', message: 'not found' })
+    const ok = await mp.deletePortfolio('p1')
+    expect(ok).toBe(false)
+    expect(mp.portfolio.value).toEqual([item1])
+    expect(mp.portfolioActionError.value?.code).toBe('portfolio_item_not_found')
+  })
+
+  it('guards against concurrent deletes (busy portfolioActionId blocks a second call)', async () => {
+    let resolve: (v: unknown) => void = () => {}
+    contractorApi.deletePortfolioItem.mockReturnValueOnce(new Promise((r) => { resolve = r }))
+    const mp = useMarketplace()
+    mp.portfolio.value = [item1, item2]
+    const first = mp.deletePortfolio('p1')
+    const second = await mp.deletePortfolio('p2')
+    expect(second).toBe(false)
+    expect(contractorApi.deletePortfolioItem).toHaveBeenCalledTimes(1)
+    resolve(undefined)
+    await first
+  })
+
+  it('reorderPortfolio applies the optimistic order immediately, then replaces it with the backend response', async () => {
+    const mp = useMarketplace()
+    mp.portfolio.value = [item1, item2]
+    let resolve: (v: unknown) => void = () => {}
+    contractorApi.reorderPortfolioItems.mockReturnValueOnce(new Promise((r) => { resolve = r }))
+
+    const promise = mp.reorderPortfolio([item2, item1])
+    // Оптимистично применилось сразу, до ответа backend.
+    expect(mp.portfolio.value).toEqual([item2, item1])
+
+    resolve([{ ...item2, sortOrder: 0 }, { ...item1, sortOrder: 1 }])
+    const ok = await promise
+    expect(ok).toBe(true)
+    expect(mp.portfolio.value).toEqual([{ ...item2, sortOrder: 0 }, { ...item1, sortOrder: 1 }])
+    expect(contractorApi.reorderPortfolioItems).toHaveBeenCalledWith({
+      items: [{ id: 'p2', sort_order: 0 }, { id: 'p1', sort_order: 1 }],
+    })
+  })
+
+  it('reorderPortfolio rolls back to the previous order on backend failure', async () => {
+    const mp = useMarketplace()
+    mp.portfolio.value = [item1, item2]
+    contractorApi.reorderPortfolioItems.mockRejectedValueOnce({ status: 400, code: 'invalid_request', message: 'boom' })
+
+    const ok = await mp.reorderPortfolio([item2, item1])
+    expect(ok).toBe(false)
+    expect(mp.portfolio.value).toEqual([item1, item2]) // откат к исходному порядку
+    expect(mp.reorderPortfolioError.value?.code).toBe('invalid_request')
+  })
+
+  it('guards against overlapping reorder calls', async () => {
+    const mp = useMarketplace()
+    mp.portfolio.value = [item1, item2]
+    let resolve: (v: unknown) => void = () => {}
+    contractorApi.reorderPortfolioItems.mockReturnValueOnce(new Promise((r) => { resolve = r }))
+
+    const first = mp.reorderPortfolio([item2, item1])
+    const second = await mp.reorderPortfolio([item1, item2])
+    expect(second).toBe(false)
+    expect(contractorApi.reorderPortfolioItems).toHaveBeenCalledTimes(1)
+    resolve([item2, item1])
+    await first
+  })
+})
+
 describe('useMarketplace — /marketplace request filters', () => {
   it('resetRequestFilters restores defaults after setRequestFilter changed them', async () => {
     const mp = useMarketplace()
@@ -345,8 +551,8 @@ describe('useMarketplace — /marketplace request filters', () => {
     const mp = useMarketplace()
     await mp.loadFilterCatalog()
     mp.openRequests.value = [
-      { id: 'r1', workTypeId: 'wt-wall', workType: 'Поклейка обоев', quantity: 10, unit: 'm2', createdAt: 'c1' },
-      { id: 'r2', workTypeId: 'wt-floor', workType: 'Ламинат', quantity: 20, unit: 'm2', createdAt: 'c2' },
+      { id: 'r1', workTypeId: 'wt-wall', workType: 'Поклейка обоев', quantity: 10, unit: 'm2', createdAt: 'c1', location: null },
+      { id: 'r2', workTypeId: 'wt-floor', workType: 'Ламинат', quantity: 20, unit: 'm2', createdAt: 'c2', location: null },
     ]
     mp.setRequestFilter({ categoryId: 'cat-walls' })
     expect(mp.filteredOpenRequests.value.map(r => r.id)).toEqual(['r1'])

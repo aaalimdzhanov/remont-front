@@ -16,12 +16,20 @@
 // списка, а не отображение несуществующего поля. Description сознательно
 // не показывается вообще — backend его не отдаёт (см. задание: "не
 // фейковать description").
+//
+// location — Project Location в Marketplace v1 (см. api/types.ts): coarse
+// city/district уже загруженной заявки, null если у Project нет location —
+// тот же formatLocation()/иконка 'pin', что уже использует
+// PublicContractorCard.vue для мастеров, без второго форматтера/иконки.
 import type { OpenMarketplaceRequest } from '~/api/types'
 import type { RequestCardIcon } from '~/utils/marketplace'
+import { formatLocation } from '~/utils/marketplace'
 
-withDefaults(defineProps<{ request: OpenMarketplaceRequest, icon?: RequestCardIcon }>(), {
+const props = withDefaults(defineProps<{ request: OpenMarketplaceRequest, icon?: RequestCardIcon }>(), {
   icon: 'hammer',
 })
+
+const locationLabel = computed(() => formatLocation(props.request.location))
 </script>
 
 <template>
@@ -39,6 +47,11 @@ withDefaults(defineProps<{ request: OpenMarketplaceRequest, icon?: RequestCardIc
       <span class="open-request-card__quantity">{{ formatQuantity(request.quantity, request.unit) }}</span>
       <span class="text-caption text-muted">{{ formatMarketplaceDate(request.createdAt) }}</span>
     </div>
+
+    <p v-if="locationLabel" class="open-request-card__location">
+      <UiIcon name="pin" :size="14" />
+      {{ locationLabel }}
+    </p>
 
     <div class="open-request-card__foot">
       <span class="open-request-card__status">
@@ -112,6 +125,23 @@ withDefaults(defineProps<{ request: OpenMarketplaceRequest, icon?: RequestCardIc
 .open-request-card__quantity {
   font-weight: 600;
   color: var(--color-text);
+}
+
+.open-request-card__location {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: 0;
+  padding-left: calc(36px + var(--space-3));
+  overflow-wrap: break-word;
+  word-break: break-word;
+  color: var(--color-text-secondary);
+  font-size: var(--font-small-size);
+}
+
+.open-request-card__location .icon {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
 }
 
 .open-request-card__foot {

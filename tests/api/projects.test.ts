@@ -40,7 +40,7 @@ describe('projects api methods', () => {
 
   it('getProject fetches by id and maps the full document', async () => {
     apiFetchMock.mockResolvedValueOnce({
-      id: '1', name: 'A', status: 'draft', building: buildingDoc, created_at: 'c1', updated_at: 'u1',
+      id: '1', name: 'A', status: 'draft', building: buildingDoc, created_at: 'c1', updated_at: 'u1', location: null,
     })
     const result = await getProject('1')
     expect(apiFetchMock).toHaveBeenCalledWith('/api/v1/projects/1', { signal: undefined })
@@ -48,27 +48,52 @@ describe('projects api methods', () => {
     expect(result.updatedAt).toBe('u1')
   })
 
-  it('createProject POSTs name/status/building and returns the canonical project', async () => {
+  it('createProject POSTs name/status/building/location and returns the canonical project', async () => {
     apiFetchMock.mockResolvedValueOnce({
-      id: 'srv-1', name: 'A', status: 'draft', building: buildingDoc, created_at: 'c1', updated_at: 'u1',
+      id: 'srv-1', name: 'A', status: 'draft', building: buildingDoc, created_at: 'c1', updated_at: 'u1', location: null,
     })
-    const result = await createProject({ name: 'A', status: 'draft', building: buildingDoc as never })
+    const result = await createProject({ name: 'A', status: 'draft', building: buildingDoc as never, location: null })
     expect(apiFetchMock).toHaveBeenCalledWith('/api/v1/projects', {
       method: 'POST',
-      body: { name: 'A', status: 'draft', building: buildingDoc },
+      body: { name: 'A', status: 'draft', building: buildingDoc, location: null },
     })
     expect(result.id).toBe('srv-1')
   })
 
   it('updateProject PUTs to the project id', async () => {
     apiFetchMock.mockResolvedValueOnce({
-      id: '1', name: 'B', status: 'draft', building: buildingDoc, created_at: 'c1', updated_at: 'u2',
+      id: '1', name: 'B', status: 'draft', building: buildingDoc, created_at: 'c1', updated_at: 'u2', location: null,
     })
-    await updateProject('1', { name: 'B', status: 'draft', building: buildingDoc as never })
+    await updateProject('1', { name: 'B', status: 'draft', building: buildingDoc as never, location: null })
     expect(apiFetchMock).toHaveBeenCalledWith('/api/v1/projects/1', {
       method: 'PUT',
-      body: { name: 'B', status: 'draft', building: buildingDoc },
+      body: { name: 'B', status: 'draft', building: buildingDoc, location: null },
     })
+  })
+
+  // Project Location v1 — тот же общий Location-тип/formatLocation(), что уже
+  // использует Marketplace (см. utils/marketplace.ts) — просто пробрасывается
+  // мимо toProject(), без отдельного маппера.
+  it('createProject passes a real location straight through to body and result', async () => {
+    const location = { city: 'Ташкент', district: 'Юнусабадский' }
+    apiFetchMock.mockResolvedValueOnce({
+      id: 'srv-2', name: 'A', status: 'draft', building: buildingDoc, created_at: 'c1', updated_at: 'u1', location,
+    })
+    const result = await createProject({ name: 'A', status: 'draft', building: buildingDoc as never, location })
+    expect(apiFetchMock).toHaveBeenCalledWith('/api/v1/projects', {
+      method: 'POST',
+      body: { name: 'A', status: 'draft', building: buildingDoc, location },
+    })
+    expect(result.location).toEqual(location)
+  })
+
+  it('getProject maps a real location through unchanged', async () => {
+    const location = { city: 'Самарканд', district: 'Центр' }
+    apiFetchMock.mockResolvedValueOnce({
+      id: '1', name: 'A', status: 'draft', building: buildingDoc, created_at: 'c1', updated_at: 'u1', location,
+    })
+    const result = await getProject('1')
+    expect(result.location).toEqual(location)
   })
 
   it('deleteProject issues a DELETE and propagates the underlying ApiError on failure', async () => {

@@ -42,6 +42,7 @@ function toOpenMarketplaceRequest(dto: OpenMarketplaceRequestDto): OpenMarketpla
     quantity: dto.quantity,
     unit: dto.unit,
     createdAt: dto.created_at,
+    location: dto.location,
   }
 }
 
@@ -54,6 +55,7 @@ function toPublicMarketplaceRequest(dto: PublicMarketplaceRequestDto): PublicMar
     unit: dto.unit,
     status: dto.status,
     createdAt: dto.created_at,
+    location: dto.location,
   }
 }
 
@@ -102,6 +104,19 @@ export async function cancelMarketplaceRequest(projectId: string, workId: string
 export async function closeMarketplaceRequest(projectId: string, workId: string): Promise<MarketplaceRequest> {
   const dto = await apiFetch<MarketplaceRequestDto>(
     `/api/v1/projects/${encodeURIComponent(projectId)}/works/${encodeURIComponent(workId)}/marketplace-request/close`,
+    { method: 'POST' },
+  )
+  return toMarketplaceRequest(dto)
+}
+
+// Draft → Publish v1 (см. marketplace_request_handler.go Publish): тело
+// пустое — backend сам выполняет transition draft -> open, фронтенд не
+// отправляет status. 409 invalid_transition, если заявка уже не в draft
+// (см. useMarketplace.ts publishRequest — вызывающий код сам решает, что
+// делать с этой ошибкой).
+export async function publishMarketplaceRequest(projectId: string, workId: string): Promise<MarketplaceRequest> {
+  const dto = await apiFetch<MarketplaceRequestDto>(
+    `/api/v1/projects/${encodeURIComponent(projectId)}/works/${encodeURIComponent(workId)}/marketplace-request/publish`,
     { method: 'POST' },
   )
   return toMarketplaceRequest(dto)

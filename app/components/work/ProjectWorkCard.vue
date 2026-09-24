@@ -16,8 +16,13 @@ const props = defineProps<{
   deleting: boolean
   // undefined — ещё не проверяли (см. useMarketplace.checkWorkRequest,
   // вызывается лениво при первом открытии меню, не для всех карточек сразу);
-  // 'none' — точно нет заявки (404); объект — есть заявка любого статуса.
+  // 'none' — точно нет заявки (404); объект — есть заявка любого статуса
+  // (включая 'draft' — см. Draft → Publish v1).
   marketplaceRequest?: MarketplaceRequest | 'none'
+  // busy-индикатор именно для publish этой карточки (см. useMarketplace.ts
+  // requestActionId === work.id) — тот же паттерн, что statusUpdating/deleting
+  // выше, отдельным полем, а не выводится из marketplaceRequest.status.
+  publishing?: boolean
   // Заказ, созданный из этой заявки, если marketplaceRequest.status ===
   // 'closed' — резолвится снаружи (см. pages/projects/[id]/works.vue
   // useOrders().findOrderByRequestId), может быть null, если заявка закрыта,
@@ -34,6 +39,7 @@ const emit = defineEmits<{
   'find-contractor': []
   'view-marketplace-request': [requestId: string]
   'view-order': [orderId: string]
+  'publish-request': []
 }>()
 
 const menuOpen = ref(false)
@@ -82,7 +88,11 @@ const sourceHint = computed(() => (props.quantityMode === 'automatic' ? 'Рас�
 // 'closed' — заказ уже создан, "Найти мастера" здесь показывать нельзя (см.
 // задание, секция MARKETPLACE REQUEST DETAIL) — вместо этого "Заказ", если
 // он уже резолвлен снаружи (props.order), иначе нейтральный статус без действия.
+// 'draft' (Draft → Publish v1) — заявка уже создана, но ещё не опубликована:
+// "Найти мастера" здесь не показываем (заявка уже существует, создавать
+// вторую не нужно) — вместо этого отдельная ветка ниже с "Опубликовать".
 const showFindContractor = computed(() => props.marketplaceRequest === 'none' || (typeof props.marketplaceRequest === 'object' && props.marketplaceRequest.status === 'cancelled'))
+const isDraftRequest = computed(() => typeof props.marketplaceRequest === 'object' && props.marketplaceRequest.status === 'draft')
 const showViewRequest = computed(() => typeof props.marketplaceRequest === 'object' && props.marketplaceRequest.status === 'open')
 const isClosedRequest = computed(() => typeof props.marketplaceRequest === 'object' && props.marketplaceRequest.status === 'closed')
 const showViewOrder = computed(() => isClosedRequest.value && !!props.order)
@@ -90,6 +100,12 @@ const showViewOrder = computed(() => isClosedRequest.value && !!props.order)
 function handleFindContractor() {
   closeMenu()
   emit('find-contractor')
+}
+
+function handlePublishRequest() {
+  if (props.publishing) return
+  closeMenu()
+  emit('publish-request')
 }
 
 function handleViewRequest() {
@@ -151,6 +167,17 @@ function handleViewOrder() {
         >
           <UiIcon name="store" :size="14" />
           Найти мастера
+        </button>
+        <button
+          v-else-if="isDraftRequest"
+          type="button"
+          class="work-card__panel-item"
+          role="menuitem"
+          :disabled="publishing"
+          @click="handlePublishRequest"
+        >
+          <UiIcon name="store" :size="14" />
+          {{ publishing ? 'Публикуем…' : 'Черновик · опубликовать' }}
         </button>
         <button
           v-else-if="showViewRequest"
@@ -315,6 +342,15 @@ function handleViewOrder() {
 
 .work-card__panel-item:hover {
   background: var(--color-surface-subtle);
+}
+
+.work-card__panel-item:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.work-card__panel-item:disabled:hover {
+  background: none;
 }
 
 .work-card__panel-item--active {

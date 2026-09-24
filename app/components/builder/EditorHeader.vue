@@ -26,7 +26,48 @@ const {
   clearError,
   save,
   isSaving,
+  location,
+  setLocation,
 } = useProjectPersistence()
+
+// Project Location v1 — компактный "📍 ..." chip рядом с именем проекта,
+// открывающий небольшую inline-панель Город/Район прямо под header'ом (не
+// отдельная страница/модалка — Location здесь просто ещё одно свойство уже
+// открытого проекта, редактируется тем же способом, что и имя). Использует
+// тот же formatLocation()/Location-тип, что и Marketplace (см. utils/
+// marketplace.ts) — не второй форматтер.
+const editingLocation = ref(false)
+const draftCity = ref('')
+const draftDistrict = ref('')
+const locationLabel = computed(() => formatLocation(location.value))
+
+function openLocationEditor() {
+  draftCity.value = location.value?.city ?? ''
+  draftDistrict.value = location.value?.district ?? ''
+  editingLocation.value = true
+}
+
+function closeLocationEditor() {
+  editingLocation.value = false
+}
+
+// setLocation() только обновляет state и планирует autosave (см.
+// useProjectPersistence.ts) — save() здесь вызывается явно, чтобы
+// "Сохранить"/"Очистить" в этой панели давали немедленный результат, тем же
+// save() pipeline, что и основная кнопка "Сохранить" справа, а не second
+// autosave.
+async function handleSaveLocation() {
+  const next = draftCity.value ? { city: draftCity.value, district: draftDistrict.value } : null
+  setLocation(next)
+  editingLocation.value = false
+  await save()
+}
+
+async function handleClearLocation() {
+  setLocation(null)
+  editingLocation.value = false
+  await save()
+}
 
 const saveLabel = computed(() => {
   switch (saveStatus.value) {
@@ -87,7 +128,7 @@ function confirmLogout(): boolean {
   <!-- DESKTOP (≥768px): существующий компактный ряд без изменений. -->
   <header class="editor-header">
     <div class="editor-header__left">
-      <NuxtLink to="/projects" class="editor-header__brand">
+      <NuxtLink to="/marketplace" class="editor-header__brand">
         <UiBrandLogo variant="compact" />
       </NuxtLink>
       <NuxtLink to="/projects" class="editor-header__back">
@@ -104,6 +145,11 @@ function confirmLogout(): boolean {
       aria-label="Название проекта"
       @change="renameProject(($event.target as HTMLInputElement).value)"
     >
+
+    <button type="button" class="editor-header__location-chip" @click="openLocationEditor">
+      <UiIcon name="pin" :size="14" />
+      <span class="editor-header__location-chip-text">{{ locationLabel ?? 'Указать место' }}</span>
+    </button>
 
     <div class="editor-header__actions">
       <span class="status-dot" :class="`status-dot--${saveStatusVariant}`">
@@ -131,11 +177,30 @@ function confirmLogout(): boolean {
     <p class="editor-header__mobile-name">
       {{ buildingDocument.project.name }}
     </p>
+    <button type="button" class="editor-header__location-chip editor-header__location-chip--mobile" @click="openLocationEditor">
+      <UiIcon name="pin" :size="14" />
+      <span class="editor-header__location-chip-text">{{ locationLabel ?? 'Указать место' }}</span>
+    </button>
     <span class="status-dot" :class="`status-dot--${saveStatusVariant}`">
       <UiIcon v-if="saveStatus === 'saved'" name="check" :size="14" />
       <UiIcon v-else-if="saveStatus === 'error'" name="alert" :size="14" />
       {{ saveStatusLabel }}
     </span>
+  </div>
+
+  <div v-if="editingLocation" class="editor-header__location-panel">
+    <ProjectLocationFields v-model:city="draftCity" v-model:district="draftDistrict" />
+    <div class="editor-header__location-panel-actions">
+      <button type="button" class="btn btn-ghost btn-sm" @click="closeLocationEditor">
+        Отмена
+      </button>
+      <button v-if="location" type="button" class="btn btn-secondary btn-sm" @click="handleClearLocation">
+        Очистить
+      </button>
+      <button type="button" class="btn btn-primary btn-sm editor-header__location-panel-save" :disabled="!draftCity" @click="handleSaveLocation">
+        Сохранить
+      </button>
+    </div>
   </div>
 
   <p v-if="error" class="editor-header__error">
@@ -189,6 +254,60 @@ function confirmLogout(): boolean {
   align-items: center;
   gap: var(--space-3);
   flex-shrink: 0;
+}
+
+.editor-header__location-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-shrink: 0;
+  max-width: 220px;
+  height: 36px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: var(--font-small-size);
+  cursor: pointer;
+}
+
+.editor-header__location-chip:hover {
+  border-color: var(--color-border-strong);
+  color: var(--color-text);
+}
+
+.editor-header__location-chip-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.editor-header__location-chip--mobile {
+  align-self: flex-start;
+  max-width: 100%;
+  height: 32px;
+}
+
+.editor-header__location-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.editor-header__location-panel-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+@media (min-width: 768px) {
+  .editor-header__location-panel {
+    padding: var(--space-4);
+  }
 }
 
 /* Save status + Save + иконка пользователя — компактный кластер, прижатый

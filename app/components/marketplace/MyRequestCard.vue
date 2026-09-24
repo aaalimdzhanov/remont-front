@@ -7,13 +7,27 @@
 // (название работы + статус заявки) доступен на странице /projects/{id}/works,
 // где эта заявка создавалась и где ProjectWork уже резолвится по каталогу —
 // см. ProjectWorkCard.vue. Здесь — честный fallback на количество/статус/дату.
+//
+// Draft → Publish v1: карточка со статусом 'draft' НЕ ссылается на публичный
+// /marketplace/requests/{id} — backend намеренно исключает draft из
+// GetPublicByID (WHERE status != 'draft'), переход туда дал бы честному
+// владельцу его же заявки "не найдено". Вместо ссылки — просто некликабельная
+// карточка с подсказкой опубликовать со страницы «Работы» (см. задание,
+// секции DRAFT В PRIVATE UI/REQUEST DETAIL).
 import type { MarketplaceRequest } from '~/api/types'
 
-defineProps<{ request: MarketplaceRequest }>()
+const props = defineProps<{ request: MarketplaceRequest }>()
+
+const isDraft = computed(() => props.request.status === 'draft')
 </script>
 
 <template>
-  <NuxtLink :to="`/marketplace/requests/${request.id}`" class="my-request-card">
+  <component
+    :is="isDraft ? 'div' : 'NuxtLink'"
+    :to="isDraft ? undefined : `/marketplace/requests/${request.id}`"
+    class="my-request-card"
+    :class="{ 'my-request-card--draft': isDraft }"
+  >
     <div class="my-request-card__row">
       <span class="my-request-card__quantity">{{ formatQuantity(request.quantity, request.unit) }}</span>
       <span class="my-request-card__status" :class="`my-request-card__status--${request.status}`">
@@ -21,12 +35,15 @@ defineProps<{ request: MarketplaceRequest }>()
       </span>
     </div>
     <p class="text-caption text-muted my-request-card__date">
-      Опубликовано {{ formatMarketplaceDate(request.createdAt) }}
+      Создано {{ formatMarketplaceDate(request.createdAt) }}
     </p>
-    <span class="btn btn-secondary btn-sm my-request-card__cta">
+    <span v-if="isDraft" class="text-caption text-muted my-request-card__hint">
+      Опубликуйте заявку со страницы «Работы»
+    </span>
+    <span v-else class="btn btn-secondary btn-sm my-request-card__cta">
       Посмотреть предложения
     </span>
-  </NuxtLink>
+  </component>
 </template>
 
 <style scoped>
@@ -44,6 +61,14 @@ defineProps<{ request: MarketplaceRequest }>()
 
 .my-request-card:hover {
   border-color: var(--color-border-strong);
+}
+
+.my-request-card--draft {
+  cursor: default;
+}
+
+.my-request-card--draft:hover {
+  border-color: var(--color-border);
 }
 
 .my-request-card__row {
@@ -67,6 +92,7 @@ defineProps<{ request: MarketplaceRequest }>()
   white-space: nowrap;
 }
 
+.my-request-card__status--draft { color: var(--color-warning); background: var(--color-warning-subtle); }
 .my-request-card__status--open { color: var(--color-success); background: var(--color-success-subtle); }
 .my-request-card__status--cancelled { color: var(--color-text-muted); background: var(--color-surface-subtle); }
 .my-request-card__status--closed { color: var(--color-text-secondary); background: var(--color-surface-subtle); }
@@ -79,5 +105,9 @@ defineProps<{ request: MarketplaceRequest }>()
   align-self: flex-start;
   margin-top: var(--space-2);
   min-height: 44px;
+}
+
+.my-request-card__hint {
+  margin: 0;
 }
 </style>

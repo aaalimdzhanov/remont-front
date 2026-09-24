@@ -19,6 +19,15 @@ const contractorId = computed(() => (typeof route.params.id === 'string' ? route
 
 const { contractor, isLoading, error, fetchContractor } = usePublicContractor()
 
+const locationLabel = computed(() => (contractor.value ? formatLocation(contractor.value.location) : null))
+
+// Portfolio v1 — приходит вместе с самим GET /contractors/{id} (см.
+// api/types.ts PublicContractorProfile.portfolio), отдельного запроса нет
+// (см. задание, секция PERFORMANCE). null (список мастеров) сюда в принципе
+// не долетает — detail-эндпоинт всегда резолвит portfolio как массив
+// (возможно пустой), но на всякий случай не считаем null "есть работы".
+const viewingPortfolioItem = ref<{ imageUrl: string, title: string, description: string } | null>(null)
+
 useHead({ title: 'Профиль мастера' })
 
 onMounted(() => {
@@ -86,6 +95,16 @@ onMounted(() => {
         </div>
       </section>
 
+      <section v-if="locationLabel" class="public-contractor-page__location">
+        <h2 class="text-h3 public-contractor-page__location-title">
+          Работает в
+        </h2>
+        <p class="public-contractor-page__location-value">
+          <UiIcon name="pin" :size="16" />
+          {{ locationLabel }}
+        </p>
+      </section>
+
       <section class="public-contractor-page__services">
         <h2 class="text-h3 public-contractor-page__services-title">
           Услуги мастера
@@ -103,7 +122,16 @@ onMounted(() => {
           </div>
         </div>
       </section>
+
+      <section v-if="contractor.portfolio && contractor.portfolio.length > 0" class="public-contractor-page__portfolio">
+        <h2 class="text-h3 public-contractor-page__portfolio-title">
+          Работы мастера
+        </h2>
+        <MarketplacePortfolioGrid :items="contractor.portfolio" @open="(item) => (viewingPortfolioItem = item)" />
+      </section>
     </template>
+
+    <MarketplacePortfolioImageViewer :item="viewingPortfolioItem" @close="viewingPortfolioItem = null" />
   </main>
 </template>
 
@@ -221,6 +249,33 @@ onMounted(() => {
   margin-top: var(--space-1);
 }
 
+.public-contractor-page__location {
+  margin-top: var(--space-8);
+}
+
+.public-contractor-page__location-title {
+  margin: 0 0 var(--space-3);
+}
+
+.public-contractor-page__location-value {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  overflow-wrap: break-word;
+  word-break: break-word;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.public-contractor-page__location-value .icon {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+}
+
 .public-contractor-page__services {
   margin-top: var(--space-8);
 }
@@ -263,5 +318,13 @@ onMounted(() => {
 .public-contractor-page__service-price {
   flex-shrink: 0;
   text-align: right;
+}
+
+.public-contractor-page__portfolio {
+  margin-top: var(--space-8);
+}
+
+.public-contractor-page__portfolio-title {
+  margin: 0 0 var(--space-4);
 }
 </style>

@@ -4,7 +4,7 @@
 // JSON грузится тем же существующим механизмом (useProjectPersistence +
 // useBuilding), что и в Builder'е — read-only здесь (страница ничего не
 // сохраняет в Building JSON, только читает rooms/площади для отображения).
-import type { ProjectWork, WorkStatus } from '~/api/types'
+import type { MarketplaceRequest, ProjectWork, WorkStatus } from '~/api/types'
 import { calculateRoomArea } from '~/geometry/calculations'
 
 definePageMeta({ middleware: 'auth' })
@@ -32,10 +32,13 @@ const {
 } = useWorkBuilder()
 const {
   workRequestCache,
+  requestActionId,
   isCreatingRequest,
   createRequestError,
+  publishRequestError,
   checkWorkRequest,
   createRequestForWork,
+  publishRequest,
   cleanup: cleanupMarketplace,
 } = useMarketplace()
 const { findOrderByRequestId, fetchOrders, cleanup: cleanupOrders } = useOrders()
@@ -166,7 +169,18 @@ function handleMenuOpened(workId: string) {
 }
 
 const pendingMarketplaceWork = ref<ProjectWork | null>(null)
+// Draft → Publish v1: Create теперь возвращает 'draft', не 'open' — заявка
+// НЕ публична сразу (см. задание, секция CREATE REQUEST FLOW). draftRequest
+// открывает второй диалог ("Заявка создана… Опубликовать?"), отдельный от
+// pendingMarketplaceWork ("Разместить работу на бирже?" — сам факт создания
+// заявки). publishedRequestId — id только что реально опубликованной
+// заявки, для ссылки "Посмотреть заявку" на уже существующий
+// /marketplace/requests/{id} (никогда не ссылаемся на ещё не
+// опубликованный draft — backend отдаёт по нему 404 на публичном detail).
+const draftRequest = ref<MarketplaceRequest | null>(null)
+const publishedRequestId = ref<string | null>(null)
 const marketplaceSuccessMessage = ref(false)
+const isPublishingDraft = computed(() => !!draftRequest.value && requestActionId.value === draftRequest.value.projectWorkId)
 
 function handleFindContractor(work: ProjectWork) {
   marketplaceSuccessMessage.value = false
@@ -178,7 +192,34 @@ async function confirmPlaceOnMarketplace() {
   if (!work) return
   const created = await createRequestForWork(projectId.value, work.id)
   pendingMarketplaceWork.value = null
-  if (created) marketplaceSuccessMessage.value = true
+  // created.status === 'draft' здесь всегда (см. backend New()) — НЕ
+  // считаем заявку опубликованной, не показываем публичный успех, а
+  // предлагаем опубликовать явным вторым шагом.
+  if (created) draftRequest.value = created
+}
+
+async function confirmPublishDraft() {
+  const draft = draftRequest.value
+  if (!draft || isPublishingDraft.value) return
+  const updated = await publishRequest(projectId.value, draft.projectWorkId)
+  if (updated) {
+    draftRequest.value = null
+    publishedRequestId.value = updated.id
+    marketplaceSuccessMessage.value = true
+  }
+  // На ошибке (см. useMarketplace.ts publishRequest — включая 409
+  // invalid_transition) диалог намеренно НЕ закрываем молча: пользователь
+  // видит текст ошибки во floating-баннере ниже и решает сам — повторить
+  // или "Оставить как черновик". workRequestCache уже обновлён актуальным
+  // статусом с backend публикацией внутри publishRequest().
+}
+
+function dismissDraft() {
+  draftRequest.value = null
+}
+
+async function handlePublishFromCard(work: ProjectWork) {
+  await publishRequest(projectId.value, work.id)
 }
 
 function handleViewMarketplaceRequest(requestId: string) {
@@ -244,9 +285,9 @@ function handleViewOrder(orderId: string) {
 
         <p v-if="marketplaceSuccessMessage" class="works-page__banner-success">
           <UiIcon name="check" :size="16" />
-          Заявка размещена на бирже.
-          <NuxtLink to="/marketplace">
-            Открыть биржу
+          Заявка опубликована на бирже.
+          <NuxtLink v-if="publishedRequestId" :to="`/marketplace/requests/${publishedRequestId}`">
+            Посмотреть заявку
           </NuxtLink>
           <button type="button" aria-label="Скрыть" @click="marketplaceSuccessMessage = false">
             <UiIcon name="close" :size="14" />
@@ -288,11 +329,13 @@ function handleViewOrder(orderId: string) {
                 :status-updating="statusUpdatingId === work.id"
                 :deleting="deletingId === work.id"
                 :marketplace-request="workRequestCache[work.id]"
+                :publishing="requestActionId === work.id"
                 :order="resolveOrderForWork(work)"
                 @update-status="(status) => handleStatusChange(work.id, status)"
                 @delete="handleDelete(work.id)"
                 @menu-opened="handleMenuOpened(work.id)"
                 @find-contractor="handleFindContractor(work)"
+                @publish-request="handlePublishFromCard(work)"
                 @view-marketplace-request="handleViewMarketplaceRequest"
                 @view-order="handleViewOrder"
               />
@@ -371,11 +414,28 @@ function handleViewOrder(orderId: string) {
       title="Разместить работу на бирже?"
       :message="pendingMarketplaceWork ? `${resolveWorkTitle(pendingMarketplaceWork)} · Количество: ${formatQuantity(pendingMarketplaceWork.quantity, pendingMarketplaceWork.unit)}` : ''"
       :confirm-text="isCreatingRequest ? 'Размещаем…' : 'Разместить заявку'"
+      :confirm-disabled="isCreatingRequest"
       @confirm="confirmPlaceOnMarketplace"
       @cancel="pendingMarketplaceWork = null"
     />
     <p v-if="createRequestError" class="works-page__banner-error works-page__banner-error--floating">
       {{ createRequestError.message }}
+    </p>
+
+    <!-- Draft → Publish v1: заявка уже создана (status='draft'), но ещё не
+         видна мастерам — второй, отдельный шаг от диалога выше. -->
+    <UiConfirmDialog
+      :open="draftRequest !== null"
+      title="Заявка создана"
+      message="Она пока не опубликована и не видна мастерам."
+      :confirm-text="isPublishingDraft ? 'Публикуем…' : 'Опубликовать заявку'"
+      cancel-text="Оставить как черновик"
+      :confirm-disabled="isPublishingDraft"
+      @confirm="confirmPublishDraft"
+      @cancel="dismissDraft"
+    />
+    <p v-if="publishRequestError" class="works-page__banner-error works-page__banner-error--floating">
+      {{ publishRequestError.message }}
     </p>
   </main>
 </template>

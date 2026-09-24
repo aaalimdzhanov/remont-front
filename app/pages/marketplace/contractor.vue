@@ -10,7 +10,7 @@
 // всегда определяются backend'ом из auth-контекста (см. api/contractor.ts).
 // status тоже не редактируется: backend не даёт update-путь для него в v1
 // (см. contractor_dto.go), поэтому здесь только read-only подпись.
-import type { ContractorService } from '~/api/types'
+import type { ContractorService, PortfolioItem } from '~/api/types'
 
 definePageMeta({ middleware: 'auth' })
 useHead({ title: 'Профиль мастера' })
@@ -21,9 +21,14 @@ const {
   services, servicesLoading, servicesError,
   isAddingService, addServiceError,
   serviceActionId, serviceActionError,
+  portfolio, portfolioLoading, portfolioError,
+  isUploadingPortfolio, uploadPortfolioError,
+  portfolioActionId, portfolioActionError,
+  isReorderingPortfolio, reorderPortfolioError,
   catalogCategories, catalogCategoriesLoading, catalogWorkTypes,
   loadContractor, updateContractorProfile, createContractorProfile,
   loadServices, addService, updateService, deleteService,
+  loadPortfolio, uploadPortfolio, deletePortfolio, reorderPortfolio,
   loadFilterCatalog,
 } = useMarketplace()
 
@@ -49,7 +54,10 @@ watch(contractor, (value) => {
 onMounted(async () => {
   void loadFilterCatalog()
   await loadContractor()
-  if (contractor.value) void loadServices()
+  if (contractor.value) {
+    void loadServices()
+    void loadPortfolio()
+  }
 })
 
 const isNewProfile = computed(() => contractor.value === null)
@@ -64,7 +72,10 @@ async function handleSave() {
     : await updateContractorProfile(payload)
   if (ok) {
     saveSuccess.value = true
-    if (contractor.value) void loadServices()
+    if (contractor.value) {
+      void loadServices()
+      void loadPortfolio()
+    }
   }
 }
 
@@ -93,6 +104,27 @@ async function handleConfirmDelete() {
   const target = deletingService.value
   deletingService.value = null
   await deleteService(target.id)
+}
+
+// ---- Portfolio ("Мои работы") ----
+const showUploadSheet = ref(false)
+const deletingPortfolioItem = ref<PortfolioItem | null>(null)
+const viewingPortfolioItem = ref<PortfolioItem | null>(null)
+
+async function handleUploadSubmit(payload: { file: File, title: string, description: string }) {
+  const created = await uploadPortfolio(payload.file, payload.title, payload.description)
+  if (created) showUploadSheet.value = false
+}
+
+async function handleConfirmDeletePortfolio() {
+  if (!deletingPortfolioItem.value) return
+  const target = deletingPortfolioItem.value
+  deletingPortfolioItem.value = null
+  await deletePortfolio(target.id)
+}
+
+function handleReorderPortfolio(items: PortfolioItem[]) {
+  void reorderPortfolio(items)
 }
 </script>
 
@@ -218,6 +250,67 @@ async function handleConfirmDelete() {
           />
         </div>
       </section>
+
+      <section v-if="contractor" class="contractor-page__portfolio">
+        <div class="contractor-page__portfolio-header">
+          <div>
+            <h2 class="text-h3">
+              Мои работы
+            </h2>
+            <p class="text-caption text-muted">
+              Покажите клиентам примеры выполненных работ
+            </p>
+          </div>
+          <button v-if="portfolio.length > 0" type="button" class="btn btn-secondary btn-sm" @click="showUploadSheet = true">
+            <UiIcon name="plus" :size="16" />
+            Добавить работу
+          </button>
+        </div>
+
+        <div v-if="portfolioLoading" class="contractor-page__skeletons">
+          <div v-for="n in 2" :key="n" class="contractor-page__service-skeleton" />
+        </div>
+        <div v-else-if="portfolioError" class="contractor-page__state">
+          <p class="text-secondary">
+            Не удалось загрузить работы.
+          </p>
+          <button type="button" class="btn btn-secondary" @click="loadPortfolio">
+            Повторить
+          </button>
+        </div>
+        <div v-else-if="portfolio.length === 0" class="contractor-page__portfolio-empty">
+          <div class="contractor-page__portfolio-empty-icon">
+            <UiIcon name="camera" :size="24" />
+          </div>
+          <p class="text-h3 contractor-page__portfolio-empty-title">
+            Пока нет фотографий работ
+          </p>
+          <p class="text-secondary contractor-page__portfolio-empty-desc">
+            Добавьте фотографии выполненных проектов, чтобы клиенты могли увидеть качество вашей работы.
+          </p>
+          <button type="button" class="btn btn-primary" @click="showUploadSheet = true">
+            <UiIcon name="plus" :size="16" />
+            Добавить работу
+          </button>
+        </div>
+        <template v-else>
+          <p v-if="portfolioActionError" class="contractor-page__error">
+            {{ portfolioActionError.message }}
+          </p>
+          <p v-if="reorderPortfolioError" class="contractor-page__error">
+            {{ reorderPortfolioError.message }}
+          </p>
+          <MarketplacePortfolioGrid
+            :items="portfolio"
+            editable
+            :deleting-id="portfolioActionId"
+            :reordering="isReorderingPortfolio"
+            @delete="(id) => (deletingPortfolioItem = portfolio.find(p => p.id === id) ?? null)"
+            @reorder="handleReorderPortfolio"
+            @open="(item) => (viewingPortfolioItem = item as PortfolioItem)"
+          />
+        </template>
+      </section>
     </template>
 
     <MarketplaceAddServiceSheet
@@ -249,6 +342,27 @@ async function handleConfirmDelete() {
       @confirm="handleConfirmDelete"
       @cancel="deletingService = null"
     />
+
+    <MarketplacePortfolioUploadSheet
+      :open="showUploadSheet"
+      :submitting="isUploadingPortfolio"
+      :error="uploadPortfolioError?.message ?? null"
+      @submit="handleUploadSubmit"
+      @cancel="showUploadSheet = false"
+    />
+
+    <UiConfirmDialog
+      :open="deletingPortfolioItem !== null"
+      title="Удалить работу?"
+      message="Фотография будет удалена из вашего портфолио."
+      confirm-text="Удалить"
+      :confirm-disabled="portfolioActionId !== null"
+      danger
+      @confirm="handleConfirmDeletePortfolio"
+      @cancel="deletingPortfolioItem = null"
+    />
+
+    <MarketplacePortfolioImageViewer :item="viewingPortfolioItem" @close="viewingPortfolioItem = null" />
   </main>
 </template>
 
@@ -441,5 +555,58 @@ async function handleConfirmDelete() {
   border: 1px dashed var(--color-border-strong);
   border-radius: var(--radius-card);
   background: var(--color-surface-subtle);
+}
+
+.contractor-page__portfolio {
+  margin-top: var(--space-8);
+}
+
+.contractor-page__portfolio-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.contractor-page__portfolio-header h2 {
+  margin: 0 0 2px;
+}
+
+.contractor-page__portfolio-header p {
+  margin: 0;
+}
+
+.contractor-page__portfolio-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-8) var(--space-5);
+  text-align: center;
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-card);
+  background: var(--color-surface-subtle);
+}
+
+.contractor-page__portfolio-empty-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-1);
+}
+
+.contractor-page__portfolio-empty-title {
+  margin: 0;
+}
+
+.contractor-page__portfolio-empty-desc {
+  margin: 0 0 var(--space-2);
+  max-width: 40ch;
 }
 </style>

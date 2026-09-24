@@ -64,6 +64,7 @@ function resolvedProject(overrides: Record<string, unknown> = {}) {
     status: 'draft',
     building: useBuilding().document.value,
     updatedAt: '2026-01-01T00:00:00Z',
+    location: null,
     ...overrides,
   }
 }
@@ -491,6 +492,129 @@ describe('project switching', () => {
 
     await vi.advanceTimersByTimeAsync(AUTOSAVE_DEBOUNCE_MS * 2)
     expect(projectsApi.updateProject).not.toHaveBeenCalled()
+  })
+})
+
+// Project Location v1 — see задание, секция AUTOSAVE: backend PUT is
+// full-replace (omitting location clears it), so every requestSave() must
+// carry the current location alongside name/status/building — not just when
+// location itself changed.
+describe('Project Location', () => {
+  it('createProject() with a location sends it in the POST body and exposes it immediately', async () => {
+    const { createProject, location } = useProjectPersistence()
+    projectsApi.createProject.mockResolvedValueOnce(resolvedProject({
+      id: 'srv-new', location: { city: 'Ташкент', district: 'Юнусабадский' },
+    }))
+
+    const id = await createProject({ name: 'Дом', type: 'house', location: { city: 'Ташкент', district: 'Юнусабадский' } })
+
+    expect(id).toBe('srv-new')
+    expect(location.value).toEqual({ city: 'Ташкент', district: 'Юнусабадский' })
+    const payload = projectsApi.createProject.mock.calls[0]![0] as { location: unknown }
+    expect(payload.location).toEqual({ city: 'Ташкент', district: 'Юнусабадский' })
+  })
+
+  it('createProject() without a location sends location: null (not omitted, not fabricated)', async () => {
+    const { createProject } = useProjectPersistence()
+    projectsApi.createProject.mockResolvedValueOnce(resolvedProject({ id: 'srv-new' }))
+
+    await createProject({ name: 'Дом', type: 'house' })
+
+    const payload = projectsApi.createProject.mock.calls[0]![0] as { location: unknown }
+    expect(payload.location).toBeNull()
+  })
+
+  it('loadProject() exposes the project location as-is', async () => {
+    const { loadProject, location } = useProjectPersistence()
+    projectsApi.getProject.mockResolvedValueOnce(resolvedProject({ location: { city: 'Самарканд', district: 'Центр' } }))
+
+    await loadProject('srv-1')
+
+    expect(location.value).toEqual({ city: 'Самарканд', district: 'Центр' })
+  })
+
+  it('loadProject() with location: null exposes null — no invented address', async () => {
+    const { loadProject, location } = useProjectPersistence()
+    projectsApi.getProject.mockResolvedValueOnce(resolvedProject())
+
+    await loadProject('srv-1')
+
+    expect(location.value).toBeNull()
+  })
+
+  it('setLocation() alone (no Building mutation) marks the project dirty', async () => {
+    const { loadProject, setLocation, isDirty } = useProjectPersistence()
+    projectsApi.getProject.mockResolvedValueOnce(resolvedProject())
+    await loadProject('srv-1')
+    expect(isDirty.value).toBe(false)
+
+    setLocation({ city: 'Ташкент', district: 'Юнусабадский' })
+
+    expect(isDirty.value).toBe(true)
+  })
+
+  it('save() after setLocation() PUTs the new location and clears dirty', async () => {
+    const { loadProject, setLocation, save, isDirty } = useProjectPersistence()
+    projectsApi.getProject.mockResolvedValueOnce(resolvedProject())
+    await loadProject('srv-1')
+
+    setLocation({ city: 'Ташкент', district: 'Юнусабадский' })
+    projectsApi.updateProject.mockResolvedValueOnce(resolvedProject({ location: { city: 'Ташкент', district: 'Юнусабадский' } }))
+    const ok = await save()
+
+    expect(ok).toBe(true)
+    expect(isDirty.value).toBe(false)
+    const payload = projectsApi.updateProject.mock.calls[0]![1] as { location: unknown }
+    expect(payload.location).toEqual({ city: 'Ташкент', district: 'Юнусабадский' })
+  })
+
+  it('clearing an existing location (setLocation(null)) saves location: null, not the old value', async () => {
+    const { loadProject, setLocation, save } = useProjectPersistence()
+    projectsApi.getProject.mockResolvedValueOnce(resolvedProject({ location: { city: 'Ташкент', district: 'Юнусабадский' } }))
+    await loadProject('srv-1')
+
+    setLocation(null)
+    projectsApi.updateProject.mockResolvedValueOnce(resolvedProject({ location: null }))
+    await save()
+
+    const payload = projectsApi.updateProject.mock.calls[0]![1] as { location: unknown }
+    expect(payload.location).toBeNull()
+  })
+
+  // The critical regression this whole feature depends on: backend Update()
+  // is full-replace (see remont-back application/project/service.go doc
+  // comment), so a save triggered by an UNRELATED Building JSON mutation
+  // must still carry the current location — otherwise plain plan-editing
+  // autosave would silently wipe it.
+  it('a Building-only mutation autosave still carries the already-set location (does not wipe it)', async () => {
+    const { createBuilding } = useBuilding()
+    const { loadProject, setLocation, projectId } = useProjectPersistence()
+    projectsApi.getProject.mockResolvedValueOnce(resolvedProject())
+    await loadProject('srv-1')
+    setLocation({ city: 'Ташкент', district: 'Юнусабадский' })
+    projectsApi.updateProject.mockResolvedValueOnce(resolvedProject({ location: { city: 'Ташкент', district: 'Юнусабадский' } }))
+    await useProjectPersistence().save()
+    projectsApi.updateProject.mockClear()
+
+    projectId.value = 'srv-1'
+    createBuilding(5, 5) // unrelated geometry mutation — no setLocation() call here
+    projectsApi.updateProject.mockResolvedValueOnce(resolvedProject({ location: { city: 'Ташкент', district: 'Юнусабадский' } }))
+    await vi.advanceTimersByTimeAsync(AUTOSAVE_DEBOUNCE_MS)
+
+    expect(projectsApi.updateProject).toHaveBeenCalledTimes(1)
+    const payload = projectsApi.updateProject.mock.calls[0]![1] as { location: unknown }
+    expect(payload.location).toEqual({ city: 'Ташкент', district: 'Юнусабадский' })
+  })
+
+  it('cleanup() resets location to null for the next editor session', async () => {
+    const { loadProject, location, cleanup } = useProjectPersistence()
+    projectsApi.getProject.mockResolvedValueOnce(resolvedProject({ location: { city: 'Ташкент', district: 'Юнусабадский' } }))
+    await loadProject('srv-1')
+    expect(location.value).not.toBeNull()
+
+    cleanup()
+
+    expect(location.value).toBeNull()
   })
 })
 

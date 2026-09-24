@@ -25,7 +25,7 @@
 // button внутрь link") — визуальная "кнопка" ниже это <span class="btn">,
 // тот же приём, что уже использует OpenRequestCard.vue для "Подробнее".
 import { contractorDescription, contractorDisplayName } from '~/utils/order'
-import { contractorCardPriceLabel, contractorServicesLabel } from '~/utils/marketplace'
+import { contractorCardPriceLabel, contractorServicesLabel, formatLocation } from '~/utils/marketplace'
 import type { PublicContractorProfile } from '~/api/types'
 
 const props = defineProps<{ contractor: PublicContractorProfile }>()
@@ -33,6 +33,7 @@ const props = defineProps<{ contractor: PublicContractorProfile }>()
 const description = computed(() => contractorDescription(props.contractor))
 const servicesLabel = computed(() => contractorServicesLabel(props.contractor.services))
 const priceLabel = computed(() => contractorCardPriceLabel(props.contractor.services))
+const locationLabel = computed(() => formatLocation(props.contractor.location))
 </script>
 
 <template>
@@ -53,6 +54,11 @@ const priceLabel = computed(() => contractorCardPriceLabel(props.contractor.serv
         <template v-if="contractor.reviewsCount > 0">· {{ reviewsCountLabel(contractor.reviewsCount) }}</template>
       </span>
     </div>
+
+    <p v-if="locationLabel" class="public-contractor-card__location">
+      <UiIcon name="pin" :size="14" />
+      Работает в: {{ locationLabel }}
+    </p>
 
     <p v-if="description" class="public-contractor-card__description">
       {{ description }}
@@ -123,6 +129,22 @@ const priceLabel = computed(() => contractorCardPriceLabel(props.contractor.serv
   display: flex;
   align-items: center;
   gap: var(--space-1);
+}
+
+.public-contractor-card__location {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: 0;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  color: var(--color-text-secondary);
+  font-size: var(--font-small-size);
+}
+
+.public-contractor-card__location .icon {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
 }
 
 /* line-clamp — карточка не должна растягиваться из-за длинного описания

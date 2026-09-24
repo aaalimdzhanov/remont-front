@@ -28,7 +28,7 @@
 <template>
   <header class="app-header">
     <div class="app-header__top">
-      <NuxtLink to="/projects" class="app-header__brand">
+      <NuxtLink to="/marketplace" class="app-header__brand">
         <UiBrandLogo variant="header" />
       </NuxtLink>
 

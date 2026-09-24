@@ -19,7 +19,7 @@ import {
   getProjects,
   updateProject,
 } from '~/api/projects'
-import type { ApiError, ProjectSummary } from '~/api/types'
+import type { ApiError, Location, ProjectSummary } from '~/api/types'
 import type { BuildingDocument, BuildingType } from '~/types/building'
 
 // Простой способ выключить autosave целиком на время отладки/тестов —
@@ -80,7 +80,20 @@ export function useProjectPersistence() {
   // обрабатывается само собой (revision в этот момент уже успела уйти вперёд).
   const savedRevision = useState<number>('project-persistence-saved-revision', () => 0)
 
-  const isDirty = computed(() => documentRevision.value !== savedRevision.value)
+  // Project Location v1 — сознательно НЕ часть Building JSON/documentRevision
+  // (см. useBuilding.ts doc comment: Building JSON — единственный источник
+  // истины для геометрии, задание прямо запрещает добавлять сюда location).
+  // Поэтому dirty-tracking location'а — своя же пара "текущее/подтверждённое
+  // backend'ом" значение, тем же паттерном, что revision/savedRevision выше,
+  // сравнивается через JSON (Location — плоский {city,district}|null, этого
+  // достаточно, без отдельной deep-equal функции).
+  const location = useState<Location | null>('project-persistence-location', () => null)
+  const savedLocationJson = useState<string>('project-persistence-saved-location', () => 'null')
+
+  const isDirty = computed(() =>
+    documentRevision.value !== savedRevision.value
+    || JSON.stringify(location.value) !== savedLocationJson.value,
+  )
 
   const saveStatus = computed<SaveStatus>(() => {
     if (isSaving.value) return 'saving'
@@ -116,6 +129,17 @@ export function useProjectPersistence() {
     saveQueued = false
     saveInFlight = false
     isSaving.value = false
+  }
+
+  // Project Location v1 — единственный сеттер location'а вне create/load.
+  // НЕ шлёт fetch() сам (см. задание, секция AUTOSAVE: "не делай watch(location)
+  // → fetch(), если это обходит существующий persistence flow") — только
+  // обновляет state и планирует autosave ЧЕРЕЗ тот же scheduleAutosave(), что
+  // и мутации Building JSON, поэтому дальше location проходит тот же
+  // debounce/revision/race-pipeline requestSave(), не второй.
+  function setLocation(next: Location | null) {
+    location.value = next
+    scheduleAutosave()
   }
 
   function scheduleAutosave() {
@@ -170,17 +194,25 @@ export function useProjectPersistence() {
     // Proxy в Node); Building JSON — по определению чистый JSON-документ, так
     // что этот способ и корректен, и заодно "снимает" реактивность.
     const snapshot = JSON.parse(JSON.stringify(buildingDocument.value)) as BuildingDocument
+    // Снимок location — тем же принципом, что и snapshot Building JSON выше:
+    // ровно в момент попытки save, а не на каждый setLocation(). PUT —
+    // full-replace (см. backend project.Service.Update doc comment: "omitting
+    // location in the update request clears it"), поэтому ЛЮБОЙ save (даже
+    // вызванный только мутацией Building JSON) обязан отправить текущий
+    // location, иначе обычное автосохранение плана молча стёрло бы его.
+    const locationSnapshot = location.value ? { ...location.value } : null
 
     saveInFlight = true
     isSaving.value = true
     error.value = null
     try {
-      const input = { name: snapshot.project.name, status: snapshot.project.status, building: snapshot }
+      const input = { name: snapshot.project.name, status: snapshot.project.status, building: snapshot, location: locationSnapshot }
       const result = await updateProject(targetId, input)
       if (tokenAtStart !== sessionToken) return false // проект сменился, пока летел запрос — результат неактуален
 
       lastSavedAt.value = result.updatedAt
       savedRevision.value = revisionAtStart
+      savedLocationJson.value = JSON.stringify(locationSnapshot)
       return true
     } catch (err) {
       if (tokenAtStart !== sessionToken) return false
@@ -215,7 +247,7 @@ export function useProjectPersistence() {
 
   if (isBrowser() && !beforeUnloadHandler) {
     beforeUnloadHandler = (event: BeforeUnloadEvent) => {
-      if (documentRevision.value === savedRevision.value) return
+      if (!isDirty.value) return
       event.preventDefault()
       event.returnValue = ''
     }
@@ -242,6 +274,8 @@ export function useProjectPersistence() {
     lastSavedAt.value = null
     error.value = null
     savedRevision.value = documentRevision.value
+    location.value = null
+    savedLocationJson.value = 'null'
   }
 
   // Ручной Save-триггер (кнопка "Сохранить"/"Повторить"). Тот же pipeline,
@@ -290,6 +324,11 @@ export function useProjectPersistence() {
       projectId.value = project.id
       lastSavedAt.value = project.updatedAt
       savedRevision.value = documentRevision.value
+      // ?? null — старые/тестовые ответы без явного поля location (backend
+      // реального API всегда отдаёт хотя бы null, см. projectResponse) не
+      // должны читаться как location.value === undefined.
+      location.value = project.location ?? null
+      savedLocationJson.value = JSON.stringify(location.value)
       return true
     } catch (err) {
       if (requestId !== loadRequestId) return false
@@ -306,7 +345,10 @@ export function useProjectPersistence() {
   // так что если вызывающая страница тут же перейдёт на /projects/{id},
   // editor откроется уже с корректным, чистым (isDirty=false) состоянием —
   // а autosave с первой же мутации будет использовать PUT, а не POST.
-  async function createProject(params: { name: string, type: BuildingType }): Promise<string | null> {
+  // location — опциональный (секция CREATE PROJECT SEMANTICS: если location
+  // выбрана на /projects/new ДО submit, она уходит сразу в этот же POST —
+  // не отдельным PUT после создания, никакого local draft → потом Save).
+  async function createProject(params: { name: string, type: BuildingType, location?: Location | null }): Promise<string | null> {
     if (isCreating.value) return null // защита от двойного submit/двойного клика
 
     isCreating.value = true
@@ -315,13 +357,15 @@ export function useProjectPersistence() {
       const blank = createEmptyBuildingDocument()
       blank.project.name = params.name
       blank.building.type = params.type
-      const created = await apiCreateProject({ name: params.name, status: blank.project.status, building: blank })
+      const created = await apiCreateProject({ name: params.name, status: blank.project.status, building: blank, location: params.location ?? null })
 
       invalidateCurrentSession() // на случай, если предыдущая editor-сессия ещё не была явно закрыта
       loadDocument(created.building)
       projectId.value = created.id
       lastSavedAt.value = created.updatedAt
       savedRevision.value = documentRevision.value
+      location.value = created.location ?? null
+      savedLocationJson.value = JSON.stringify(location.value)
       return created.id
     } catch (err) {
       setError(err)
@@ -350,6 +394,8 @@ export function useProjectPersistence() {
         projectId.value = null
         lastSavedAt.value = null
         savedRevision.value = documentRevision.value
+        location.value = null
+        savedLocationJson.value = 'null'
       }
       return true
     } catch (err) {
@@ -372,6 +418,8 @@ export function useProjectPersistence() {
     saveStatus,
     lastSavedAt,
     error,
+    location,
+    setLocation,
     clearError,
     refreshProjects,
     loadProject,

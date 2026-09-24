@@ -8,7 +8,8 @@ type IconName =
   | 'logout' | 'plus' | 'check' | 'alert' | 'more'
   | 'search' | 'edit' | 'user' | 'sort'
   | 'layers' | 'ceiling' | 'bolt' | 'faucet' | 'hammer' | 'roller' | 'grid' | 'refresh'
-  | 'folder' | 'list' | 'fit' | 'store' | 'coins' | 'home' | 'star'
+  | 'folder' | 'list' | 'fit' | 'store' | 'coins' | 'home' | 'star' | 'pin'
+  | 'camera' | 'grip'
 
 // filled — только для 'star' (рейтинг, см. RatingStars.vue): все остальные
 // иконки в проекте всегда stroke-only (fill:none), это не меняется —
@@ -56,6 +57,9 @@ const paths: Record<IconName, string> = {
   coins: 'M9 8a5 3 0 1 0 0-.01 M4 8v4a5 3 0 0 0 10 0 M9 12v4a5 3 0 0 0 10 0v-4',
   home: 'M4 11l8-7 8 7 M6 9.5V20h12V9.5 M10 20v-6h4v6',
   star: 'M12 3.5l2.6 5.4 5.9.8-4.3 4.2 1 5.9-5.2-2.8-5.2 2.8 1-5.9-4.3-4.2 5.9-.8z',
+  pin: 'M12 21s7-6.5 7-11.5A7 7 0 1 0 5 9.5C5 14.5 12 21 12 21z M12 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z',
+  camera: 'M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z M12 18a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
+  grip: 'M9 6h.01M9 12h.01M9 18h.01M15 6h.01M15 12h.01M15 18h.01',
 }
 </script>
 

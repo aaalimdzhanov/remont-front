@@ -3,10 +3,11 @@
 // фильтрация открытых заявок. Ничего не считает и не хранит на backend —
 // только преобразует уже готовые backend-значения в читаемый вид и фильтрует
 // уже загруженный набор (см. app/api/types.ts).
-import type { MarketplaceRequestStatus, OfferStatus, OpenMarketplaceRequest, PublicContractorProfile, PublicContractorService, WorkCategory, WorkType } from '~/api/types'
+import type { Location, MarketplaceRequestStatus, OfferStatus, OpenMarketplaceRequest, PublicContractorProfile, PublicContractorService, WorkCategory, WorkType } from '~/api/types'
 
 const REQUEST_STATUS_LABELS: Record<MarketplaceRequestStatus, string> = {
-  open: 'Открыта',
+  draft: 'Черновик',
+  open: 'Опубликована',
   cancelled: 'Отменена',
   closed: 'Закрыта',
 }
@@ -237,4 +238,22 @@ export function filterContractorsByWorkType(
 ): PublicContractorProfile[] {
   if (!workTypeId) return contractors
   return contractors.filter(c => c.services.some(s => s.workTypeId === workTypeId))
+}
+
+// ---- Location (Location/Address v1) ----
+// city/district — оба необязательные строки на backend (locationResponse,
+// см. api/types.ts Location), сюда попадает только уже нормализованный
+// Location | null (null — контрактор/проект локацию не указал, честно
+// ничего не показывать, а не "Адрес не указан"/выдуманный fallback).
+// Пустая строка ('') трактуется как "поле не заполнено" наравне с
+// отсутствием — на случай, если backend когда-нибудь пришлёт location с
+// одним из полей пустым, а не null целиком.
+export function formatLocation(location: Location | null): string | null {
+  if (!location) return null
+  const city = location.city.trim()
+  const district = location.district.trim()
+  if (city && district) return `${city}, ${district}`
+  if (city) return city
+  if (district) return district
+  return null
 }

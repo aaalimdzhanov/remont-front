@@ -22,16 +22,21 @@ import {
   listMyOffers as apiListMyOffers,
   listOffersForRequest as apiListOffersForRequest,
   listOpenMarketplaceRequests,
+  publishMarketplaceRequest as apiPublishMarketplaceRequest,
   updateOfferStatus as apiUpdateOfferStatus,
 } from '~/api/marketplace'
 import {
   addContractorService as apiAddContractorService,
   createContractor as apiCreateContractor,
   deleteContractorService as apiDeleteContractorService,
+  deletePortfolioItem as apiDeletePortfolioItem,
   getContractorOrNull,
   listContractorServices,
+  listPortfolioItems,
+  reorderPortfolioItems as apiReorderPortfolioItems,
   updateContractor as apiUpdateContractor,
   updateContractorService as apiUpdateContractorService,
+  uploadPortfolioItem as apiUploadPortfolioItem,
 } from '~/api/contractor'
 import { getWorkCategories, getWorkTypes } from '~/api/workCatalog'
 import { isApiError, toApiError } from '~/api/client'
@@ -48,6 +53,7 @@ import type {
   MarketplaceRequest,
   OfferStatus,
   OpenMarketplaceRequest,
+  PortfolioItem,
   PublicMarketplaceRequest,
   UpdateContractorServicePayload,
   WorkCategory,
@@ -105,6 +111,20 @@ export function useMarketplace() {
   const serviceActionId = useState<string | null>('marketplace-service-action-id', () => null)
   const serviceActionError = useState<ApiError | null>('marketplace-service-action-error', () => null)
 
+  // "Мои работы" (Portfolio) — тот же паттерн состояния, что и "Мои услуги"
+  // выше (см. app/api/contractor.ts listPortfolioItems/uploadPortfolioItem/
+  // deletePortfolioItem/reorderPortfolioItems). portfolioActionId — busy-id
+  // конкретного элемента (delete), тот же приём, что serviceActionId.
+  const portfolio = useState<PortfolioItem[]>('marketplace-portfolio', () => [])
+  const portfolioLoading = useState<boolean>('marketplace-portfolio-loading', () => false)
+  const portfolioError = useState<ApiError | null>('marketplace-portfolio-error', () => null)
+  const isUploadingPortfolio = useState<boolean>('marketplace-uploading-portfolio', () => false)
+  const uploadPortfolioError = useState<ApiError | null>('marketplace-upload-portfolio-error', () => null)
+  const portfolioActionId = useState<string | null>('marketplace-portfolio-action-id', () => null)
+  const portfolioActionError = useState<ApiError | null>('marketplace-portfolio-action-error', () => null)
+  const isReorderingPortfolio = useState<boolean>('marketplace-reordering-portfolio', () => false)
+  const reorderPortfolioError = useState<ApiError | null>('marketplace-reorder-portfolio-error', () => null)
+
   // ---- Work Catalog для формы "Добавить услугу" и фильтров /marketplace ----
   // Полный каталог (все категории/виды работ сразу) — переиспользуется и для
   // выпадающих списков "Добавить услугу", и для маппинга work_type_id ->
@@ -143,6 +163,11 @@ export function useMarketplace() {
 
   const isCreatingRequest = useState<boolean>('marketplace-creating-request', () => false)
   const createRequestError = useState<ApiError | null>('marketplace-create-request-error', () => null)
+  // Draft → Publish v1 — отдельная от createRequestError ошибка (та же
+  // логика разделения, что уже есть между createRequestError и
+  // myRequestsError для cancel/close): publish — своё действие со своим
+  // видимым в UI результатом, не должно путаться с ошибкой создания заявки.
+  const publishRequestError = useState<ApiError | null>('marketplace-publish-request-error', () => null)
   const isCreatingOffer = useState<boolean>('marketplace-creating-offer', () => false)
   const createOfferError = useState<ApiError | null>('marketplace-create-offer-error', () => null)
   const offerActionId = useState<string | null>('marketplace-offer-action-id', () => null)
@@ -321,6 +346,86 @@ export function useMarketplace() {
     }
   }
 
+  // ---- Portfolio ("Мои работы") ----
+
+  async function loadPortfolio(): Promise<void> {
+    portfolioLoading.value = true
+    portfolioError.value = null
+    try {
+      portfolio.value = await listPortfolioItems()
+    } catch (err) {
+      setErr(portfolioError, err)
+    } finally {
+      portfolioLoading.value = false
+    }
+  }
+
+  // Backend возвращает уже созданный item целиком (201) — просто добавляем
+  // его в конец локального списка (сортировка уже совпадает: новые элементы
+  // backend сам ставит в конец, см. AddPortfolioItem sort_order=len(existing)),
+  // без повторного GET (см. задание, секция 5: "не делать обязательный
+  // повторный GET, если backend response уже содержит созданный item").
+  async function uploadPortfolio(file: File, title: string, description: string): Promise<PortfolioItem | null> {
+    if (isUploadingPortfolio.value) return null
+    isUploadingPortfolio.value = true
+    uploadPortfolioError.value = null
+    try {
+      const created = await apiUploadPortfolioItem(file, title, description)
+      portfolio.value = [...portfolio.value, created]
+      return created
+    } catch (err) {
+      setErr(uploadPortfolioError, err)
+      return null
+    } finally {
+      isUploadingPortfolio.value = false
+    }
+  }
+
+  async function deletePortfolio(id: string): Promise<boolean> {
+    if (portfolioActionId.value) return false
+    portfolioActionId.value = id
+    portfolioActionError.value = null
+    try {
+      await apiDeletePortfolioItem(id)
+      portfolio.value = portfolio.value.filter(p => p.id !== id)
+      return true
+    } catch (err) {
+      setErr(portfolioActionError, err)
+      return false
+    } finally {
+      portfolioActionId.value = null
+    }
+  }
+
+  // orderedItems — весь портфолио-список в новом порядке (после drag&drop) —
+  // применяется в UI оптимистично сразу, ДО ответа backend (см. задание,
+  // секция REORDER: "UI может оптимистично менять порядок"). sort_order
+  // пересчитывается по позиции в массиве (0..n-1) — backend ожидает ВЕСЬ
+  // список за один PATCH, не только передвинутый элемент (см.
+  // api/types.ts ReorderPortfolioPayload). На успехе заменяется реальным
+  // ответом backend; на ошибке — откат к snapshot до перетаскивания (см.
+  // задание: "если backend вернул ошибку — вернуть предыдущий порядок").
+  async function reorderPortfolio(orderedItems: PortfolioItem[]): Promise<boolean> {
+    if (isReorderingPortfolio.value) return false
+    const previous = portfolio.value
+    portfolio.value = orderedItems
+    isReorderingPortfolio.value = true
+    reorderPortfolioError.value = null
+    try {
+      const updated = await apiReorderPortfolioItems({
+        items: orderedItems.map((item, index) => ({ id: item.id, sort_order: index })),
+      })
+      portfolio.value = updated
+      return true
+    } catch (err) {
+      setErr(reorderPortfolioError, err)
+      portfolio.value = previous
+      return false
+    } finally {
+      isReorderingPortfolio.value = false
+    }
+  }
+
   // Полный каталог грузится один раз за сессию (страница "Добавить услугу" и
   // фильтры /marketplace переиспользуют один и тот же стейт) — повторные
   // вызовы после успешной загрузки — no-op.
@@ -393,6 +498,32 @@ export function useMarketplace() {
     const workId = updated.projectWorkId
     if (workRequestCache.value[workId]) {
       workRequestCache.value = { ...workRequestCache.value, [workId]: updated }
+    }
+  }
+
+  // Draft → Publish v1 — тот же guard-паттерн (requestActionId), что уже
+  // используют cancelRequest/closeRequest ниже: пока один запрос летит,
+  // повторный вызов (двойной клик) для того же workId — no-op, не второй
+  // POST. Body — пустое (см. api/marketplace.ts): backend сам выполняет
+  // draft -> open, frontend не отправляет status.
+  async function publishRequest(projectId: string, workId: string): Promise<MarketplaceRequest | null> {
+    if (requestActionId.value) return null
+    requestActionId.value = workId
+    publishRequestError.value = null
+    try {
+      const updated = await apiPublishMarketplaceRequest(projectId, workId)
+      replaceMyRequest(updated)
+      return updated
+    } catch (err) {
+      setErr(publishRequestError, err)
+      // 409 invalid_transition и подобные — заявка уже не в draft (кто-то
+      // другой её опубликовал/отменил параллельно). Обновляем кэш реальным
+      // текущим состоянием с backend, а не оставляем UI думать, что она
+      // всё ещё draft (см. задание, секция ERROR HANDLING).
+      void checkWorkRequest(projectId, workId)
+      return null
+    } finally {
+      requestActionId.value = null
     }
   }
 
@@ -488,6 +619,7 @@ export function useMarketplace() {
     myOffersError.value = null
     requestOffersError.value = null
     createRequestError.value = null
+    publishRequestError.value = null
     createOfferError.value = null
     offerActionError.value = null
     services.value = []
@@ -495,6 +627,11 @@ export function useMarketplace() {
     addServiceError.value = null
     serviceActionError.value = null
     saveContractorError.value = null
+    portfolio.value = []
+    portfolioError.value = null
+    uploadPortfolioError.value = null
+    portfolioActionError.value = null
+    reorderPortfolioError.value = null
   }
 
   return {
@@ -527,6 +664,15 @@ export function useMarketplace() {
     addServiceError,
     serviceActionId,
     serviceActionError,
+    portfolio,
+    portfolioLoading,
+    portfolioError,
+    isUploadingPortfolio,
+    uploadPortfolioError,
+    portfolioActionId,
+    portfolioActionError,
+    isReorderingPortfolio,
+    reorderPortfolioError,
     catalogCategories,
     catalogCategoriesLoading,
     catalogWorkTypes,
@@ -535,6 +681,7 @@ export function useMarketplace() {
     requestTitleCache,
     isCreatingRequest,
     createRequestError,
+    publishRequestError,
     isCreatingOffer,
     createOfferError,
     offerActionId,
@@ -551,11 +698,16 @@ export function useMarketplace() {
     addService,
     updateService,
     deleteService,
+    loadPortfolio,
+    uploadPortfolio,
+    deletePortfolio,
+    reorderPortfolio,
     loadFilterCatalog,
     setRequestFilter,
     resetRequestFilters,
     checkWorkRequest,
     createRequestForWork,
+    publishRequest,
     cancelRequest,
     closeRequest,
     loadOffersForRequest,

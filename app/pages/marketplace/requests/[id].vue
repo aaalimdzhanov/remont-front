@@ -49,6 +49,12 @@ const {
 // backend: OrderHandler.ListMine), поэтому грузится независимо от фазы.
 const orderForThisRequest = computed(() => findOrderByRequestId(requestId.value))
 
+// location — Project Location в Marketplace v1 (см. api/types.ts
+// PublicMarketplaceRequest): coarse city/district, null если у Project нет
+// location — тот же formatLocation(), что уже использует OpenRequestCard.vue
+// и PublicContractorCard.vue, без второго форматтера.
+const locationLabel = computed(() => (requestDetail.value ? formatLocation(requestDetail.value.location) : null))
+
 useHead({ title: 'Заявка' })
 
 type Phase = 'loading' | 'owner' | 'public' | 'not-found' | 'error'
@@ -213,6 +219,10 @@ async function handleWithdraw(offerId: string) {
       </h1>
       <p class="text-secondary">
         Количество: {{ formatQuantity(requestDetail.quantity, requestDetail.unit) }}
+      </p>
+      <p v-if="locationLabel" class="request-page__location">
+        <UiIcon name="pin" :size="14" />
+        {{ locationLabel }}
       </p>
       <p class="text-secondary">
         Опубликовано {{ formatMarketplaceDate(requestDetail.createdAt) }} ·
@@ -380,6 +390,20 @@ async function handleWithdraw(offerId: string) {
 
 .request-page__title {
   margin: 0 0 var(--space-2);
+}
+
+.request-page__location {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  overflow-wrap: break-word;
+  word-break: break-word;
+  color: var(--color-text-secondary);
+}
+
+.request-page__location .icon {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
 }
 
 .request-page__status-pill {
