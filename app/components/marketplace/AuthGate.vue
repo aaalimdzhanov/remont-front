@@ -6,9 +6,11 @@
 // /auth/register, с ?redirect=<текущая страница>, чтобы после входа
 // вернуться сюда же (см. utils/authRedirect.ts и pages/auth/login.vue,
 // register.vue, которые читают этот параметр).
-const props = withDefaults(defineProps<{ message?: string }>(), {
-  message: 'Войдите, чтобы откликнуться',
-})
+const { t } = useI18n()
+
+const props = defineProps<{ message?: string }>()
+
+const displayMessage = computed(() => props.message ?? t('marketplace.loginToRespondDefault'))
 
 const route = useRoute()
 const redirectQuery = computed(() => ({ redirect: route.fullPath }))
@@ -17,14 +19,14 @@ const redirectQuery = computed(() => ({ redirect: route.fullPath }))
 <template>
   <div class="mp-auth-gate">
     <p class="mp-auth-gate__message">
-      {{ props.message }}
+      {{ displayMessage }}
     </p>
     <div class="mp-auth-gate__actions">
       <NuxtLink :to="{ path: '/auth/login', query: redirectQuery }" class="btn btn-primary mp-auth-gate__action">
-        Войти
+        {{ t('navigation.login') }}
       </NuxtLink>
       <NuxtLink :to="{ path: '/auth/register', query: redirectQuery }" class="btn btn-secondary mp-auth-gate__action">
-        Зарегистрироваться
+        {{ t('navigation.register') }}
       </NuxtLink>
     </div>
   </div>

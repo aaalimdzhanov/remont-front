@@ -13,18 +13,19 @@ import { contractorDescription, contractorDisplayName } from '~/utils/order'
 import type { OrderContractorSummary } from '~/api/types'
 
 const contractor: OrderContractorSummary = { id: 'ct1', name: 'Азиз', description: 'Плитка, 5 лет опыта' }
+const t = (key: string) => key
 
 describe('OrderContractorCard display logic — name', () => {
   it('shows the contractor name', () => {
-    expect(contractorDisplayName(contractor)).toBe('Азиз')
+    expect(contractorDisplayName(contractor, t)).toBe('Азиз')
   })
 
-  it('falls back to "Мастер" when contractor is null (backend edge case)', () => {
-    expect(contractorDisplayName(null)).toBe('Мастер')
+  it('falls back to the i18n fallback key when contractor is null (backend edge case)', () => {
+    expect(contractorDisplayName(null, t)).toBe('contractors.fallbackName')
   })
 
-  it('falls back to "Мастер" when name is empty/whitespace (defensive, should not happen per backend validation)', () => {
-    expect(contractorDisplayName({ ...contractor, name: '   ' })).toBe('Мастер')
+  it('falls back to the i18n fallback key when name is empty/whitespace (defensive, should not happen per backend validation)', () => {
+    expect(contractorDisplayName({ ...contractor, name: '   ' }, t)).toBe('contractors.fallbackName')
   })
 })
 
@@ -52,7 +53,7 @@ describe('OrderContractorCard — never surfaces id (UUID) or phone', () => {
   })
 
   it('the display functions only ever return name/description strings — never the id (UUID)', () => {
-    expect(contractorDisplayName(contractor)).not.toContain(contractor.id)
+    expect(contractorDisplayName(contractor, t)).not.toContain(contractor.id)
     expect(contractorDescription(contractor)).not.toContain(contractor.id)
   })
 })

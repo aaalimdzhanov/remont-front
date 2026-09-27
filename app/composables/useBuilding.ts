@@ -71,6 +71,7 @@ function nextId(prefix: string, existingIds: string[]): string {
  * (на будущих этапах) будут строиться поверх неё же, без отдельных копий.
  */
 export function useBuilding() {
+  const { t } = useI18n()
   const document = useState<BuildingDocument>('building-document', createEmptyBuildingDocument)
   // Монотонный счётчик мутаций (не Building JSON, не сохраняется в документ).
   // Это единственный примитив, который useBuilding предоставляет для
@@ -230,7 +231,7 @@ export function useBuilding() {
     if (!conflictIds || conflictIds.size === 0) return []
     return document.value.building.openings
       .filter(opening => conflictIds.has(opening.id))
-      .map(opening => (opening.type === 'door' ? 'Дверь' : 'Окно'))
+      .map(opening => (opening.type === 'door' ? t('builder.door') : t('builder.window')))
   }
 
   // Единая точка "это прикладная мутация". Вызывается из каждого мутатора

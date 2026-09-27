@@ -9,6 +9,8 @@
 const props = defineProps<{ open: boolean, submitting: boolean, error: string | null }>()
 const emit = defineEmits<{ submit: [price: number, comment: string], cancel: [] }>()
 
+const { t } = useI18n()
+
 // ref('') стартует строкой, но Vue у <input type="number"> кастит v-model в
 // число автоматически при любом реальном вводе (vModelText: el.type==='number'
 // включает castToNumber ВСЕГДА, даже без модификатора .number) — после ввода
@@ -38,15 +40,15 @@ function handleSubmit() {
 <template>
   <Teleport to="body">
     <div v-if="open" class="offer-sheet__overlay" @click.self="emit('cancel')">
-      <div class="offer-sheet__panel" role="dialog" aria-modal="true" aria-label="Предложить цену">
+      <div class="offer-sheet__panel" role="dialog" aria-modal="true" :aria-label="t('offers.createTitle')">
         <div class="offer-sheet__handle" aria-hidden="true" />
         <h3 class="offer-sheet__title">
-          Предложить цену
+          {{ t('offers.createTitle') }}
         </h3>
 
         <form class="offer-sheet__form" @submit.prevent="handleSubmit">
           <label class="field">
-            <span class="field__label">Цена, сум</span>
+            <span class="field__label">{{ t('offers.priceLabel') }}</span>
             <input
               v-model="priceInput"
               type="number"
@@ -55,19 +57,19 @@ function handleSubmit() {
               step="1"
               class="input"
               :class="{ 'input--error': !isPriceEmpty && !isPriceValid }"
-              placeholder="Например, 300000"
+              :placeholder="t('offers.pricePlaceholder')"
               :disabled="submitting"
               autofocus
             >
           </label>
 
           <label class="field">
-            <span class="field__label">Комментарий (необязательно)</span>
+            <span class="field__label">{{ t('offers.commentLabel') }}</span>
             <textarea
               v-model="comment"
               class="input offer-sheet__comment"
               rows="3"
-              placeholder="Например, «Сделаю за 2 дня»"
+              :placeholder="t('offers.commentPlaceholder')"
               :disabled="submitting"
             />
           </label>
@@ -77,7 +79,7 @@ function handleSubmit() {
           </p>
 
           <button type="submit" class="btn btn-primary offer-sheet__submit" :disabled="!isPriceValid || submitting">
-            {{ submitting ? 'Отправляем…' : 'Отправить предложение' }}
+            {{ submitting ? t('common.sending') : t('offers.submit') }}
           </button>
         </form>
       </div>

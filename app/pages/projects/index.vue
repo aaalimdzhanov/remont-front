@@ -16,7 +16,9 @@ import type { Project } from '~/api/types'
 import type { SortOption } from '~/components/projects/SortSheet.vue'
 
 definePageMeta({ middleware: 'auth', layout: 'app' })
-useHead({ title: 'Мои проекты' })
+
+const { t, locale } = useI18n()
+useHead({ title: computed(() => t('projects.title')) })
 
 const { projects, isLoadingProjects, error, refreshProjects, removeProject } = useProjectPersistence()
 
@@ -112,21 +114,8 @@ function applySort() {
   sortSheetOpen.value = false
 }
 
-const sortLabels: Record<SortOption, string> = {
-  updatedAt: 'По дате изменения',
-  createdAt: 'По дате создания',
-  name: 'По названию',
-  area: 'По площади',
-}
-
-// Русское склонение "проект/проекта/проектов" — та же mod10/mod100-логика,
-// что и pluralRooms() в ProjectCard.vue, просто для другого существительного.
-function pluralProjects(count: number): string {
-  const mod10 = count % 10
-  const mod100 = count % 100
-  if (mod10 === 1 && mod100 !== 11) return 'проект'
-  if ([2, 3, 4].includes(mod10) && ![12, 13, 14].includes(mod100)) return 'проекта'
-  return 'проектов'
+function sortLabel(option: SortOption): string {
+  return t(`projects.sort.${option}`)
 }
 
 // area — уже посчитанная Geometry/Calculation Engine статистика
@@ -139,7 +128,7 @@ const sortedProjects = computed(() => {
     case 'createdAt':
       return list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     case 'name':
-      return list.sort((a, b) => a.name.localeCompare(b.name, 'ru'))
+      return list.sort((a, b) => a.name.localeCompare(b.name, locale.value))
     case 'area':
       return list.sort((a, b) => {
         const areaA = projectDetails[a.id]?.building.calculated.areas.floor ?? 0
@@ -167,16 +156,16 @@ const hasSearchResults = computed(() => filteredProjects.value.length > 0)
     <div class="dash__header">
       <div class="dash__intro">
         <h1 class="text-h1">
-          Мои проекты
+          {{ t('projects.title') }}
         </h1>
         <p class="text-secondary dash__subtitle">
-          Ваши дома, идеи и планы в одном месте.
+          {{ t('projects.subtitle') }}
         </p>
       </div>
 
       <button type="button" class="btn btn-primary dash__new-btn" @click="handleNew">
         <UiIcon name="plus" :size="16" />
-        Новый проект
+        {{ t('projects.new') }}
       </button>
     </div>
 
@@ -187,21 +176,21 @@ const hasSearchResults = computed(() => filteredProjects.value.length > 0)
           v-model="searchQuery"
           type="search"
           class="dash__search-input"
-          placeholder="Поиск проектов…"
-          aria-label="Поиск проектов"
+          :placeholder="t('projects.searchPlaceholder')"
+          :aria-label="t('projects.searchAriaLabel')"
         >
       </label>
 
-      <button type="button" class="dash__sort-btn" aria-label="Сортировка" @click="openSortSheet">
+      <button type="button" class="dash__sort-btn" :aria-label="t('projects.sortAriaLabel')" @click="openSortSheet">
         <UiIcon name="sort" :size="18" />
       </button>
     </div>
 
     <p v-if="hasProjects" class="dash__sort-label text-caption text-muted">
-      {{ filteredProjects.length }} {{ pluralProjects(filteredProjects.length) }} · {{ sortLabels[sortBy] }}
+      {{ t('projects.count', { count: filteredProjects.length }, filteredProjects.length) }} · {{ sortLabel(sortBy) }}
     </p>
 
-    <div v-if="isLoadingProjects" class="dash__grid" aria-busy="true" aria-label="Загрузка проектов">
+    <div v-if="isLoadingProjects" class="dash__grid" aria-busy="true" :aria-label="t('projects.loadingAriaLabel')">
       <div v-for="n in 3" :key="n" class="skeleton-card">
         <div class="skeleton-card__preview" />
         <div class="skeleton-card__line skeleton-card__line--wide" />
@@ -212,10 +201,10 @@ const hasSearchResults = computed(() => filteredProjects.value.length > 0)
     <div v-else-if="error" class="dash__state card">
       <UiIcon name="alert" :size="28" class="dash__state-icon" />
       <p class="text-h3">
-        Не удалось загрузить проекты.
+        {{ t('projects.loadError') }}
       </p>
       <button type="button" class="btn btn-secondary" @click="refreshProjects">
-        Повторить
+        {{ t('common.retry') }}
       </button>
     </div>
 
@@ -226,26 +215,26 @@ const hasSearchResults = computed(() => filteredProjects.value.length > 0)
         <path d="M20 20l6-8 6 8" stroke="var(--color-border-strong)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
       </svg>
       <p class="text-h3">
-        У вас пока нет проектов
+        {{ t('projects.emptyTitle') }}
       </p>
       <p class="text-secondary">
-        Создайте первый проект и начните планировать своё пространство.
+        {{ t('projects.emptyText') }}
       </p>
       <button type="button" class="btn btn-primary" @click="handleNew">
         <UiIcon name="plus" :size="16" />
-        Создать проект
+        {{ t('projects.new') }}
       </button>
     </div>
 
     <div v-else-if="!hasSearchResults" class="dash__state">
       <p class="text-h3">
-        Проекты не найдены
+        {{ t('projects.noResultsTitle') }}
       </p>
       <p class="text-secondary">
-        По запросу «{{ searchQuery }}» ничего не нашлось.
+        {{ t('projects.noResultsText', { query: searchQuery }) }}
       </p>
       <button type="button" class="btn btn-secondary" @click="searchQuery = ''">
-        Очистить поиск
+        {{ t('projects.clearSearch') }}
       </button>
     </div>
 
@@ -262,7 +251,7 @@ const hasSearchResults = computed(() => filteredProjects.value.length > 0)
     <button
       type="button"
       class="dash__fab"
-      aria-label="Создать проект"
+      :aria-label="t('projects.new')"
       @click="handleNew"
     >
       <UiIcon name="plus" :size="22" />
@@ -270,9 +259,9 @@ const hasSearchResults = computed(() => filteredProjects.value.length > 0)
 
     <UiConfirmDialog
       :open="pendingDelete !== null"
-      title="Удалить проект?"
-      :message="`Проект «${pendingDelete?.name}» будет удалён безвозвратно.`"
-      confirm-text="Удалить"
+      :title="t('dialogs.deleteProject.title')"
+      :message="t('dialogs.deleteProject.message', { name: pendingDelete?.name ?? '' })"
+      :confirm-text="t('common.delete')"
       danger
       @confirm="confirmDelete"
       @cancel="pendingDelete = null"

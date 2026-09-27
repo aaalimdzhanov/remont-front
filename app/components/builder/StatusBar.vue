@@ -5,14 +5,15 @@
 // в двух местах не имеет смысла.
 const { selectedObject, selectedRoom } = useBuilding()
 const { cursorPosition, zoom, zoomIn, zoomOut, requestFit } = useEditorView()
+const { t } = useI18n()
 
 const objectLabel = computed(() => {
   const object = selectedObject.value
   if (!object) return '—'
-  if (object.type === 'room') return selectedRoom.value?.name ?? 'Помещение'
-  if (object.type === 'wall') return 'Стена'
-  if (object.type === 'door') return 'Дверь'
-  return 'Окно'
+  if (object.type === 'room') return selectedRoom.value?.name ?? t('builder.room')
+  if (object.type === 'wall') return t('builder.wall')
+  if (object.type === 'door') return t('builder.door')
+  return t('builder.window')
 })
 
 const roomMetrics = computed(() => {
@@ -31,22 +32,22 @@ const zoomPercent = computed(() => Math.round(zoom.value * 100))
   <div class="status-bar">
     <div class="status-bar__group">
       <span class="status-bar__item">
-        {{ cursorPosition ? `X: ${cursorPosition.x.toFixed(2)} м, Y: ${cursorPosition.z.toFixed(2)} м` : 'X: —, Y: —' }}
+        {{ cursorPosition ? t('builder.cursorPosition', { x: cursorPosition.x.toFixed(2), y: cursorPosition.z.toFixed(2) }) : t('builder.cursorPositionEmpty') }}
       </span>
-      <span class="status-bar__item">Объект: {{ objectLabel }}</span>
-      <span v-if="roomMetrics" class="status-bar__item">Площадь: {{ roomMetrics.area.toFixed(1) }} м²</span>
-      <span v-if="roomMetrics" class="status-bar__item">Периметр: {{ roomMetrics.perimeter.toFixed(1) }} м</span>
+      <span class="status-bar__item">{{ t('builder.objectLabel', { object: objectLabel }) }}</span>
+      <span v-if="roomMetrics" class="status-bar__item">{{ t('builder.areaStatus', { area: roomMetrics.area.toFixed(1) }) }}</span>
+      <span v-if="roomMetrics" class="status-bar__item">{{ t('builder.perimeterStatus', { perimeter: roomMetrics.perimeter.toFixed(1) }) }}</span>
     </div>
 
     <div class="status-bar__zoom">
-      <button type="button" class="btn btn-ghost btn-sm status-bar__zoom-btn" aria-label="Уменьшить масштаб" @click="zoomOut">
+      <button type="button" class="btn btn-ghost btn-sm status-bar__zoom-btn" :aria-label="t('builder.zoomOutAriaLabel')" @click="zoomOut">
         −
       </button>
       <span class="status-bar__zoom-value">{{ zoomPercent }}%</span>
-      <button type="button" class="btn btn-ghost btn-sm status-bar__zoom-btn" aria-label="Увеличить масштаб" @click="zoomIn">
+      <button type="button" class="btn btn-ghost btn-sm status-bar__zoom-btn" :aria-label="t('builder.zoomInAriaLabel')" @click="zoomIn">
         +
       </button>
-      <button type="button" class="btn btn-secondary btn-sm" aria-label="Показать всё здание" @click="requestFit">
+      <button type="button" class="btn btn-secondary btn-sm" :aria-label="t('builder.fitAriaLabel')" @click="requestFit">
         Fit
       </button>
     </div>

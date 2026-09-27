@@ -12,6 +12,8 @@ const {
   getIntersectingOpeningLabels,
 } = useBuilding()
 
+const { t } = useI18n()
+
 const widthMm = ref(0)
 const heightMm = ref(0)
 const offsetMm = ref(0)
@@ -59,48 +61,48 @@ function handleDelete() {
     <div class="properties__header">
       <span class="properties__header-title">
         <UiIcon name="window" :size="18" />
-        Окно
+        {{ t('builder.window') }}
       </span>
-      <button type="button" class="btn btn-ghost btn-icon" aria-label="Удалить окно" @click="handleDelete">
+      <button type="button" class="btn btn-ghost btn-icon" :aria-label="t('builder.deleteWindowAriaLabel')" @click="handleDelete">
         <UiIcon name="trash" :size="16" />
       </button>
     </div>
 
     <label class="field">
-      <span class="field__label">Ширина</span>
+      <span class="field__label">{{ t('builder.widthShort') }}</span>
       <div class="field__unit-input">
         <input v-model.number="widthMm" type="number" min="500" step="100" class="input" @change="applySize">
-        <span class="field__unit">мм</span>
+        <span class="field__unit">{{ t('builder.unit.mm') }}</span>
       </div>
     </label>
 
     <label class="field">
-      <span class="field__label">Высота</span>
+      <span class="field__label">{{ t('builder.heightLabel') }}</span>
       <div class="field__unit-input">
         <input v-model.number="heightMm" type="number" min="500" step="100" class="input" @change="applySize">
-        <span class="field__unit">мм</span>
+        <span class="field__unit">{{ t('builder.unit.mm') }}</span>
       </div>
     </label>
 
     <label class="field">
-      <span class="field__label">Отступ от начала стены</span>
+      <span class="field__label">{{ t('builder.offsetLabel') }}</span>
       <div class="field__unit-input">
         <input v-model.number="offsetMm" type="number" min="0" step="100" class="input" @change="applyOffset">
-        <span class="field__unit">мм</span>
+        <span class="field__unit">{{ t('builder.unit.mm') }}</span>
       </div>
     </label>
 
     <label class="field">
-      <span class="field__label">Высота подоконника</span>
+      <span class="field__label">{{ t('builder.sillHeightLabel') }}</span>
       <div class="field__unit-input">
         <input v-model.number="sillMm" type="number" min="0" step="100" class="input" @change="applySill">
-        <span class="field__unit">мм</span>
+        <span class="field__unit">{{ t('builder.unit.mm') }}</span>
       </div>
     </label>
 
     <p v-if="hasConflict" class="properties__conflict">
       <UiIcon name="alert" :size="14" />
-      Пересечение с проёмом «{{ conflictLabels.join('», «') }}»
+      {{ t('builder.openingIntersection', { names: conflictLabels.join('», «') }) }}
     </p>
   </div>
 </template>

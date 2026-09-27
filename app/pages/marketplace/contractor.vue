@@ -13,7 +13,9 @@
 import type { ContractorService, PortfolioItem } from '~/api/types'
 
 definePageMeta({ middleware: 'auth' })
-useHead({ title: 'Профиль мастера' })
+
+const { t } = useI18n()
+useHead({ title: computed(() => t('contractorProfile.title')) })
 
 const {
   contractor, contractorLoading, contractorError,
@@ -79,7 +81,9 @@ async function handleSave() {
   }
 }
 
-const statusLabels: Record<string, string> = { active: 'Активен', inactive: 'Неактивен' }
+function contractorStatusLabel(status: string): string {
+  return status === 'active' ? t('status.contractor.active') : status === 'inactive' ? t('status.contractor.inactive') : status
+}
 
 // ---- Services ----
 const showAddServiceSheet = ref(false)
@@ -133,7 +137,7 @@ function handleReorderPortfolio(items: PortfolioItem[]) {
     <div class="contractor-page__header">
       <NuxtLink to="/marketplace" class="contractor-page__back">
         <UiIcon name="chevron-left" :size="18" />
-        Биржа заявок
+        {{ t('navigation.backToMarketplace') }}
       </NuxtLink>
       <AppProfileMenu />
     </div>
@@ -141,7 +145,7 @@ function handleReorderPortfolio(items: PortfolioItem[]) {
     <AppModeNav class="contractor-page__mode-nav" />
 
     <h1 class="text-h1 contractor-page__title">
-      Профиль мастера
+      {{ t('contractorProfile.title') }}
     </h1>
 
     <div v-if="contractorLoading && contractor === undefined" class="contractor-page__skeleton" aria-busy="true" />
@@ -156,10 +160,10 @@ function handleReorderPortfolio(items: PortfolioItem[]) {
           <UiIcon name="hammer" :size="24" />
         </div>
         <p class="text-h3 contractor-page__onboarding-title">
-          Стать мастером
+          {{ t('contractorProfile.onboardingTitle') }}
         </p>
         <p class="text-secondary contractor-page__onboarding-desc">
-          Создайте профиль мастера, добавьте свои услуги и цены и начинайте отправлять предложения на работы.
+          {{ t('contractorProfile.onboardingDesc') }}
         </p>
       </div>
 
@@ -170,28 +174,28 @@ function handleReorderPortfolio(items: PortfolioItem[]) {
 
         <form class="contractor-page__form" @submit.prevent="handleSave">
           <label class="field">
-            <span class="field__label">Имя или название</span>
-            <input v-model="name" type="text" class="input" placeholder="Например, Азиз" :disabled="isSavingContractor">
+            <span class="field__label">{{ t('contractorProfile.nameLabel') }}</span>
+            <input v-model="name" type="text" class="input" :placeholder="t('contractorProfile.namePlaceholder')" :disabled="isSavingContractor">
           </label>
 
           <label class="field">
-            <span class="field__label">Телефон</span>
-            <input v-model="phone" type="tel" inputmode="tel" class="input" placeholder="+998 90 123 45 67" :disabled="isSavingContractor">
+            <span class="field__label">{{ t('contractorProfile.phoneLabel') }}</span>
+            <input v-model="phone" type="tel" inputmode="tel" class="input" :placeholder="t('contractorProfile.phonePlaceholder')" :disabled="isSavingContractor">
           </label>
 
           <label class="field">
-            <span class="field__label">О себе (необязательно)</span>
+            <span class="field__label">{{ t('contractorProfile.aboutLabel') }}</span>
             <textarea
               v-model="description"
               class="input contractor-page__description"
               rows="3"
-              placeholder="Например, укладка плитки, 5 лет опыта"
+              :placeholder="t('contractorProfile.aboutPlaceholder')"
               :disabled="isSavingContractor"
             />
           </label>
 
           <p v-if="!isNewProfile && contractor" class="text-caption text-muted contractor-page__status">
-            Статус: {{ statusLabels[contractor.status] ?? contractor.status }}
+            {{ t('contractorProfile.statusLabel', { status: contractorStatusLabel(contractor.status) }) }}
           </p>
 
           <p v-if="saveContractorError" class="contractor-page__error">
@@ -202,11 +206,11 @@ function handleReorderPortfolio(items: PortfolioItem[]) {
           </p>
           <p v-if="saveSuccess" class="contractor-page__success">
             <UiIcon name="check" :size="16" />
-            Сохранено.
+            {{ t('contractorProfile.saved') }}
           </p>
 
           <button type="submit" class="btn btn-primary contractor-page__save" :disabled="!isValid || isSavingContractor">
-            {{ isSavingContractor ? 'Сохраняем…' : (isNewProfile ? 'Создать профиль' : 'Сохранить') }}
+            {{ isSavingContractor ? t('common.saving') : (isNewProfile ? t('contractorProfile.createProfile') : t('common.save')) }}
           </button>
         </form>
       </section>
@@ -214,11 +218,11 @@ function handleReorderPortfolio(items: PortfolioItem[]) {
       <section v-if="contractor" class="contractor-page__services">
         <div class="contractor-page__services-header">
           <h2 class="text-h3">
-            Мои услуги
+            {{ t('contractorProfile.myServicesTitle') }}
           </h2>
           <button type="button" class="btn btn-secondary btn-sm" @click="showAddServiceSheet = true">
             <UiIcon name="plus" :size="16" />
-            Добавить услугу
+            {{ t('contractorProfile.addService') }}
           </button>
         </div>
 
@@ -227,14 +231,14 @@ function handleReorderPortfolio(items: PortfolioItem[]) {
         </div>
         <div v-else-if="servicesError" class="contractor-page__state">
           <p class="text-secondary">
-            Не удалось загрузить услуги.
+            {{ t('contractorProfile.servicesLoadError') }}
           </p>
           <button type="button" class="btn btn-secondary" @click="loadServices">
-            Повторить
+            {{ t('common.retry') }}
           </button>
         </div>
         <p v-else-if="services.length === 0" class="text-secondary contractor-page__empty">
-          Пока нет добавленных услуг. Добавьте вид работы и диапазон цены, чтобы клиенты видели вашу расценку.
+          {{ t('contractorProfile.noServices') }}
         </p>
         <div v-else class="contractor-page__service-list">
           <p v-if="serviceActionError" class="contractor-page__error">
@@ -255,15 +259,15 @@ function handleReorderPortfolio(items: PortfolioItem[]) {
         <div class="contractor-page__portfolio-header">
           <div>
             <h2 class="text-h3">
-              Мои работы
+              {{ t('portfolio.myWorksTitle') }}
             </h2>
             <p class="text-caption text-muted">
-              Покажите клиентам примеры выполненных работ
+              {{ t('portfolio.myWorksSubtitle') }}
             </p>
           </div>
           <button v-if="portfolio.length > 0" type="button" class="btn btn-secondary btn-sm" @click="showUploadSheet = true">
             <UiIcon name="plus" :size="16" />
-            Добавить работу
+            {{ t('portfolio.addWork') }}
           </button>
         </div>
 
@@ -272,10 +276,10 @@ function handleReorderPortfolio(items: PortfolioItem[]) {
         </div>
         <div v-else-if="portfolioError" class="contractor-page__state">
           <p class="text-secondary">
-            Не удалось загрузить работы.
+            {{ t('portfolio.loadError') }}
           </p>
           <button type="button" class="btn btn-secondary" @click="loadPortfolio">
-            Повторить
+            {{ t('common.retry') }}
           </button>
         </div>
         <div v-else-if="portfolio.length === 0" class="contractor-page__portfolio-empty">
@@ -283,14 +287,14 @@ function handleReorderPortfolio(items: PortfolioItem[]) {
             <UiIcon name="camera" :size="24" />
           </div>
           <p class="text-h3 contractor-page__portfolio-empty-title">
-            Пока нет фотографий работ
+            {{ t('portfolio.emptyTitle') }}
           </p>
           <p class="text-secondary contractor-page__portfolio-empty-desc">
-            Добавьте фотографии выполненных проектов, чтобы клиенты могли увидеть качество вашей работы.
+            {{ t('portfolio.emptyDesc') }}
           </p>
           <button type="button" class="btn btn-primary" @click="showUploadSheet = true">
             <UiIcon name="plus" :size="16" />
-            Добавить работу
+            {{ t('portfolio.addWork') }}
           </button>
         </div>
         <template v-else>
@@ -335,9 +339,9 @@ function handleReorderPortfolio(items: PortfolioItem[]) {
 
     <UiConfirmDialog
       :open="deletingService !== null"
-      title="Удалить услугу?"
-      :message="deletingService ? `«${deletingService.workType}» будет удалена из вашего списка услуг.` : ''"
-      confirm-text="Удалить"
+      :title="t('dialogs.deleteService.title')"
+      :message="deletingService ? t('dialogs.deleteService.message', { workType: deletingService.workType }) : ''"
+      :confirm-text="t('common.delete')"
       danger
       @confirm="handleConfirmDelete"
       @cancel="deletingService = null"
@@ -353,9 +357,9 @@ function handleReorderPortfolio(items: PortfolioItem[]) {
 
     <UiConfirmDialog
       :open="deletingPortfolioItem !== null"
-      title="Удалить работу?"
-      message="Фотография будет удалена из вашего портфолио."
-      confirm-text="Удалить"
+      :title="t('dialogs.deletePortfolioItem.title')"
+      :message="t('dialogs.deletePortfolioItem.message')"
+      :confirm-text="t('common.delete')"
       :confirm-disabled="portfolioActionId !== null"
       danger
       @confirm="handleConfirmDeletePortfolio"

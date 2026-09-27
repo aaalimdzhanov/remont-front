@@ -18,6 +18,8 @@ import type { MarketplaceRequest } from '~/api/types'
 
 const props = defineProps<{ request: MarketplaceRequest }>()
 
+const { t, locale } = useI18n()
+
 const isDraft = computed(() => props.request.status === 'draft')
 </script>
 
@@ -29,19 +31,19 @@ const isDraft = computed(() => props.request.status === 'draft')
     :class="{ 'my-request-card--draft': isDraft }"
   >
     <div class="my-request-card__row">
-      <span class="my-request-card__quantity">{{ formatQuantity(request.quantity, request.unit) }}</span>
+      <span class="my-request-card__quantity">{{ formatQuantity(request.quantity, request.unit, t) }}</span>
       <span class="my-request-card__status" :class="`my-request-card__status--${request.status}`">
-        {{ marketplaceRequestStatusLabel(request.status) }}
+        {{ marketplaceRequestStatusLabel(request.status, t) }}
       </span>
     </div>
     <p class="text-caption text-muted my-request-card__date">
-      Создано {{ formatMarketplaceDate(request.createdAt) }}
+      {{ t('marketplaceRequest.createdAt', { date: formatMarketplaceDate(request.createdAt, locale) }) }}
     </p>
     <span v-if="isDraft" class="text-caption text-muted my-request-card__hint">
-      Опубликуйте заявку со страницы «Работы»
+      {{ t('marketplaceRequest.publishHint') }}
     </span>
     <span v-else class="btn btn-secondary btn-sm my-request-card__cta">
-      Посмотреть предложения
+      {{ t('marketplaceRequest.viewOffers') }}
     </span>
   </component>
 </template>

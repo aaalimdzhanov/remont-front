@@ -6,6 +6,7 @@ import { calculateRoomArea } from '~/geometry/calculations'
 
 const emit = defineEmits<{ select: [roomId: string | null] }>()
 
+const { t } = useI18n()
 const { document: buildingDocument } = useBuilding()
 const rooms = computed(() => buildingDocument.value.building.rooms)
 </script>
@@ -13,11 +14,11 @@ const rooms = computed(() => buildingDocument.value.building.rooms)
 <template>
   <div class="room-step">
     <p class="text-h3 room-step__title">
-      Выберите помещение
+      {{ t('builder.workBuilder.selectRoom') }}
     </p>
 
     <div v-if="rooms.length === 0" class="room-step__empty text-secondary">
-      В плане пока нет ни одной комнаты — можно добавить работу для всего проекта.
+      {{ t('builder.workBuilder.noRoomsHint') }}
     </div>
 
     <ul v-else class="room-step__list">
@@ -28,7 +29,7 @@ const rooms = computed(() => buildingDocument.value.building.rooms)
           </span>
           <span class="room-step__info">
             <span class="room-step__name">{{ room.name }}</span>
-            <span class="text-caption text-muted">{{ calculateRoomArea(room).toFixed(1) }} м²</span>
+            <span class="text-caption text-muted">{{ calculateRoomArea(room).toFixed(1) }} {{ t('builder.unit.m2') }}</span>
           </span>
           <UiIcon name="chevron-left" :size="16" class="room-step__chevron" />
         </button>
@@ -38,8 +39,8 @@ const rooms = computed(() => buildingDocument.value.building.rooms)
     <button type="button" class="room-step__project-level" @click="emit('select', null)">
       <span class="room-step__checkbox" aria-hidden="true" />
       <span>
-        Работа для всего проекта
-        <span class="text-caption text-muted room-step__project-hint">(не привязана к комнате)</span>
+        {{ t('builder.workBuilder.wholeProject') }}
+        <span class="text-caption text-muted room-step__project-hint">{{ t('builder.workBuilder.wholeProjectHint') }}</span>
       </span>
     </button>
   </div>

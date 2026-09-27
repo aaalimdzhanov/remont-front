@@ -19,6 +19,8 @@ withDefaults(defineProps<{
 
 const emit = defineEmits<{ 'update:rating': [value: number] }>()
 
+const { t } = useI18n()
+
 function filledUpTo(rating: number | null): number {
   if (rating === null) return 0
   return Math.max(0, Math.min(5, Math.round(rating)))
@@ -34,7 +36,7 @@ function select(n: number, interactive: boolean) {
     class="rating-stars"
     :class="{ 'rating-stars--interactive': interactive }"
     :role="interactive ? 'radiogroup' : 'img'"
-    :aria-label="interactive ? 'Оценка' : `Рейтинг ${rating ?? 0} из 5`"
+    :aria-label="interactive ? t('reviews.ariaRatingGroup') : t('reviews.ariaRatingReadonly', { rating: rating ?? 0 })"
   >
     <component
       :is="interactive ? 'button' : 'span'"
@@ -45,7 +47,7 @@ function select(n: number, interactive: boolean) {
       :type="interactive ? 'button' : undefined"
       :role="interactive ? 'radio' : undefined"
       :aria-checked="interactive ? n <= filledUpTo(rating) : undefined"
-      :aria-label="interactive ? `${n} из 5` : undefined"
+      :aria-label="interactive ? t('reviews.ariaStarValue', { n }) : undefined"
       @click="select(n, interactive ?? false)"
     >
       <UiIcon name="star" :size="size" :filled="n <= filledUpTo(rating)" />

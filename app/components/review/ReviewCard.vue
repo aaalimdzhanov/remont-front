@@ -18,6 +18,8 @@ defineProps<{
   authorLabel?: string | null
   showOrderLink?: boolean
 }>()
+
+const { t, locale } = useI18n()
 </script>
 
 <template>
@@ -34,9 +36,9 @@ defineProps<{
     </p>
 
     <div class="review-card__footer">
-      <span class="text-caption text-muted">{{ formatMarketplaceDate(review.createdAt) }}</span>
+      <span class="text-caption text-muted">{{ formatMarketplaceDate(review.createdAt, locale) }}</span>
       <NuxtLink v-if="showOrderLink" :to="`/orders/${review.orderId}`" class="text-caption review-card__order-link">
-        Заказ
+        {{ t('reviews.orderLink') }}
       </NuxtLink>
     </div>
   </div>

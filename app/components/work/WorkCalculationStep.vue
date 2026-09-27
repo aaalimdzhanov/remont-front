@@ -22,10 +22,12 @@ const props = defineProps<{
 
 const emit = defineEmits<{ confirm: [quantity?: number], done: [] }>()
 
+const { t } = useI18n()
+
 const room = computed(() => (props.roomId ? props.building.rooms.find(r => r.id === props.roomId) ?? null : null))
 const contextLabel = computed(() => {
-  if (props.isProjectLevel) return 'Весь проект'
-  return room.value ? `${room.value.name} · ${calculateRoomArea(room.value).toFixed(1)} м²` : ''
+  if (props.isProjectLevel) return t('builder.workBuilder.wholeProject')
+  return room.value ? t('builder.workBuilder.roomAreaLabel', { name: room.value.name, area: calculateRoomArea(room.value).toFixed(1) }) : ''
 })
 
 const isManual = computed(() => props.workType.quantityMode === 'manual')
@@ -66,12 +68,12 @@ function handleSubmit() {
     <template v-if="!result">
       <div v-if="!isManual" class="calc-step__info-banner">
         <UiIcon name="alert" :size="16" />
-        <span>{{ measurementSourceLabel(workType.measurementSource) }} рассчитывается автоматически по вашему плану.</span>
+        <span>{{ t('builder.workBuilder.autoCalcBanner', { source: measurementSourceLabel(workType.measurementSource, t) }) }}</span>
       </div>
 
       <div v-else class="calc-step__manual">
         <label class="field">
-          <span class="field__label">Количество</span>
+          <span class="field__label">{{ t('builder.workBuilder.quantity') }}</span>
           <div class="field__unit-input">
             <input
               v-model="manualQuantity"
@@ -84,11 +86,11 @@ function handleSubmit() {
               placeholder="0"
               :disabled="isCreating"
             >
-            <span class="field__unit">{{ unitLabel(workType.unit) }}</span>
+            <span class="field__unit">{{ unitLabel(workType.unit, t) }}</span>
           </div>
         </label>
         <p class="text-caption text-muted">
-          Количество указывается вручную.
+          {{ t('builder.workBuilder.manualQuantityHint') }}
         </p>
       </div>
 
@@ -106,16 +108,16 @@ function handleSubmit() {
         :disabled="isCreating || (isManual && manualQuantityInvalid)"
         @click="handleSubmit"
       >
-        {{ isCreating ? 'Добавляем…' : 'Добавить работу' }}
+        {{ isCreating ? t('common.adding') : t('builder.workBuilder.addWork') }}
       </button>
     </template>
 
     <template v-else>
       <p class="text-caption text-muted calc-step__field-label">
-        {{ measurementSourceLabel(workType.measurementSource) }}
+        {{ measurementSourceLabel(workType.measurementSource, t) }}
       </p>
       <p class="calc-step__quantity">
-        {{ formatQuantity(result.quantity, result.unit) }}
+        {{ formatQuantity(result.quantity, result.unit, t) }}
       </p>
 
       <div class="calc-step__preview">
@@ -124,12 +126,12 @@ function handleSubmit() {
 
       <p class="calc-step__success">
         <UiIcon name="check" :size="16" />
-        <span v-if="!isManual">Объём рассчитан по геометрии помещения из вашего плана. При изменении плана значение обновится автоматически.</span>
-        <span v-else>Количество введено вручную.</span>
+        <span v-if="!isManual">{{ t('builder.workBuilder.autoCalcSuccess') }}</span>
+        <span v-else>{{ t('builder.workBuilder.manualQuantitySet') }}</span>
       </p>
 
       <button type="button" class="btn btn-primary calc-step__submit" @click="emit('done')">
-        Готово
+        {{ t('common.done') }}
       </button>
     </template>
   </div>

@@ -27,12 +27,15 @@ export type HeroSlideAction =
   | { kind: 'browse' }
   | { kind: 'link', to: string }
 
+// eyebrow/title/description/ctaLabel — i18n-ключи (namespace marketplace.hero*),
+// не готовые строки: этот файл — plain TS без гарантированного Vue-контекста
+// на момент загрузки модуля, резолвятся через t() в HeroSlider.vue.
 export interface HeroSlide {
   key: string
-  eyebrow: string
-  title: string
-  description: string
-  ctaLabel: string
+  eyebrowKey: string
+  titleKey: string
+  descriptionKey: string
+  ctaLabelKey: string
   icon: HeroSlideIcon
   action: HeroSlideAction
 }
@@ -40,19 +43,19 @@ export interface HeroSlide {
 export const MARKETPLACE_HERO_SLIDES: HeroSlide[] = [
   {
     key: 'contractor',
-    eyebrow: 'РЕАЛЬНЫЕ ЗАКАЗЫ',
-    title: 'Найдите работу для себя',
-    description: 'Открытые заявки от клиентов, которым нужен ремонт и строительство.',
-    ctaLabel: 'Смотреть заявки',
+    eyebrowKey: 'marketplace.heroContractorEyebrow',
+    titleKey: 'marketplace.heroContractorTitle',
+    descriptionKey: 'marketplace.heroContractorDescription',
+    ctaLabelKey: 'marketplace.heroContractorCta',
     icon: 'hammer',
     action: { kind: 'browse' },
   },
   {
     key: 'client',
-    eyebrow: 'НУЖЕН РЕМОНТ?',
-    title: 'Найдите мастера для своей задачи',
-    description: 'Опишите работу и получите предложения от мастеров.',
-    ctaLabel: 'Найти мастера',
+    eyebrowKey: 'marketplace.heroClientEyebrow',
+    titleKey: 'marketplace.heroClientTitle',
+    descriptionKey: 'marketplace.heroClientDescription',
+    ctaLabelKey: 'marketplace.heroClientCta',
     icon: 'grid-2d',
     // Разместить заявку на бирже можно только изнутри проекта (Project ->
     // Work Builder -> "Разместить на бирже", см. ProjectWorkCard.vue) —
@@ -63,10 +66,10 @@ export const MARKETPLACE_HERO_SLIDES: HeroSlide[] = [
   },
   {
     key: 'profile',
-    eyebrow: 'ВАША РЕПУТАЦИЯ',
-    title: 'Покажите свои услуги и рейтинг',
-    description: 'Создайте публичный профиль, чтобы клиенты могли узнать о вас.',
-    ctaLabel: 'Создать профиль',
+    eyebrowKey: 'marketplace.heroProfileEyebrow',
+    titleKey: 'marketplace.heroProfileTitle',
+    descriptionKey: 'marketplace.heroProfileDescription',
+    ctaLabelKey: 'marketplace.heroProfileCta',
     icon: 'star',
     // /marketplace/contractor — уже существующая приватная страница
     // создания/редактирования СВОЕГО профиля мастера (не путать с публичным

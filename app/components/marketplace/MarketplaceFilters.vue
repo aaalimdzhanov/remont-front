@@ -20,6 +20,8 @@ defineProps<{
 
 const emit = defineEmits<{ update: [patch: Partial<RequestFilters>], reset: [] }>()
 
+const { t } = useI18n()
+
 const sheetOpen = ref(false)
 </script>
 
@@ -27,33 +29,33 @@ const sheetOpen = ref(false)
   <div class="mp-filters">
     <button type="button" class="btn btn-secondary mp-filters__toggle" @click="sheetOpen = true">
       <UiIcon name="sort" :size="16" />
-      Фильтры
+      {{ t('marketplace.filters') }}
       <span v-if="activeCount > 0" class="mp-filters__badge">{{ activeCount }}</span>
     </button>
 
     <div class="mp-filters__inline">
       <MarketplaceFilterFields :categories="categories" :work-types="workTypes" :filters="filters" compact @update="emit('update', $event)" />
       <button v-if="activeCount > 0" type="button" class="btn btn-ghost mp-filters__inline-reset" @click="emit('reset')">
-        Сбросить
+        {{ t('common.reset') }}
       </button>
     </div>
 
     <Teleport to="body">
       <div v-if="sheetOpen" class="mp-filters__overlay" @click.self="sheetOpen = false">
-        <div class="mp-filters__panel" role="dialog" aria-modal="true" aria-label="Фильтры">
+        <div class="mp-filters__panel" role="dialog" aria-modal="true" :aria-label="t('marketplace.filters')">
           <div class="mp-filters__handle" aria-hidden="true" />
           <h3 class="mp-filters__title">
-            Фильтры
+            {{ t('marketplace.filters') }}
           </h3>
 
           <MarketplaceFilterFields :categories="categories" :work-types="workTypes" :filters="filters" @update="emit('update', $event)" />
 
           <div class="mp-filters__actions">
             <button type="button" class="btn btn-secondary" @click="emit('reset')">
-              Сбросить
+              {{ t('common.reset') }}
             </button>
             <button type="button" class="btn btn-primary" @click="sheetOpen = false">
-              Применить
+              {{ t('common.apply') }}
             </button>
           </div>
         </div>

@@ -6,6 +6,7 @@
 // refresh+/me ещё не отработали. initialize() сам по себе idempotent —
 // если middleware уже его вызвал, здесь просто переиспользуется тот же промис.
 const { isInitialized, initialize } = useAuth()
+const { t } = useI18n()
 
 onMounted(() => {
   void initialize()
@@ -24,7 +25,7 @@ onMounted(() => {
          Поэтому <NuxtPage> всегда смонтирован без единой директивы на нём,
          а видимость переключается на обычном div-контейнере вокруг него. -->
     <div v-show="!isInitialized" class="app-splash">
-      Загрузка…
+      {{ t('common.loading') }}
     </div>
     <div v-show="isInitialized">
       <NuxtLayout>

@@ -27,6 +27,7 @@ const {
   wouldRectIntersectRooms,
 } = useBuilding()
 const { zoom, panX, panY, showDimensions, fitToken, cursorPosition, roomDrawActive, deactivateRoomDraw, requestFit } = useEditorView()
+const { t } = useI18n()
 
 const PX_PER_METER = 60
 const MARGIN = 40
@@ -254,7 +255,7 @@ function onBackgroundDrawEnd(event: PointerEvent) {
   if (!preview || preview.invalid) return
 
   addRoom({
-    name: 'Комната',
+    name: t('builder.defaultRoomName'),
     type: 'other',
     width: preview.snappedWidth,
     length: preview.snappedLength,
@@ -420,6 +421,20 @@ function openingRect(wall: Wall, opening: Opening) {
   return segmentRect(from, to, wall.thickness)
 }
 
+// Символ остекления окна: одна тонкая осевая линия вдоль всей длины проёма
+// (стандартное обозначение стекла в раме на архитектурных планах), не
+// перпендикулярная — иначе читалась бы как перемычка/косяк, а не стекло.
+// Никакой новой геометрии: те же значения, что уже вычислены в openingRect().
+function windowGlazingLine(wall: Wall, opening: Opening) {
+  const rect = openingRect(wall, opening)
+  if (isVerticalWall(wall)) {
+    const x = rect.x + rect.width / 2
+    return { x1: x, y1: rect.y, x2: x, y2: rect.y + rect.height }
+  }
+  const y = rect.y + rect.height / 2
+  return { x1: rect.x, y1: y, x2: rect.x + rect.width, y2: y }
+}
+
 // Простой символ открывания двери: полотно (линия от петли) + четверть
 // окружности до противоположного косяка. Сторона раскрытия фиксирована
 // (не зависит от того, где комната) — так проще и этого достаточно.
@@ -568,7 +583,7 @@ const openingDimensionSpec = computed<DimensionSpec | null>(() => {
   const to = pointAlongWall(wall, opening.position.offset + opening.dimensions.width)
   const widthMm = Math.round(opening.dimensions.width * 1000)
   const offsetMm = Math.round(opening.position.offset * 1000)
-  return buildDimension(from, to, 16, `${widthMm} мм (отступ ${offsetMm} мм)`)
+  return buildDimension(from, to, 16, t('builder.openingOffsetDimension', { width: widthMm, offset: offsetMm }))
 })
 
 // Размеры во время рисования помещения — тот же buildDimension()/offset -14,
@@ -726,6 +741,14 @@ const roomDrawDimensionSpecs = computed<DimensionSpec[]>(() => {
               />
               <path :d="doorArcPath(wall, opening)" class="plan2d__door-arc" />
             </template>
+            <line
+              v-else
+              :x1="windowGlazingLine(wall, opening).x1"
+              :y1="windowGlazingLine(wall, opening).y1"
+              :x2="windowGlazingLine(wall, opening).x2"
+              :y2="windowGlazingLine(wall, opening).y2"
+              class="plan2d__window-glazing"
+            />
           </g>
         </template>
       </g>
@@ -793,7 +816,7 @@ const roomDrawDimensionSpecs = computed<DimensionSpec[]>(() => {
     </svg>
 
     <p v-else class="plan2d__empty">
-      Здание ещё не создано
+      {{ t('builder.buildingNotCreated') }}
     </p>
 
     <!-- <768px: замена полной StatusBar-строки (см. StatusBar.vue) — тот же
@@ -802,7 +825,7 @@ const roomDrawDimensionSpecs = computed<DimensionSpec[]>(() => {
          UX reference). Zoom in/out на mobile выполняется жестом (pinch/wheel
          уже поддержан существующим onWheel), отдельные +/- кнопки для этого
          на маленьком экране не нужны. -->
-    <button type="button" class="plan2d__fit-btn" aria-label="Показать всё здание" @click="requestFit">
+    <button type="button" class="plan2d__fit-btn" :aria-label="t('builder.fitAriaLabel')" @click="requestFit">
       <UiIcon name="fit" :size="20" />
     </button>
   </div>
@@ -970,12 +993,20 @@ const roomDrawDimensionSpecs = computed<DimensionSpec[]>(() => {
 
 .plan2d__wall {
   fill: var(--color-graphite);
-  stroke: none;
+  /* Тонкая тёмная окантовка даёт стенам чёткий "чертёжный" край вместо
+     плоской заливки без края — тот же тон, что и сама заливка (просто
+     темнее), поэтому на стыках соседних сегментов одной стены шов не виден,
+     а по внешнему периметру появляется аккуратная линия. */
+  stroke: #0D1319;
+  stroke-width: 0.75;
   cursor: pointer;
 }
 
 .plan2d__wall--interior {
-  fill: #8A8681;
+  /* Нейтральный холодный серый вместо тёплого — ближе к архитектурному
+     чертежу, дальше от "деревянного"/жилого оттенка. */
+  fill: #ACA79E;
+  stroke: #8B867C;
 }
 
 .plan2d__wall--hover {
@@ -1024,11 +1055,29 @@ const roomDrawDimensionSpecs = computed<DimensionSpec[]>(() => {
   stroke-dasharray: 4 3;
 }
 
-.plan2d__door-leaf,
+.plan2d__door-leaf {
+  /* Толстый stroke + плоский torec (square) читается как настоящее полотно
+     двери с реальной толщиной, а не как условная тонкая линия. */
+  stroke: #8C6F45;
+  stroke-width: 3.5;
+  stroke-linecap: square;
+  fill: none;
+  pointer-events: none;
+}
+
 .plan2d__door-arc {
   stroke: #8C6F45;
-  stroke-width: 1.5;
+  stroke-width: 1.25;
+  stroke-dasharray: 3 2;
   fill: none;
+  pointer-events: none;
+}
+
+.plan2d__window-glazing {
+  /* Осевая линия остекления — тонкая, контрастирующая с рамой проёма, но не
+     конкурирующая с ней по толщине. */
+  stroke: #5E8A99;
+  stroke-width: 1.25;
   pointer-events: none;
 }
 

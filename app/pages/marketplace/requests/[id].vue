@@ -53,9 +53,11 @@ const orderForThisRequest = computed(() => findOrderByRequestId(requestId.value)
 // PublicMarketplaceRequest): coarse city/district, null если у Project нет
 // location — тот же formatLocation(), что уже использует OpenRequestCard.vue
 // и PublicContractorCard.vue, без второго форматтера.
-const locationLabel = computed(() => (requestDetail.value ? formatLocation(requestDetail.value.location) : null))
+const { t, locale } = useI18n()
 
-useHead({ title: 'Заявка' })
+const locationLabel = computed(() => (requestDetail.value ? formatLocation(requestDetail.value.location, locale.value) : null))
+
+useHead({ title: computed(() => t('marketplaceRequest.title')) })
 
 type Phase = 'loading' | 'owner' | 'public' | 'not-found' | 'error'
 const phase = ref<Phase>('loading')
@@ -177,39 +179,39 @@ async function handleWithdraw(offerId: string) {
   <main class="request-page">
     <NuxtLink to="/marketplace" class="request-page__back">
       <UiIcon name="chevron-left" :size="18" />
-      Биржа заявок
+      {{ t('navigation.backToMarketplace') }}
     </NuxtLink>
 
     <div v-if="phase === 'loading'" class="request-page__status">
       <div class="request-page__spinner" aria-hidden="true" />
       <p class="text-secondary">
-        Загрузка заявки…
+        {{ t('marketplaceRequest.loading') }}
       </p>
     </div>
 
     <div v-else-if="phase === 'error'" class="request-page__status">
       <UiIcon name="alert" :size="28" class="request-page__status-icon" />
       <p class="text-h3">
-        Не удалось загрузить заявку
+        {{ t('marketplaceRequest.loadErrorTitle') }}
       </p>
       <p v-if="requestDetailError" class="text-secondary">
         {{ requestDetailError.message }}
       </p>
       <button type="button" class="btn btn-secondary" @click="resolve">
-        Повторить
+        {{ t('common.retry') }}
       </button>
     </div>
 
     <div v-else-if="phase === 'not-found'" class="request-page__status">
       <UiIcon name="alert" :size="28" class="request-page__status-icon" />
       <p class="text-h3">
-        Заявка не найдена
+        {{ t('marketplaceRequest.notFoundTitle') }}
       </p>
       <p class="text-secondary">
-        Проверьте ссылку — возможно, заявка была удалена.
+        {{ t('marketplaceRequest.notFoundText') }}
       </p>
       <NuxtLink to="/marketplace" class="btn btn-secondary">
-        Вернуться на биржу
+        {{ t('marketplaceRequest.backToMarketplace') }}
       </NuxtLink>
     </div>
 
@@ -218,49 +220,49 @@ async function handleWithdraw(offerId: string) {
         {{ requestDetail.workType }}
       </h1>
       <p class="text-secondary">
-        Количество: {{ formatQuantity(requestDetail.quantity, requestDetail.unit) }}
+        {{ t('marketplaceRequest.quantity', { quantity: formatQuantity(requestDetail.quantity, requestDetail.unit, t) }) }}
       </p>
       <p v-if="locationLabel" class="request-page__location">
         <UiIcon name="pin" :size="14" />
         {{ locationLabel }}
       </p>
       <p class="text-secondary">
-        Опубликовано {{ formatMarketplaceDate(requestDetail.createdAt) }} ·
+        {{ t('marketplaceRequest.publishedAt', { date: formatMarketplaceDate(requestDetail.createdAt, locale) }) }}
         <span class="request-page__status-pill" :class="`request-page__status-pill--${requestDetail.status}`">
-          {{ marketplaceRequestStatusLabel(requestDetail.status) }}
+          {{ marketplaceRequestStatusLabel(requestDetail.status, t) }}
         </span>
       </p>
 
       <template v-if="phase === 'owner'">
         <p v-if="acceptedMessage && !orderForThisRequest" class="request-page__success">
           <UiIcon name="check" :size="16" />
-          Предложение принято.
+          {{ t('marketplaceRequest.offerAcceptedSuccess') }}
         </p>
 
         <NuxtLink v-if="orderForThisRequest" :to="`/orders/${orderForThisRequest.id}`" class="request-page__order-banner">
           <UiIcon name="check" :size="18" class="request-page__order-banner-icon" />
           <span class="request-page__order-banner-text">
-            <span class="request-page__order-banner-title">Заказ создан</span>
-            <span class="text-caption text-muted">{{ formatPrice(orderForThisRequest.price) }} · {{ orderStatusLabel(orderForThisRequest.status) }}</span>
+            <span class="request-page__order-banner-title">{{ t('marketplaceRequest.orderCreatedTitle') }}</span>
+            <span class="text-caption text-muted">{{ formatPrice(orderForThisRequest.price, locale, t('common.currency')) }} · {{ orderStatusLabel(orderForThisRequest.status, t) }}</span>
           </span>
           <UiIcon name="chevron-left" :size="16" class="request-page__order-banner-arrow" />
         </NuxtLink>
         <div v-else-if="acceptedOfferId" class="request-page__order-pending">
           <p v-if="isCreatingOrder" class="text-secondary">
-            Создаём заказ…
+            {{ t('marketplaceRequest.creatingOrder') }}
           </p>
           <template v-else-if="createOrderError">
             <p class="request-page__error">
               {{ createOrderError.message }}
             </p>
             <button type="button" class="btn btn-secondary" @click="handleRetryCreateOrder">
-              Повторить создание заказа
+              {{ t('marketplaceRequest.retryCreateOrder') }}
             </button>
           </template>
         </div>
 
         <h2 class="text-h3 request-page__offers-title">
-          Предложения мастеров
+          {{ t('offers.offersFromContractors') }}
         </h2>
 
         <div v-if="requestOffersLoading" class="request-page__skeletons">
@@ -268,14 +270,14 @@ async function handleWithdraw(offerId: string) {
         </div>
         <div v-else-if="requestOffersError" class="request-page__state">
           <p class="text-secondary">
-            Не удалось загрузить предложения.
+            {{ t('offers.loadError') }}
           </p>
           <button type="button" class="btn btn-secondary" @click="loadOffersForRequest(requestId)">
-            Повторить
+            {{ t('common.retry') }}
           </button>
         </div>
         <p v-else-if="requestOffers.length === 0" class="text-secondary request-page__empty">
-          Пока нет предложений от мастеров.
+          {{ t('offers.noOffersYet') }}
         </p>
         <div v-else class="request-page__offers">
           <p v-if="offerActionError" class="request-page__error">
@@ -297,7 +299,7 @@ async function handleWithdraw(offerId: string) {
       <template v-else>
         <p v-if="offerSubmittedMessage" class="request-page__success">
           <UiIcon name="check" :size="16" />
-          Предложение отправлено.
+          {{ t('offers.sentSuccess') }}
         </p>
 
         <div v-if="isAuthenticated && (myOffersLoading || contractorLoading)" class="request-page__skeletons">
@@ -315,13 +317,13 @@ async function handleWithdraw(offerId: string) {
         />
 
         <p v-else-if="requestDetail.status !== 'open'" class="request-page__closed-note">
-          Эта заявка больше не принимает предложения.
+          {{ t('offers.requestClosedNotice') }}
         </p>
 
-        <MarketplaceAuthGate v-else-if="showAuthGate" message="Войдите, чтобы откликнуться на заявку" class="request-page__auth-gate" />
+        <MarketplaceAuthGate v-else-if="showAuthGate" :message="t('marketplace.loginToRespond')" class="request-page__auth-gate" />
 
         <button v-else type="button" class="btn btn-primary request-page__cta" @click="handleOfferCta">
-          Предложить цену
+          {{ t('offers.createTitle') }}
         </button>
       </template>
     </template>

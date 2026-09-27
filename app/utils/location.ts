@@ -57,6 +57,55 @@ export function districtsForCity(city: string): string[] {
   return LOCATION_CATALOG.find(entry => entry.city === city)?.districts ?? []
 }
 
+// ---- Локализация ОТОБРАЖЕНИЯ (не значения) ----
+// Канонические значения city/district (см. LOCATION_CATALOG выше) — это
+// ровно то, что уходит в Location.city/district на backend и хранится там
+// как opaque-строка (нет своего каталога на backend — см. комментарий
+// сверху файла). Эти значения НИКОГДА не меняются в зависимости от языка
+// интерфейса — иначе один и тот же реальный город выглядел бы как два
+// разных значения в зависимости от того, на каком языке пользователь его
+// выбрал при создании проекта, и уже сохранённые локации перестали бы
+// находить свои районы/сравниваться при смене языка. Локализуется только
+// то, что видит пользователь — подпись в <select>/на карточке, через
+// locationDisplayName(), при этом сохраняемое/сравниваемое значение остаётся
+// каноническим (RU) текстом.
+const CITY_DISPLAY_UZ: Record<string, string> = {
+  'Ташкент': 'Toshkent',
+  'Самарканд': 'Samarqand',
+  'Бухара': 'Buxoro',
+  'Андижан': 'Andijon',
+  'Наманган': 'Namangan',
+  'Фергана': 'Farg\'ona',
+  'Нукус': 'Nukus',
+  'Карши': 'Qarshi',
+  'Термез': 'Termiz',
+  'Ургенч': 'Urganch',
+  'Джизак': 'Jizzax',
+  'Навои': 'Navoiy',
+  'Гулистан': 'Guliston',
+  'Коканд': 'Qo\'qon',
+}
+
+const DISTRICT_DISPLAY_UZ: Record<string, string> = {
+  'Алмазарский': 'Olmazor',
+  'Бектемирский': 'Bektemir',
+  'Мирабадский': 'Mirobod',
+  'Мирзо-Улугбекский': 'Mirzo Ulug\'bek',
+  'Сергелийский': 'Sergeli',
+  'Учтепинский': 'Uchtepa',
+  'Чиланзарский': 'Chilonzor',
+  'Шайхантахурский': 'Shayxontohur',
+  'Юнусабадский': 'Yunusobod',
+  'Яккасарайский': 'Yakkasaroy',
+  'Яшнабадский': 'Yashnobod',
+  'Центр': 'Markaz',
+}
+
+export function locationDisplayName(canonicalName: string, locale: string): string {
+  if (locale !== 'uz') return canonicalName
+  return CITY_DISPLAY_UZ[canonicalName] ?? DISTRICT_DISPLAY_UZ[canonicalName] ?? canonicalName
+}
+
 // ---- Draft city/district -> Location | null (правила выбора, секция 18) ----
 // Пустой city всегда означает "location не выбран" — никакого сохранения
 // district без city. Смена city сбрасывает ранее выбранный district (нельзя

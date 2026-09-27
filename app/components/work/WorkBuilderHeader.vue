@@ -17,6 +17,8 @@ defineProps<{
 }>()
 
 defineEmits<{ recalculate: [] }>()
+
+const { t } = useI18n()
 </script>
 
 <template>
@@ -24,7 +26,7 @@ defineEmits<{ recalculate: [] }>()
 
   <div class="work-header">
     <div class="work-header__top">
-      <NuxtLink to="/projects" class="work-header__back" aria-label="Назад к проектам">
+      <NuxtLink to="/projects" class="work-header__back" :aria-label="t('projects.backToProjectsAriaLabel')">
         <UiIcon name="chevron-left" :size="20" />
       </NuxtLink>
       <p class="work-header__name">
@@ -38,7 +40,7 @@ defineEmits<{ recalculate: [] }>()
         @click="$emit('recalculate')"
       >
         <UiIcon name="refresh" :size="14" />
-        {{ isRecalculating ? 'Обновляем…' : 'Пересчитать' }}
+        {{ isRecalculating ? t('builder.workBuilder.recalculating') : t('builder.workBuilder.recalculate') }}
       </button>
     </div>
 

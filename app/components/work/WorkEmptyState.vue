@@ -3,6 +3,8 @@
 // в архитектурном стиле (тот же приём, что и empty-sketch на Dashboard/
 // ProjectPreview.vue), никакой тяжёлой картинки.
 defineEmits<{ add: [] }>()
+
+const { t } = useI18n()
 </script>
 
 <template>
@@ -15,30 +17,30 @@ defineEmits<{ add: [] }>()
     </svg>
 
     <h1 class="text-h2 work-empty__title">
-      План работ
+      {{ t('builder.workBuilder.emptyTitle') }}
     </h1>
     <p class="text-secondary work-empty__description">
-      Добавьте виды работ для каждой комнаты и получите точные объёмы по вашему плану.
+      {{ t('builder.workBuilder.emptyDescription') }}
     </p>
 
     <ul class="work-empty__benefits">
       <li>
         <UiIcon name="check" :size="16" />
-        Автоматический расчёт объёмов
+        {{ t('builder.workBuilder.benefitAutoCalc') }}
       </li>
       <li>
         <UiIcon name="check" :size="16" />
-        Удобный выбор работ
+        {{ t('builder.workBuilder.benefitEasyPick') }}
       </li>
       <li>
         <UiIcon name="check" :size="16" />
-        Подготовка к поиску мастеров
+        {{ t('builder.workBuilder.benefitFindContractors') }}
       </li>
     </ul>
 
     <button type="button" class="btn btn-primary work-empty__cta" @click="$emit('add')">
       <UiIcon name="plus" :size="16" />
-      Добавить работу
+      {{ t('builder.workBuilder.addWork') }}
     </button>
   </div>
 </template>

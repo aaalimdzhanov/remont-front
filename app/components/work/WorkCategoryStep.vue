@@ -10,12 +10,14 @@ defineProps<{
 }>()
 
 const emit = defineEmits<{ select: [categoryId: string], retry: [] }>()
+
+const { t } = useI18n()
 </script>
 
 <template>
   <div class="category-step">
     <p class="text-h3 category-step__title">
-      Категория работ
+      {{ t('builder.workBuilder.categoryTitle') }}
     </p>
 
     <div v-if="loading" class="category-step__grid" aria-busy="true">
@@ -27,7 +29,7 @@ const emit = defineEmits<{ select: [categoryId: string], retry: [] }>()
         {{ error }}
       </p>
       <button type="button" class="btn btn-secondary" @click="emit('retry')">
-        Повторить
+        {{ t('common.retry') }}
       </button>
     </div>
 

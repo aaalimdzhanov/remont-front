@@ -63,11 +63,17 @@ export function buildBuildingGroup(building: Building, options: BuildBuildingGro
 
 // Освобождает GPU-ресурсы (geometry/material) всего поддерева — вызывается
 // и при пересборке группы (перед заменой), и при unmount всей сцены.
+// Duck-typing на geometry/material вместо `instanceof THREE.Mesh` — стены
+// теперь несут ещё и THREE.LineSegments-рёбра (см. wallRenderer.ts
+// EDGE_COLOR), которые имеют ту же форму (geometry+material), но не
+// являются THREE.Mesh; строгая проверка типа тихо пропускала бы их и
+// текла бы при каждой пересборке группы.
 export function disposeObject3D(root: THREE.Object3D): void {
   root.traverse((child) => {
-    if (child instanceof THREE.Mesh) {
-      child.geometry.dispose()
-      const materials = Array.isArray(child.material) ? child.material : [child.material]
+    const disposable = child as unknown as { geometry?: THREE.BufferGeometry, material?: THREE.Material | THREE.Material[] }
+    disposable.geometry?.dispose()
+    if (disposable.material) {
+      const materials = Array.isArray(disposable.material) ? disposable.material : [disposable.material]
       for (const material of materials) material.dispose()
     }
   })

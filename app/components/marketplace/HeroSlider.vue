@@ -22,6 +22,7 @@ import { MARKETPLACE_HERO_SLIDES, resolveHeroSlideHref } from '~/utils/marketpla
 const emit = defineEmits<{ browse: [] }>()
 
 const { isAuthenticated } = useAuth()
+const { t } = useI18n()
 
 const trackRef = ref<HTMLElement | null>(null)
 const activeIndex = ref(0)
@@ -58,12 +59,12 @@ onUnmounted(() => window.removeEventListener('resize', syncActiveIndex))
 </script>
 
 <template>
-  <section class="mp-hero-slider" aria-roledescription="карусель" aria-label="О сервисе Ishonchli Usta">
+  <section class="mp-hero-slider" :aria-roledescription="t('marketplace.heroCarouselRole')" :aria-label="t('marketplace.heroAriaLabel')">
     <div
       ref="trackRef"
       class="mp-hero-slider__track"
       tabindex="0"
-      aria-label="Слайды: свайп или стрелки влево/вправо"
+      :aria-label="t('marketplace.heroTrackAriaLabel')"
       @scroll="syncActiveIndex"
       @keydown="handleTrackKeydown"
     >
@@ -73,13 +74,13 @@ onUnmounted(() => window.removeEventListener('resize', syncActiveIndex))
         </span>
 
         <p class="mp-hero-slider__eyebrow">
-          {{ slide.eyebrow }}
+          {{ t(slide.eyebrowKey) }}
         </p>
         <p class="mp-hero-slider__title">
-          {{ slide.title }}
+          {{ t(slide.titleKey) }}
         </p>
         <p class="mp-hero-slider__description">
-          {{ slide.description }}
+          {{ t(slide.descriptionKey) }}
         </p>
 
         <button
@@ -88,7 +89,7 @@ onUnmounted(() => window.removeEventListener('resize', syncActiveIndex))
           class="btn btn-primary mp-hero-slider__cta"
           @click="emit('browse')"
         >
-          {{ slide.ctaLabel }}
+          {{ t(slide.ctaLabelKey) }}
           <UiIcon name="chevron-left" :size="16" class="mp-hero-slider__cta-icon" />
         </button>
         <NuxtLink
@@ -96,7 +97,7 @@ onUnmounted(() => window.removeEventListener('resize', syncActiveIndex))
           :to="resolveHeroSlideHref(slide.action, isAuthenticated) ?? '/marketplace'"
           class="btn btn-primary mp-hero-slider__cta"
         >
-          {{ slide.ctaLabel }}
+          {{ t(slide.ctaLabelKey) }}
           <UiIcon name="chevron-left" :size="16" class="mp-hero-slider__cta-icon" />
         </NuxtLink>
       </article>
@@ -105,7 +106,7 @@ onUnmounted(() => window.removeEventListener('resize', syncActiveIndex))
     <button
       type="button"
       class="mp-hero-slider__arrow mp-hero-slider__arrow--prev"
-      aria-label="Предыдущий слайд"
+      :aria-label="t('marketplace.heroPrevSlide')"
       :disabled="activeIndex === 0"
       @click="scrollToSlide(activeIndex - 1)"
     >
@@ -114,14 +115,14 @@ onUnmounted(() => window.removeEventListener('resize', syncActiveIndex))
     <button
       type="button"
       class="mp-hero-slider__arrow mp-hero-slider__arrow--next"
-      aria-label="Следующий слайд"
+      :aria-label="t('marketplace.heroNextSlide')"
       :disabled="activeIndex === slideCount - 1"
       @click="scrollToSlide(activeIndex + 1)"
     >
       <UiIcon name="chevron-left" :size="18" class="mp-hero-slider__arrow-icon-next" />
     </button>
 
-    <div class="mp-hero-slider__dots" role="group" aria-label="Переключение слайдов">
+    <div class="mp-hero-slider__dots" role="group" :aria-label="t('marketplace.heroDotsAriaLabel')">
       <button
         v-for="(slide, index) in MARKETPLACE_HERO_SLIDES"
         :key="slide.key"
@@ -129,7 +130,7 @@ onUnmounted(() => window.removeEventListener('resize', syncActiveIndex))
         class="mp-hero-slider__dot"
         :class="{ 'mp-hero-slider__dot--active': index === activeIndex }"
         :aria-current="index === activeIndex ? 'true' : undefined"
-        :aria-label="`Слайд ${index + 1} из ${slideCount}: ${slide.eyebrow}`"
+        :aria-label="t('marketplace.heroSlideOf', { n: index + 1, total: slideCount, eyebrow: t(slide.eyebrowKey) })"
         @click="scrollToSlide(index)"
       />
     </div>

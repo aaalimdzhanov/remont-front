@@ -17,6 +17,7 @@
 const { mode } = useUserMode()
 const { isAuthenticated } = useAuth()
 const route = useRoute()
+const { t } = useI18n()
 
 const items = computed(() => getUserModeNavItems(mode.value))
 
@@ -30,7 +31,7 @@ function isActive(to: string): boolean {
        секция 19), а все пункты кроме "Биржа" ведут на auth-gated страницы —
        показывать эту навигацию неавторизованному пользователю было бы
        обманчиво (см. секция 18: "не как будто пользователь авторизован"). -->
-  <nav v-if="isAuthenticated" class="mode-nav" aria-label="Навигация режима">
+  <nav v-if="isAuthenticated" class="mode-nav" :aria-label="t('navigation.modeNavAriaLabel')">
     <NuxtLink
       v-for="item in items"
       :key="item.to"
@@ -39,7 +40,7 @@ function isActive(to: string): boolean {
       :class="{ 'mode-nav__tab--active': isActive(item.to) }"
     >
       <UiIcon :name="item.icon" :size="16" />
-      {{ item.label }}
+      {{ t(item.labelKey) }}
     </NuxtLink>
   </nav>
 </template>

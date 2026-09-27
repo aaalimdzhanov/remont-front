@@ -21,9 +21,9 @@ export function moveItem<T>(items: T[], fromIndex: number, toIndex: number): T[]
 // alt-текст для фото работы (см. задание, секция ACCESSIBILITY): реальный
 // title, если он заполнен, иначе честный fallback — никогда пустой alt и
 // никогда не выдуманное описание содержимого фото.
-export function portfolioImageAlt(title: string): string {
+export function portfolioImageAlt(title: string, t: (key: string) => string): string {
   const trimmed = title.trim()
-  return trimmed ? trimmed : 'Работа мастера'
+  return trimmed ? trimmed : t('portfolio.defaultAlt')
 }
 
 // ---- Frontend pre-validation (см. задание, секция FRONTEND VALIDATION) ----
@@ -50,12 +50,12 @@ export function isPortfolioImageSizeValid(sizeBytes: number): boolean {
 // Возвращает первую найденную ошибку файла (тип или размер) — null, если
 // файл проходит обе проверки. Один общий валидатор, чтобы форма не
 // дублировала порядок проверок в двух местах.
-export function validatePortfolioImageFile(file: File): string | null {
+export function validatePortfolioImageFile(file: File, t: (key: string) => string): string | null {
   if (!isAllowedPortfolioImageType(file.type)) {
-    return 'Поддерживаются только JPG, PNG и WebP.'
+    return t('errors.invalid_image_type')
   }
   if (!isPortfolioImageSizeValid(file.size)) {
-    return 'Размер файла не должен превышать 10 МБ.'
+    return t('errors.image_too_large')
   }
   return null
 }

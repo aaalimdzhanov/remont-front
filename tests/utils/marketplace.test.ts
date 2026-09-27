@@ -20,21 +20,23 @@ import {
 } from '~/utils/marketplace'
 import type { OpenMarketplaceRequest, PublicContractorProfile, PublicContractorService, WorkCategory, WorkType } from '~/api/types'
 
+const t = (key: string) => key
+
 describe('marketplaceRequestStatusLabel', () => {
-  it('maps all 4 real backend statuses, including draft (Draft → Publish v1, see domain/marketplacerequest)', () => {
-    expect(marketplaceRequestStatusLabel('draft')).toBe('Черновик')
-    expect(marketplaceRequestStatusLabel('open')).toBe('Опубликована')
-    expect(marketplaceRequestStatusLabel('cancelled')).toBe('Отменена')
-    expect(marketplaceRequestStatusLabel('closed')).toBe('Закрыта')
+  it('resolves all 4 real backend statuses through status.request.* (Draft → Publish v1, see domain/marketplacerequest)', () => {
+    expect(marketplaceRequestStatusLabel('draft', t)).toBe('status.request.draft')
+    expect(marketplaceRequestStatusLabel('open', t)).toBe('status.request.open')
+    expect(marketplaceRequestStatusLabel('cancelled', t)).toBe('status.request.cancelled')
+    expect(marketplaceRequestStatusLabel('closed', t)).toBe('status.request.closed')
   })
 })
 
 describe('offerStatusLabel', () => {
-  it('maps all 4 real backend statuses (see domain/marketplaceoffer)', () => {
-    expect(offerStatusLabel('pending')).toBe('Ожидает ответа')
-    expect(offerStatusLabel('accepted')).toBe('Принято')
-    expect(offerStatusLabel('rejected')).toBe('Отклонено')
-    expect(offerStatusLabel('withdrawn')).toBe('Отозвано')
+  it('resolves all 4 real backend statuses through status.offer.* (see domain/marketplaceoffer)', () => {
+    expect(offerStatusLabel('pending', t)).toBe('status.offer.pending')
+    expect(offerStatusLabel('accepted', t)).toBe('status.offer.accepted')
+    expect(offerStatusLabel('rejected', t)).toBe('status.offer.rejected')
+    expect(offerStatusLabel('withdrawn', t)).toBe('status.offer.withdrawn')
   })
 })
 
@@ -60,25 +62,40 @@ describe('formatMarketplaceDate', () => {
   })
 })
 
+// Минимальный stub-интерполятор ({param} -> значение), с реальными RU-
+// сообщениями из locales/ru.json marketplace.price* — проверяет и текст, и
+// interpolation-механику formatPriceRange, не завязываясь на весь i18n-модуль.
+const priceMessages: Record<string, string> = {
+  'marketplace.priceNotSpecified': 'Цена не указана',
+  'marketplace.priceRange': '{from} — {to}',
+  'marketplace.priceFrom': 'от {price}',
+  'marketplace.priceTo': 'до {price}',
+}
+function tPrice(key: string, params?: Record<string, unknown>): string {
+  let msg = priceMessages[key] ?? key
+  if (params) for (const [k, v] of Object.entries(params)) msg = msg.replaceAll(`{${k}}`, String(v))
+  return msg
+}
+
 describe('formatPriceRange — ContractorService price_from/price_to (both nullable on backend)', () => {
   it('shows "от X" when only price_from is set', () => {
-    expect(formatPriceRange(150000, null)).toMatch(/^от 150\s000 сум$/)
+    expect(formatPriceRange(150000, null, tPrice)).toMatch(/^от 150\s000 сум$/)
   })
 
   it('shows "до X" when only price_to is set', () => {
-    expect(formatPriceRange(null, 300000)).toMatch(/^до 300\s000 сум$/)
+    expect(formatPriceRange(null, 300000, tPrice)).toMatch(/^до 300\s000 сум$/)
   })
 
   it('shows a range when both are set and differ', () => {
-    expect(formatPriceRange(150000, 300000)).toMatch(/^150\s000 — 300\s000 сум$/)
+    expect(formatPriceRange(150000, 300000, tPrice)).toMatch(/^150\s000 — 300\s000 сум$/)
   })
 
   it('collapses to a single price when price_from equals price_to', () => {
-    expect(formatPriceRange(150000, 150000)).toMatch(/^150\s000 сум$/)
+    expect(formatPriceRange(150000, 150000, tPrice)).toMatch(/^150\s000 сум$/)
   })
 
   it('says price is unset when both are null', () => {
-    expect(formatPriceRange(null, null)).toBe('Цена не указана')
+    expect(formatPriceRange(null, null, tPrice)).toBe('Цена не указана')
   })
 })
 
@@ -206,17 +223,17 @@ describe('contractorServicesLabel', () => {
 
 describe('contractorCardPriceLabel', () => {
   it('returns null when there are no services at all', () => {
-    expect(contractorCardPriceLabel([])).toBeNull()
+    expect(contractorCardPriceLabel([], tPrice)).toBeNull()
   })
 
   it('returns null when the first service has neither priceFrom nor priceTo (does not fall back to formatPriceRange\'s "Цена не указана")', () => {
-    expect(contractorCardPriceLabel([{ workTypeId: 'wt1', workType: 'Электрика', priceFrom: null, priceTo: null }])).toBeNull()
+    expect(contractorCardPriceLabel([{ workTypeId: 'wt1', workType: 'Электрика', priceFrom: null, priceTo: null }], tPrice)).toBeNull()
   })
 
   it('formats the first service\'s price range via the existing formatPriceRange', () => {
     // ru-RU toLocaleString uses a narrow no-break space (U+202F) as the
     // thousands separator — see formatPrice's own tests above for the same \s match.
-    expect(contractorCardPriceLabel([{ workTypeId: 'wt1', workType: 'Электрика', priceFrom: 150000, priceTo: 300000 }]))
+    expect(contractorCardPriceLabel([{ workTypeId: 'wt1', workType: 'Электрика', priceFrom: 150000, priceTo: 300000 }], tPrice))
       .toMatch(/^150\s000 — 300\s000 сум$/)
   })
 
@@ -225,7 +242,7 @@ describe('contractorCardPriceLabel', () => {
       { workTypeId: 'wt1', workType: 'Электрика', priceFrom: 150000, priceTo: null },
       { workTypeId: 'wt2', workType: 'Сантехника', priceFrom: 999999, priceTo: null },
     ]
-    expect(contractorCardPriceLabel(services)).toMatch(/^от 150\s000 сум$/)
+    expect(contractorCardPriceLabel(services, tPrice)).toMatch(/^от 150\s000 сум$/)
   })
 })
 

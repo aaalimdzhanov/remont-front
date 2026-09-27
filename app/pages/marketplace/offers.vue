@@ -5,7 +5,9 @@
 // см. useMarketplace.ts) — MarketplaceOffer сам по себе work_type не
 // содержит, а get-by-id для заявки у backend нет вообще.
 definePageMeta({ middleware: 'auth' })
-useHead({ title: 'Мои предложения' })
+
+const { t } = useI18n()
+useHead({ title: computed(() => t('offers.myOffers')) })
 
 const { myOffers, myOffersLoading, myOffersError, requestTitleCache, offerActionId, offerActionError, loadMyOffers, setOfferStatus } = useMarketplace()
 const { fetchOrders, findOrderByRequestId } = useOrders()
@@ -36,7 +38,7 @@ async function handleWithdraw(offerId: string) {
     <div class="my-offers-page__header">
       <NuxtLink to="/marketplace" class="my-offers-page__back">
         <UiIcon name="chevron-left" :size="18" />
-        Биржа заявок
+        {{ t('navigation.backToMarketplace') }}
       </NuxtLink>
       <AppProfileMenu />
     </div>
@@ -44,7 +46,7 @@ async function handleWithdraw(offerId: string) {
     <AppModeNav class="my-offers-page__mode-nav" />
 
     <h1 class="text-h1 my-offers-page__title">
-      Мои предложения
+      {{ t('offers.myOffers') }}
     </h1>
 
     <div v-if="myOffersLoading" class="my-offers-page__skeletons">
@@ -53,15 +55,15 @@ async function handleWithdraw(offerId: string) {
 
     <div v-else-if="myOffersError" class="my-offers-page__state">
       <p class="text-secondary">
-        Не удалось загрузить предложения.
+        {{ t('offers.loadError') }}
       </p>
       <button type="button" class="btn btn-secondary" @click="loadMyOffers">
-        Повторить
+        {{ t('common.retry') }}
       </button>
     </div>
 
     <p v-else-if="myOffers.length === 0" class="text-secondary my-offers-page__empty">
-      У вас пока нет предложений.
+      {{ t('offers.empty') }}
     </p>
 
     <div v-else class="my-offers-page__list">

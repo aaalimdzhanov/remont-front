@@ -1,6 +1,7 @@
 <script setup lang="ts">
 const { hasBuilding, createBuilding, cancelPlacingOpening, deleteSelected, selectedObject, clearSelection, pendingOpeningType } = useBuilding()
 const { showDimensions, toggleDimensions, roomDrawActive, deactivateRoomDraw } = useEditorView()
+const { t } = useI18n()
 
 const width = ref(10)
 const length = ref(12)
@@ -88,22 +89,22 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
     <div v-if="!hasBuilding" class="builder__setup">
       <div class="card builder__setup-card">
         <h2 class="text-h2">
-          Создание здания
+          {{ t('builder.setupTitle') }}
         </h2>
         <p class="text-secondary builder__setup-hint">
-          Укажите внешние размеры здания, чтобы начать планировку.
+          {{ t('builder.setupHint') }}
         </p>
         <form class="builder__setup-form" @submit.prevent="submitBuildingForm">
           <label class="field">
-            <span class="field__label">Ширина, м</span>
+            <span class="field__label">{{ t('builder.widthLabel') }}</span>
             <input v-model.number="width" type="number" min="1" step="0.1" class="input" required>
           </label>
           <label class="field">
-            <span class="field__label">Длина, м</span>
+            <span class="field__label">{{ t('builder.lengthLabel') }}</span>
             <input v-model.number="length" type="number" min="1" step="0.1" class="input" required>
           </label>
           <button type="submit" class="btn btn-primary">
-            Создать здание
+            {{ t('builder.createBuilding') }}
           </button>
         </form>
       </div>
@@ -116,12 +117,12 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
           class="tool-btn"
           :class="{ 'tool-btn--active': isSelectToolActive }"
           data-tool="select"
-          aria-label="Инструмент выделения (V)"
+          :aria-label="t('builder.selectToolAriaLabel')"
           :aria-pressed="isSelectToolActive"
           @click="activateSelectTool"
         >
           <UiIcon name="select" :size="18" />
-          Выделить
+          {{ t('builder.select') }}
         </button>
         <BuilderRoomTool />
         <BuilderOpeningTool />
@@ -162,13 +163,13 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             type="button"
             class="builder__dimensions-toggle"
             :class="{ 'builder__dimensions-toggle--active': showDimensions }"
-            aria-label="Показать или скрыть размеры (M)"
+            :aria-label="t('builder.dimensionsAriaLabel')"
             :aria-pressed="showDimensions"
             @click="toggleDimensions"
           >
             <UiIcon v-if="showDimensions" name="check" :size="14" />
             <UiIcon v-else name="dimension" :size="16" />
-            Размеры
+            {{ t('builder.dimensions') }}
           </button>
         </div>
 
@@ -178,7 +179,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             <BuilderViewer3D />
             <template #fallback>
               <div class="builder__viewer-fallback">
-                Загрузка 3D…
+                {{ t('builder.loading3d') }}
               </div>
             </template>
           </ClientOnly>
@@ -197,11 +198,11 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             v-if="selectedObject"
             type="button"
             class="btn btn-ghost btn-sm builder__sheet-close"
-            aria-label="Закрыть панель свойств"
+            :aria-label="t('builder.closePropertiesAriaLabel')"
             @click="clearSelection"
           >
             <UiIcon name="close" :size="14" />
-            Закрыть
+            {{ t('common.close') }}
           </button>
           <BuilderPropertiesPanel />
         </div>

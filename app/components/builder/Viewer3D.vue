@@ -24,6 +24,7 @@ const {
   selectOpening,
   clearSelection,
 } = useBuilding()
+const { t } = useI18n()
 
 const container = ref<HTMLDivElement | null>(null)
 const hasRooms = computed(() => buildingDocument.value.building.rooms.length > 0)
@@ -243,24 +244,24 @@ onBeforeUnmount(() => {
     <div class="viewer3d__toolbar">
       <label class="viewer3d__toggle">
         <input v-model="showCeiling" type="checkbox">
-        Потолок
+        {{ t('builder.ceiling') }}
       </label>
       <button type="button" class="viewer3d__reset-btn" @click="resetCamera">
-        Сбросить камеру
+        {{ t('builder.resetCamera') }}
       </button>
     </div>
 
     <div v-if="hasRooms" class="viewer3d__legend">
-      <span class="viewer3d__legend-item"><i class="viewer3d__swatch viewer3d__swatch--wall" />Стены</span>
-      <span class="viewer3d__legend-item"><i class="viewer3d__swatch viewer3d__swatch--door" />Двери</span>
-      <span class="viewer3d__legend-item"><i class="viewer3d__swatch viewer3d__swatch--window" />Окна</span>
+      <span class="viewer3d__legend-item"><i class="viewer3d__swatch viewer3d__swatch--wall" />{{ t('builder.wallsLegend') }}</span>
+      <span class="viewer3d__legend-item"><i class="viewer3d__swatch viewer3d__swatch--door" />{{ t('builder.doorsLegend') }}</span>
+      <span class="viewer3d__legend-item"><i class="viewer3d__swatch viewer3d__swatch--window" />{{ t('builder.windowsLegend') }}</span>
     </div>
 
     <p v-if="renderError" class="viewer3d__hint viewer3d__hint--error">
-      Ошибка построения 3D-сцены: {{ renderError }}
+      {{ t('builder.sceneRenderError', { error: renderError }) }}
     </p>
     <p v-else-if="!hasRooms" class="viewer3d__hint">
-      Добавьте комнату для просмотра 3D
+      {{ t('builder.addRoomFor3d') }}
     </p>
   </div>
 </template>

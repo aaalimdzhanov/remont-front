@@ -7,6 +7,7 @@
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
+const { t } = useI18n()
 const { document: buildingDocument } = useBuilding()
 const { loadProject, isDirty, error, cleanup } = useProjectPersistence()
 const { isLoggingOut } = useAuth()
@@ -48,7 +49,7 @@ onBeforeRouteLeave(() => {
   // ("Выйти без сохранения?") — не спрашивать второй раз тем же диалогом.
   if (isLoggingOut.value) return true
   if (phase.value !== 'ready' || !isDirty.value) return true
-  return window.confirm('Есть несохранённые изменения. Вернуться к проектам?')
+  return window.confirm(t('projects.unsavedChangesConfirm'))
 })
 
 // Отменяет pending autosave/in-flight-save прежнего проекта и возвращает
@@ -65,30 +66,30 @@ onBeforeUnmount(() => {
     <div v-if="phase === 'loading'" class="page__status">
       <div class="page__spinner" aria-hidden="true" />
       <p class="text-secondary">
-        Загрузка проекта…
+        {{ t('projects.loadingProject') }}
       </p>
     </div>
 
     <div v-else-if="phase === 'not-found'" class="page__status">
       <UiIcon name="alert" :size="28" class="page__status-icon" />
       <p class="text-h3">
-        Проект не найден
+        {{ t('projects.notFoundTitle') }}
       </p>
       <NuxtLink to="/projects" class="btn btn-secondary">
-        Вернуться к проектам
+        {{ t('projects.backToProjects') }}
       </NuxtLink>
     </div>
 
     <div v-else-if="phase === 'error'" class="page__status">
       <UiIcon name="alert" :size="28" class="page__status-icon" />
       <p class="text-h3">
-        Не удалось загрузить проект
+        {{ t('projects.loadErrorTitle') }}
       </p>
       <p v-if="error" class="text-secondary">
         {{ error.message }}
       </p>
       <NuxtLink to="/projects" class="btn btn-secondary">
-        Вернуться к проектам
+        {{ t('projects.backToProjects') }}
       </NuxtLink>
     </div>
 

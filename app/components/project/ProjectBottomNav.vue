@@ -6,10 +6,12 @@
 // уже показана инлайн в EditorHeader.vue/WorkBuilderHeader.vue, второй копии
 // там при этом не будет: класс здесь просто ничего не рендерит на десктопе.
 defineProps<{ projectId: string }>()
+
+const { t } = useI18n()
 </script>
 
 <template>
-  <nav class="project-bottom-nav" aria-label="Разделы проекта (мобильная навигация)">
+  <nav class="project-bottom-nav" :aria-label="t('builder.navSectionsMobile')">
     <ProjectNavigation :project-id="projectId" variant="bottom" />
   </nav>
 </template>

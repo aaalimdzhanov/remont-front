@@ -2,7 +2,27 @@
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
+  modules: ['@nuxtjs/i18n'],
   css: ['~/assets/css/main.css'],
+  // strategy:'no_prefix' — язык не появляется в URL (/ru/..., /uz/...), ни
+  // один существующий маршрут не меняется. detectBrowserLanguage:false —
+  // переключение только вручную через переключатель в ProfileMenu, никакого
+  // auto-redirect/auto-select по Accept-Language браузера. ВАЖНО:
+  // detectBrowserLanguage:false отключает и встроенный cookie-механизм
+  // модуля целиком (это одна и та же опция) — поэтому персистентность
+  // явного выбора пользователя реализована отдельно, см.
+  // app/plugins/i18n-persist.client.ts (localStorage, не влияет на
+  // detectBrowserLanguage/auto-redirect).
+  i18n: {
+    locales: [
+      { code: 'ru', name: 'Русский', file: 'ru.json' },
+      { code: 'uz', name: 'Oʻzbekcha', file: 'uz.json' },
+    ],
+    defaultLocale: 'ru',
+    langDir: '../locales/',
+    strategy: 'no_prefix',
+    detectBrowserLanguage: false,
+  },
   app: {
     head: {
       title: 'ishonchliusta',

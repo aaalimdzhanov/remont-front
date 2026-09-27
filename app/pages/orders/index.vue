@@ -8,7 +8,9 @@
 // (сравнение id), а не access control: backend уже отфильтровал список до
 // того, что реально видно вызывающему.
 definePageMeta({ middleware: 'auth' })
-useHead({ title: 'Заказы' })
+
+const { t } = useI18n()
+useHead({ title: computed(() => t('orders.listTitle')) })
 
 const { user } = useAuth()
 const { isContractor } = useUserMode()
@@ -24,12 +26,8 @@ const myClientOrders = computed(() => orders.value.filter(o => user.value && o.c
 const myContractorOrders = computed(() => orders.value.filter(o => contractor.value && o.contractorId === contractor.value.id))
 const visibleOrders = computed(() => (isContractor.value ? myContractorOrders.value : myClientOrders.value))
 
-const pageTitle = computed(() => (isContractor.value ? 'Заказы' : 'Мои заказы'))
-const emptyText = computed(() => (
-  isContractor.value
-    ? 'Принятые предложения станут заказами здесь.'
-    : 'Когда мастер примет вашу работу и заказ будет создан, он появится здесь.'
-))
+const pageTitle = computed(() => t(isContractor.value ? 'orders.listTitle' : 'orders.myOrdersTitle'))
+const emptyText = computed(() => t(isContractor.value ? 'orders.emptyContractor' : 'orders.emptyClient'))
 
 function titleFor(order: { marketplaceRequestId: string }): string | null {
   return requestTitleCache.value[order.marketplaceRequestId]?.workType ?? null
@@ -41,7 +39,7 @@ function titleFor(order: { marketplaceRequestId: string }): string | null {
     <div class="orders-page__header">
       <NuxtLink to="/marketplace" class="orders-page__back">
         <UiIcon name="chevron-left" :size="18" />
-        Биржа
+        {{ t('orders.backToMarketplace') }}
       </NuxtLink>
       <AppProfileMenu />
     </div>
@@ -58,15 +56,15 @@ function titleFor(order: { marketplaceRequestId: string }): string | null {
 
     <div v-else-if="ordersError" class="orders-page__state">
       <p class="text-secondary">
-        Не удалось загрузить заказы.
+        {{ t('orders.loadErrorList') }}
       </p>
       <button type="button" class="btn btn-secondary" @click="fetchOrders">
-        Повторить
+        {{ t('common.retry') }}
       </button>
     </div>
 
     <p v-else-if="visibleOrders.length === 0" class="text-secondary orders-page__empty">
-      Заказов пока нет. {{ emptyText }}
+      {{ t('orders.emptyPrefix') }} {{ emptyText }}
     </p>
 
     <div v-else class="orders-page__grid">

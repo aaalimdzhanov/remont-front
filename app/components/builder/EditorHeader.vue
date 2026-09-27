@@ -36,6 +36,8 @@ const {
 // открытого проекта, редактируется тем же способом, что и имя). Использует
 // тот же formatLocation()/Location-тип, что и Marketplace (см. utils/
 // marketplace.ts) — не второй форматтер.
+const { t, locale } = useI18n()
+
 const editingLocation = ref(false)
 const draftCity = ref('')
 const draftDistrict = ref('')
@@ -71,10 +73,10 @@ async function handleClearLocation() {
 
 const saveLabel = computed(() => {
   switch (saveStatus.value) {
-    case 'saving': return 'Сохранение…'
-    case 'error': return 'Повторить сохранение'
-    case 'unsaved': return 'Сохранить'
-    case 'saved': return 'Сохранено'
+    case 'saving': return t('builder.saveButtonLabel.saving')
+    case 'error': return t('builder.saveButtonLabel.error')
+    case 'unsaved': return t('builder.saveButtonLabel.unsaved')
+    case 'saved': return t('builder.saveButtonLabel.saved')
   }
 })
 
@@ -89,7 +91,9 @@ const saveStatusVariant = computed(() => {
 
 function formatDate(iso: string): string {
   try {
-    return new Date(iso).toLocaleString('ru-RU', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })
+    const date = new Date(iso)
+    const time = date.toLocaleTimeString(localeTag(locale.value), { hour: '2-digit', minute: '2-digit' })
+    return `${formatShortDate(date, locale.value)}, ${time}`
   } catch {
     return iso
   }
@@ -97,10 +101,10 @@ function formatDate(iso: string): string {
 
 const saveStatusLabel = computed(() => {
   switch (saveStatus.value) {
-    case 'saving': return 'Сохранение…'
-    case 'error': return 'Не удалось сохранить'
-    case 'unsaved': return 'Несохранённые изменения'
-    case 'saved': return lastSavedAt.value ? `Сохранено · ${formatDate(lastSavedAt.value)}` : 'Сохранено'
+    case 'saving': return t('builder.saveStatusLabel.saving')
+    case 'error': return t('builder.saveStatusLabel.error')
+    case 'unsaved': return t('builder.saveStatusLabel.unsaved')
+    case 'saved': return lastSavedAt.value ? t('builder.saveStatusLabel.savedAt', { date: formatDate(lastSavedAt.value) }) : t('builder.saveStatusLabel.saved')
   }
 })
 
@@ -117,7 +121,7 @@ async function handleSave() {
 // вернула false.
 function confirmLogout(): boolean {
   if (!isDirty.value) return true
-  return window.confirm('Есть несохранённые изменения. Выйти без сохранения?')
+  return window.confirm(t('builder.confirmLogoutUnsaved'))
 }
 </script>
 
@@ -133,7 +137,7 @@ function confirmLogout(): boolean {
       </NuxtLink>
       <NuxtLink to="/projects" class="editor-header__back">
         <UiIcon name="chevron-left" :size="16" />
-        Проекты
+        {{ t('navigation.backToProjects') }}
       </NuxtLink>
       <ProjectNavigation v-if="projectId" :project-id="projectId" />
     </div>
@@ -141,14 +145,14 @@ function confirmLogout(): boolean {
     <input
       class="input editor-header__name"
       :value="buildingDocument.project.name"
-      placeholder="Название проекта"
-      aria-label="Название проекта"
+      :placeholder="t('builder.projectNamePlaceholder')"
+      :aria-label="t('builder.projectNamePlaceholder')"
       @change="renameProject(($event.target as HTMLInputElement).value)"
     >
 
     <button type="button" class="editor-header__location-chip" @click="openLocationEditor">
       <UiIcon name="pin" :size="14" />
-      <span class="editor-header__location-chip-text">{{ locationLabel ?? 'Указать место' }}</span>
+      <span class="editor-header__location-chip-text">{{ locationLabel ?? t('builder.setLocationPlaceholder') }}</span>
     </button>
 
     <div class="editor-header__actions">
@@ -170,16 +174,16 @@ function confirmLogout(): boolean {
        в глобальном ряду выше) и без кнопки "Сохранить" (только текст
        статуса — autosave делает сохранение сама, см. задание). -->
   <div class="editor-header__mobile-project">
-    <NuxtLink to="/projects" class="editor-header__mobile-back" aria-label="Назад к проектам">
+    <NuxtLink to="/projects" class="editor-header__mobile-back" :aria-label="t('builder.backToProjectsAriaLabel')">
       <UiIcon name="chevron-left" :size="16" />
-      Проекты
+      {{ t('navigation.backToProjects') }}
     </NuxtLink>
     <p class="editor-header__mobile-name">
       {{ buildingDocument.project.name }}
     </p>
     <button type="button" class="editor-header__location-chip editor-header__location-chip--mobile" @click="openLocationEditor">
       <UiIcon name="pin" :size="14" />
-      <span class="editor-header__location-chip-text">{{ locationLabel ?? 'Указать место' }}</span>
+      <span class="editor-header__location-chip-text">{{ locationLabel ?? t('builder.setLocationPlaceholder') }}</span>
     </button>
     <span class="status-dot" :class="`status-dot--${saveStatusVariant}`">
       <UiIcon v-if="saveStatus === 'saved'" name="check" :size="14" />
@@ -192,13 +196,13 @@ function confirmLogout(): boolean {
     <ProjectLocationFields v-model:city="draftCity" v-model:district="draftDistrict" />
     <div class="editor-header__location-panel-actions">
       <button type="button" class="btn btn-ghost btn-sm" @click="closeLocationEditor">
-        Отмена
+        {{ t('common.cancel') }}
       </button>
       <button v-if="location" type="button" class="btn btn-secondary btn-sm" @click="handleClearLocation">
-        Очистить
+        {{ t('common.clear') }}
       </button>
       <button type="button" class="btn btn-primary btn-sm editor-header__location-panel-save" :disabled="!draftCity" @click="handleSaveLocation">
-        Сохранить
+        {{ t('common.save') }}
       </button>
     </div>
   </div>

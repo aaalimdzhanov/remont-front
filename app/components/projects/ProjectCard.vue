@@ -9,9 +9,12 @@
 // сама HTTP не делает вообще — только рендерит то, что получила, и просит
 // родителя (emit) выполнить rename/delete/open.
 import type { Project, ProjectSummary } from '~/api/types'
+import { formatShortDate, localeTag } from '~/utils/i18nFormat'
 
 const props = defineProps<{ project: ProjectSummary, detail: Project | null, loading: boolean }>()
 const emit = defineEmits<{ open: [], delete: [], rename: [name: string] }>()
+
+const { t, locale } = useI18n()
 
 // detail.building — это весь BuildingDocument (schema/project/units/building/
 // calculated), а не сам Building — .building.building — реальная геометрия,
@@ -19,14 +22,6 @@ const emit = defineEmits<{ open: [], delete: [], rename: [name: string] }>()
 // Engine), ничего здесь заново не считается.
 const area = computed(() => props.detail?.building.calculated.areas.floor ?? null)
 const roomCount = computed(() => props.detail?.building.building.rooms.length ?? null)
-
-function pluralRooms(count: number): string {
-  const mod10 = count % 10
-  const mod100 = count % 100
-  if (mod10 === 1 && mod100 !== 11) return 'комната'
-  if ([2, 3, 4].includes(mod10) && ![12, 13, 14].includes(mod100)) return 'комнаты'
-  return 'комнат'
-}
 
 function formatUpdatedAt(iso: string): string {
   let date: Date
@@ -37,14 +32,15 @@ function formatUpdatedAt(iso: string): string {
     return iso
   }
   const now = new Date()
-  const time = date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+  const tag = localeTag(locale.value)
+  const time = date.toLocaleTimeString(tag, { hour: '2-digit', minute: '2-digit' })
   const isSameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString()
   const yesterday = new Date(now)
   yesterday.setDate(yesterday.getDate() - 1)
 
-  if (isSameDay(date, now)) return `сегодня, ${time}`
-  if (isSameDay(date, yesterday)) return `вчера, ${time}`
-  return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
+  if (isSameDay(date, now)) return t('projects.updatedToday', { time })
+  if (isSameDay(date, yesterday)) return t('projects.updatedYesterday', { time })
+  return formatShortDate(date, locale.value)
 }
 
 // ---- Меню (переименовать/удалить/отмена) ----
@@ -87,7 +83,7 @@ function handleDelete() {
 
 <template>
   <li ref="rootEl" class="project-card">
-    <button type="button" class="project-card__preview" aria-label="Открыть проект" @click="emit('open')">
+    <button type="button" class="project-card__preview" :aria-label="t('projects.openAriaLabel')" @click="emit('open')">
       <div v-if="loading" class="project-card__preview-skeleton" />
       <ProjectsProjectPreview v-else-if="detail" :building="detail.building.building" />
       <div v-else class="project-card__preview-skeleton project-card__preview-skeleton--static" />
@@ -103,7 +99,7 @@ function handleDelete() {
           <button
             type="button"
             class="project-card__menu-btn"
-            aria-label="Действия с проектом"
+            :aria-label="t('projects.actionsAriaLabel')"
             :aria-expanded="menuOpen"
             @click.stop="toggleMenu"
           >
@@ -113,26 +109,26 @@ function handleDelete() {
           <div v-if="menuOpen" class="project-card__menu" role="menu">
             <button type="button" class="project-card__menu-item" role="menuitem" @click.stop="openRename">
               <UiIcon name="edit" :size="15" />
-              Переименовать
+              {{ t('projects.rename') }}
             </button>
             <button type="button" class="project-card__menu-item project-card__menu-item--danger" role="menuitem" @click.stop="handleDelete">
               <UiIcon name="trash" :size="15" />
-              Удалить
+              {{ t('common.delete') }}
             </button>
             <div class="project-card__menu-divider" />
             <button type="button" class="project-card__menu-item" role="menuitem" @click.stop="closeMenu">
-              Отмена
+              {{ t('common.cancel') }}
             </button>
           </div>
         </div>
       </div>
 
       <p v-if="area !== null && roomCount !== null" class="project-card__meta text-caption text-muted">
-        {{ area.toFixed(0) }} м² &nbsp;·&nbsp; {{ roomCount }} {{ pluralRooms(roomCount) }}
+        {{ area.toFixed(0) }} {{ t('builder.unit.m2') }} &nbsp;·&nbsp; {{ t('projects.roomsCount', { count: roomCount }, roomCount) }}
       </p>
 
       <p class="project-card__date text-caption text-muted">
-        Изменён {{ formatUpdatedAt(project.updatedAt) }}
+        {{ t('projects.updatedAt', { date: formatUpdatedAt(project.updatedAt) }) }}
       </p>
     </div>
 

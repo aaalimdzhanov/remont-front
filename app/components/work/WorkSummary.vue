@@ -8,13 +8,7 @@ type WorkStatus = ProjectWork['status']
 
 const props = defineProps<{ works: ProjectWork[] }>()
 
-function pluralWorks(count: number): string {
-  const mod10 = count % 10
-  const mod100 = count % 100
-  if (mod10 === 1 && mod100 !== 11) return 'работа'
-  if ([2, 3, 4].includes(mod10) && ![12, 13, 14].includes(mod100)) return 'работы'
-  return 'работ'
-}
+const { t } = useI18n()
 
 const total = computed(() => props.works.length)
 
@@ -28,15 +22,15 @@ const statusCounts = computed(() => {
 <template>
   <div class="work-summary">
     <p class="text-h3 work-summary__title">
-      Работы в проекте
+      {{ t('builder.workBuilder.summaryTitle') }}
     </p>
     <p class="text-secondary work-summary__count">
-      {{ total }} {{ pluralWorks(total) }}
+      {{ t('builder.workBuilder.worksCount', { count: total }, total) }}
     </p>
     <p class="text-caption text-muted work-summary__breakdown">
-      <span v-if="statusCounts.planned">Запланировано {{ statusCounts.planned }}</span>
-      <span v-if="statusCounts.in_progress">В работе {{ statusCounts.in_progress }}</span>
-      <span v-if="statusCounts.completed">Выполнено {{ statusCounts.completed }}</span>
+      <span v-if="statusCounts.planned">{{ statusLabel('planned', t) }} {{ statusCounts.planned }}</span>
+      <span v-if="statusCounts.in_progress">{{ statusLabel('in_progress', t) }} {{ statusCounts.in_progress }}</span>
+      <span v-if="statusCounts.completed">{{ statusLabel('completed', t) }} {{ statusCounts.completed }}</span>
     </p>
   </div>
 </template>

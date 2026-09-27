@@ -30,10 +30,12 @@ import type { PublicContractorProfile } from '~/api/types'
 
 const props = defineProps<{ contractor: PublicContractorProfile }>()
 
+const { t, locale } = useI18n()
+
 const description = computed(() => contractorDescription(props.contractor))
 const servicesLabel = computed(() => contractorServicesLabel(props.contractor.services))
-const priceLabel = computed(() => contractorCardPriceLabel(props.contractor.services))
-const locationLabel = computed(() => formatLocation(props.contractor.location))
+const priceLabel = computed(() => contractorCardPriceLabel(props.contractor.services, t, locale.value, t('common.currency')))
+const locationLabel = computed(() => formatLocation(props.contractor.location, locale.value))
 </script>
 
 <template>
@@ -43,21 +45,21 @@ const locationLabel = computed(() => formatLocation(props.contractor.location))
         <UiIcon name="user" :size="20" />
       </span>
       <p class="public-contractor-card__name">
-        {{ contractorDisplayName(contractor) }}
+        {{ contractorDisplayName(contractor, t) }}
       </p>
     </div>
 
     <div class="public-contractor-card__rating">
       <ReviewRatingStars :rating="contractor.rating" :size="14" />
       <span class="text-caption text-muted">
-        {{ contractorRatingLabel(contractor.rating, contractor.reviewsCount) }}
-        <template v-if="contractor.reviewsCount > 0">· {{ reviewsCountLabel(contractor.reviewsCount) }}</template>
+        {{ contractorRatingLabel(contractor.rating, contractor.reviewsCount, t) }}
+        <template v-if="contractor.reviewsCount > 0">· {{ reviewsCountLabel(contractor.reviewsCount, t) }}</template>
       </span>
     </div>
 
     <p v-if="locationLabel" class="public-contractor-card__location">
       <UiIcon name="pin" :size="14" />
-      Работает в: {{ locationLabel }}
+      {{ t('marketplace.workingIn', { location: locationLabel }) }}
     </p>
 
     <p v-if="description" class="public-contractor-card__description">
@@ -73,7 +75,7 @@ const locationLabel = computed(() => formatLocation(props.contractor.location))
     </p>
 
     <span class="btn btn-secondary btn-sm public-contractor-card__cta">
-      Посмотреть профиль
+      {{ t('contractors.viewProfile') }}
     </span>
   </NuxtLink>
 </template>

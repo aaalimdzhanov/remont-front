@@ -12,6 +12,7 @@ const props = defineProps<{
   item: { imageUrl: string, title: string, description: string } | null
 }>()
 const emit = defineEmits<{ close: [] }>()
+const { t } = useI18n()
 
 function handleKeydown(event: KeyboardEvent) {
   if (event.key === 'Escape') emit('close')
@@ -28,12 +29,12 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
 <template>
   <Teleport to="body">
     <div v-if="item" class="portfolio-viewer__overlay" @click.self="emit('close')">
-      <button type="button" class="portfolio-viewer__close" aria-label="Закрыть" @click="emit('close')">
+      <button type="button" class="portfolio-viewer__close" :aria-label="t('common.close')" @click="emit('close')">
         <UiIcon name="close" :size="20" />
       </button>
 
       <figure class="portfolio-viewer__figure">
-        <img :src="item.imageUrl" :alt="portfolioImageAlt(item.title)" class="portfolio-viewer__image">
+        <img :src="item.imageUrl" :alt="portfolioImageAlt(item.title, t)" class="portfolio-viewer__image">
         <figcaption v-if="item.title || item.description" class="portfolio-viewer__caption">
           <p v-if="item.title" class="portfolio-viewer__caption-title">
             {{ item.title }}

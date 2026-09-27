@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { districtsForCity, LOCATION_CATALOG, LOCATION_CITIES, setLocationCity, setLocationDistrict } from '~/utils/location'
+import { districtsForCity, LOCATION_CATALOG, LOCATION_CITIES, locationDisplayName, setLocationCity, setLocationDistrict } from '~/utils/location'
 
 describe('LOCATION_CATALOG', () => {
   it('every city has a non-empty district list', () => {
@@ -57,5 +57,31 @@ describe('setLocationDistrict', () => {
     expect(switchedToSamarkand).not.toEqual({ city: 'Самарканд', district: 'Юнусабадский' })
     // sanity: the earlier value is untouched (setLocationCity does not mutate)
     expect(tashkentWithDistrict).toEqual({ city: 'Ташкент', district: 'Юнусабадский' })
+  })
+})
+
+describe('locationDisplayName — localizes the LABEL only, never the stored/canonical value', () => {
+  it('ru locale returns the canonical name unchanged', () => {
+    expect(locationDisplayName('Ташкент', 'ru')).toBe('Ташкент')
+    expect(locationDisplayName('Юнусабадский', 'ru')).toBe('Юнусабадский')
+  })
+
+  it('uz locale returns the natural Uzbek-Latin transliteration for a known city/district', () => {
+    expect(locationDisplayName('Ташкент', 'uz')).toBe('Toshkent')
+    expect(locationDisplayName('Юнусабадский', 'uz')).toBe('Yunusobod')
+    expect(locationDisplayName('Центр', 'uz')).toBe('Markaz')
+  })
+
+  it('every real catalog city/district has a uz transliteration (no silent fallback to the RU string)', () => {
+    for (const entry of LOCATION_CATALOG) {
+      expect(locationDisplayName(entry.city, 'uz')).not.toBe(entry.city)
+      for (const district of entry.districts) {
+        expect(locationDisplayName(district, 'uz')).not.toBe(district)
+      }
+    }
+  })
+
+  it('falls back to the raw value for an unknown name', () => {
+    expect(locationDisplayName('Атлантида', 'uz')).toBe('Атлантида')
   })
 })

@@ -4,38 +4,33 @@
 // только преобразует уже готовые backend-значения в читаемый вид и фильтрует
 // уже загруженный набор (см. app/api/types.ts).
 import type { Location, MarketplaceRequestStatus, OfferStatus, OpenMarketplaceRequest, PublicContractorProfile, PublicContractorService, WorkCategory, WorkType } from '~/api/types'
+import { formatShortDate, localeTag } from '~/utils/i18nFormat'
+import { locationDisplayName } from '~/utils/location'
 
-const REQUEST_STATUS_LABELS: Record<MarketplaceRequestStatus, string> = {
-  draft: 'Черновик',
-  open: 'Опубликована',
-  cancelled: 'Отменена',
-  closed: 'Закрыта',
+// t — переданный вызывающим компонентом useI18n().t (namespace status.*) —
+// этот файл остаётся чистыми функциями без доступа к Vue-контексту, поэтому
+// он не может сам вызвать useI18n(). Единственный источник этих подписей —
+// locales/{ru,uz}.json, не дублируется больше нигде.
+export function marketplaceRequestStatusLabel(status: MarketplaceRequestStatus, t: (key: string) => string): string {
+  return t(`status.request.${status}`)
 }
 
-export function marketplaceRequestStatusLabel(status: MarketplaceRequestStatus): string {
-  return REQUEST_STATUS_LABELS[status]
-}
-
-const OFFER_STATUS_LABELS: Record<OfferStatus, string> = {
-  pending: 'Ожидает ответа',
-  accepted: 'Принято',
-  rejected: 'Отклонено',
-  withdrawn: 'Отозвано',
-}
-
-export function offerStatusLabel(status: OfferStatus): string {
-  return OFFER_STATUS_LABELS[status]
+export function offerStatusLabel(status: OfferStatus, t: (key: string) => string): string {
+  return t(`status.offer.${status}`)
 }
 
 // price — целое (int64 на backend, см. api/types.ts) — здесь только
 // визуальная группировка разрядов, значение не округляется/не меняется.
-export function formatPrice(price: number): string {
-  return `${Math.round(price).toLocaleString('ru-RU')} сум`
+// locale/currency — по умолчанию ru/сум для обратной совместимости
+// (существующие тесты/вызовы без явной локали), реальный UI передаёт
+// текущую useI18n().locale.value и t('common.currency').
+export function formatPrice(price: number, locale = 'ru', currency = 'сум'): string {
+  return `${Math.round(price).toLocaleString(localeTag(locale))} ${currency}`
 }
 
-export function formatMarketplaceDate(iso: string): string {
+export function formatMarketplaceDate(iso: string, locale = 'ru'): string {
   try {
-    return new Date(iso).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
+    return formatShortDate(new Date(iso), locale)
   } catch {
     return iso
   }
@@ -45,14 +40,20 @@ export function formatMarketplaceDate(iso: string): string {
 // price_from/price_to — *int64 на backend, здесь уже number|null (см.
 // app/api/contractor.ts). Оба null — цена ещё не указана (backend это
 // разрешает, поле необязательное).
-export function formatPriceRange(priceFrom: number | null, priceTo: number | null): string {
-  if (priceFrom === null && priceTo === null) return 'Цена не указана'
+export function formatPriceRange(
+  priceFrom: number | null,
+  priceTo: number | null,
+  t: (key: string, params?: Record<string, unknown>) => string,
+  locale = 'ru',
+  currency = 'сум',
+): string {
+  if (priceFrom === null && priceTo === null) return t('marketplace.priceNotSpecified')
   if (priceFrom !== null && priceTo !== null) {
-    if (priceFrom === priceTo) return formatPrice(priceFrom)
-    return `${Math.round(priceFrom).toLocaleString('ru-RU')} — ${formatPrice(priceTo)}`
+    if (priceFrom === priceTo) return formatPrice(priceFrom, locale, currency)
+    return t('marketplace.priceRange', { from: Math.round(priceFrom).toLocaleString(localeTag(locale)), to: formatPrice(priceTo, locale, currency) })
   }
-  if (priceFrom !== null) return `от ${formatPrice(priceFrom)}`
-  return `до ${formatPrice(priceTo as number)}`
+  if (priceFrom !== null) return t('marketplace.priceFrom', { price: formatPrice(priceFrom, locale, currency) })
+  return t('marketplace.priceTo', { price: formatPrice(priceTo as number, locale, currency) })
 }
 
 // ---- PublicContractorCard.vue helpers («Мастера на платформе» v1) ----
@@ -80,11 +81,16 @@ export function contractorServicesLabel(services: PublicContractorService[], max
 // СКРЫТЬ строку цены в этом случае (см. задание, секция 15: "оба
 // отсутствуют — не показывать цену"), поэтому здесь предварительная
 // проверка перед вызовом того же самого форматтера, а не новый формат.
-export function contractorCardPriceLabel(services: PublicContractorService[]): string | null {
+export function contractorCardPriceLabel(
+  services: PublicContractorService[],
+  t: (key: string, params?: Record<string, unknown>) => string,
+  locale = 'ru',
+  currency = 'сум',
+): string | null {
   const first = services[0]
   if (!first) return null
   if (first.priceFrom === null && first.priceTo === null) return null
-  return formatPriceRange(first.priceFrom, first.priceTo)
+  return formatPriceRange(first.priceFrom, first.priceTo, t, locale, currency)
 }
 
 // input может прийти и строкой, и числом (Vue кастит v-model
@@ -248,12 +254,17 @@ export function filterContractorsByWorkType(
 // Пустая строка ('') трактуется как "поле не заполнено" наравне с
 // отсутствием — на случай, если backend когда-нибудь пришлёт location с
 // одним из полей пустым, а не null целиком.
-export function formatLocation(location: Location | null): string | null {
+// locale — по умолчанию 'ru' (совпадает с канонической формой city/district,
+// см. utils/location.ts): вызывающая сторона в реальном UI передаёт текущую
+// useI18n().locale.value, чтобы город/район отображались на языке
+// интерфейса — само значение location.city/district при этом не меняется
+// (это делает locationDisplayName(), а не formatLocation()).
+export function formatLocation(location: Location | null, locale = 'ru'): string | null {
   if (!location) return null
-  const city = location.city.trim()
-  const district = location.district.trim()
-  if (city && district) return `${city}, ${district}`
-  if (city) return city
-  if (district) return district
+  const city = locationDisplayName(location.city.trim(), locale)
+  const district = locationDisplayName(location.district.trim(), locale)
+  if (location.city.trim() && location.district.trim()) return `${city}, ${district}`
+  if (location.city.trim()) return city
+  if (location.district.trim()) return district
   return null
 }

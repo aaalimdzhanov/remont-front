@@ -17,6 +17,8 @@ const emit = defineEmits<{
   cancel: []
 }>()
 
+const { t } = useI18n()
+
 const priceFromInput = ref<string | number>('')
 const priceToInput = ref<string | number>('')
 
@@ -47,19 +49,19 @@ function handleSubmit() {
 <template>
   <Teleport to="body">
     <div v-if="open" class="edit-price-sheet__overlay" @click.self="emit('cancel')">
-      <div class="edit-price-sheet__panel" role="dialog" aria-modal="true" aria-label="Изменить цену">
+      <div class="edit-price-sheet__panel" role="dialog" aria-modal="true" :aria-label="t('contractorProfile.editPriceTitle')">
         <div class="edit-price-sheet__handle" aria-hidden="true" />
         <h3 class="edit-price-sheet__title">
-          Изменить цену
+          {{ t('contractorProfile.editPriceTitle') }}
         </h3>
         <p v-if="service" class="text-secondary edit-price-sheet__hint">
-          {{ service.workType }} · {{ unitLabel(service.unit) }}
+          {{ service.workType }} · {{ unitLabel(service.unit, t) }}
         </p>
 
         <form class="edit-price-sheet__form" @submit.prevent="handleSubmit">
           <div class="edit-price-sheet__price-row">
             <label class="field">
-              <span class="field__label">Цена от, сум</span>
+              <span class="field__label">{{ t('contractorProfile.priceFromLabel') }}</span>
               <input
                 v-model="priceFromInput"
                 type="number"
@@ -73,7 +75,7 @@ function handleSubmit() {
               >
             </label>
             <label class="field">
-              <span class="field__label">Цена до, сум</span>
+              <span class="field__label">{{ t('contractorProfile.priceToLabel') }}</span>
               <input
                 v-model="priceToInput"
                 type="number"
@@ -88,7 +90,7 @@ function handleSubmit() {
           </div>
 
           <p v-if="!rangeValid" class="edit-price-sheet__error-text">
-            Цена «до» не может быть меньше цены «от».
+            {{ t('errors.invalid_price_range') }}
           </p>
 
           <p v-if="error" class="edit-price-sheet__error">
@@ -96,7 +98,7 @@ function handleSubmit() {
           </p>
 
           <button type="submit" class="btn btn-primary edit-price-sheet__submit" :disabled="!isValid || submitting">
-            {{ submitting ? 'Сохраняем…' : 'Сохранить' }}
+            {{ submitting ? t('common.saving') : t('common.save') }}
           </button>
         </form>
       </div>

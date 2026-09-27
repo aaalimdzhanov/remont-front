@@ -6,8 +6,9 @@ import * as THREE from 'three'
 import type { Room } from '~/types/building'
 
 const FLOOR_THICKNESS = 0.05
-// Тёплый нейтральный тон, заметно отличимый от светлых стен.
-const FLOOR_COLOR = 0xd8c7a8
+// Нейтральный светло-серый (архитектурная модель, не "деревянный" жилой
+// пол) — заметно отличим от светлых стен без читающегося материала/декора.
+const FLOOR_COLOR = 0xdedad2
 const FLOOR_SELECTED_COLOR = 0xffede0 // тот же лёгкий accent-тон, что var(--color-primary-subtle) в 2D
 
 const CEILING_THICKNESS = 0.05

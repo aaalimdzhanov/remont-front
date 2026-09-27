@@ -9,6 +9,8 @@
 import type { Order } from '~/api/types'
 
 defineProps<{ order: Order, workTitle?: string | null }>()
+
+const { t, locale } = useI18n()
 </script>
 
 <template>
@@ -18,25 +20,25 @@ defineProps<{ order: Order, workTitle?: string | null }>()
         {{ workTitle }}
       </p>
       <p v-else class="order-card__title text-muted">
-        Заказ
+        {{ t('orders.title') }}
       </p>
       <span class="order-card__status" :class="`order-card__status--${orderStatusClass(order.status)}`">
-        {{ orderStatusLabel(order.status) }}
+        {{ orderStatusLabel(order.status, t) }}
       </span>
     </div>
 
     <div class="order-card__row">
-      <span class="text-caption text-muted">Количество</span>
-      <span class="text-small">{{ formatQuantity(order.quantity, order.unit) }}</span>
+      <span class="text-caption text-muted">{{ t('orders.quantity') }}</span>
+      <span class="text-small">{{ formatQuantity(order.quantity, order.unit, t) }}</span>
     </div>
 
     <div class="order-card__row">
-      <span class="text-caption text-muted">Цена</span>
-      <span class="order-card__price">{{ formatPrice(order.price) }}</span>
+      <span class="text-caption text-muted">{{ t('orders.price') }}</span>
+      <span class="order-card__price">{{ formatPrice(order.price, locale, t('common.currency')) }}</span>
     </div>
 
     <p class="text-caption text-muted order-card__date">
-      Создан {{ formatMarketplaceDate(order.createdAt) }}
+      {{ t('orders.createdOn', { date: formatMarketplaceDate(order.createdAt, locale) }) }}
     </p>
   </NuxtLink>
 </template>

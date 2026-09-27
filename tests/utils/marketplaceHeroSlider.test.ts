@@ -13,30 +13,30 @@ describe('MARKETPLACE_HERO_SLIDES — content contract (see задание "Mark
   it('slide 1 (contractor) is a "browse" action — scrolls the already-open /marketplace, not a link', () => {
     const slide = MARKETPLACE_HERO_SLIDES[0]!
     expect(slide.key).toBe('contractor')
-    expect(slide.ctaLabel).toBe('Смотреть заявки')
+    expect(slide.ctaLabelKey).toBe('marketplace.heroContractorCta')
     expect(slide.action).toEqual({ kind: 'browse' })
   })
 
   it('slide 2 (client) links to the real existing /projects flow, not a fabricated route', () => {
     const slide = MARKETPLACE_HERO_SLIDES[1]!
     expect(slide.key).toBe('client')
-    expect(slide.ctaLabel).toBe('Найти мастера')
+    expect(slide.ctaLabelKey).toBe('marketplace.heroClientCta')
     expect(slide.action).toEqual({ kind: 'link', to: '/projects' })
   })
 
   it('slide 3 (profile) links to the real existing /marketplace/contractor self-profile page', () => {
     const slide = MARKETPLACE_HERO_SLIDES[2]!
     expect(slide.key).toBe('profile')
-    expect(slide.ctaLabel).toBe('Создать профиль')
+    expect(slide.ctaLabelKey).toBe('marketplace.heroProfileCta')
     expect(slide.action).toEqual({ kind: 'link', to: '/marketplace/contractor' })
   })
 
-  it('every slide has non-empty eyebrow/title/description/ctaLabel/icon (no blank slides)', () => {
+  it('every slide has non-empty eyebrow/title/description/ctaLabel i18n keys and icon (no blank slides)', () => {
     for (const slide of MARKETPLACE_HERO_SLIDES) {
-      expect(slide.eyebrow.length).toBeGreaterThan(0)
-      expect(slide.title.length).toBeGreaterThan(0)
-      expect(slide.description.length).toBeGreaterThan(0)
-      expect(slide.ctaLabel.length).toBeGreaterThan(0)
+      expect(slide.eyebrowKey.length).toBeGreaterThan(0)
+      expect(slide.titleKey.length).toBeGreaterThan(0)
+      expect(slide.descriptionKey.length).toBeGreaterThan(0)
+      expect(slide.ctaLabelKey.length).toBeGreaterThan(0)
       expect(slide.icon.length).toBeGreaterThan(0)
     }
   })

@@ -42,6 +42,8 @@ const emit = defineEmits<{
   'publish-request': []
 }>()
 
+const { t } = useI18n()
+
 const menuOpen = ref(false)
 const confirmOpen = ref(false)
 const rootEl = ref<HTMLElement | null>(null)
@@ -77,7 +79,7 @@ function handleDeleteConfirm() {
   emit('delete')
 }
 
-const sourceHint = computed(() => (props.quantityMode === 'automatic' ? 'Рассчитано по плану' : 'Введено вручную'))
+const sourceHint = computed(() => t(props.quantityMode === 'automatic' ? 'builder.workBuilder.sourceAuto' : 'builder.workBuilder.sourceManual'))
 
 // "Заявка размещена"/"Найти мастера"/"Заказ" — см. интеграцию Marketplace в
 // pages/projects/[id]/works.vue. Статус заявки проверяется лениво (только
@@ -128,22 +130,22 @@ function handleViewOrder() {
         {{ title }}
       </p>
       <p class="text-caption text-muted">
-        {{ formatQuantity(quantity, unit) }} · {{ sourceHint }}
+        {{ formatQuantity(quantity, unit, t) }} · {{ sourceHint }}
       </p>
     </div>
 
     <span class="work-card__status" :class="`work-card__status--${status}`">
-      {{ statusUpdating ? '…' : statusLabel(status) }}
+      {{ statusUpdating ? '…' : statusLabel(status, t) }}
     </span>
 
     <div class="work-card__menu">
-      <button type="button" class="work-card__menu-btn" aria-label="Действия" :aria-expanded="menuOpen" @click="toggleMenu">
+      <button type="button" class="work-card__menu-btn" :aria-label="t('builder.workBuilder.actionsAriaLabel')" :aria-expanded="menuOpen" @click="toggleMenu">
         <UiIcon name="more" :size="16" />
       </button>
 
       <div v-if="menuOpen" class="work-card__panel" role="menu">
         <p class="text-caption text-muted work-card__panel-label">
-          Изменить статус
+          {{ t('builder.workBuilder.changeStatus') }}
         </p>
         <button
           v-for="option in WORK_STATUS_OPTIONS"
@@ -154,7 +156,7 @@ function handleViewOrder() {
           :class="{ 'work-card__panel-item--active': option === status }"
           @click="handleStatusPick(option)"
         >
-          {{ statusLabel(option) }}
+          {{ statusLabel(option, t) }}
         </button>
         <div class="work-card__panel-divider" />
 
@@ -166,7 +168,7 @@ function handleViewOrder() {
           @click="handleFindContractor"
         >
           <UiIcon name="store" :size="14" />
-          Найти мастера
+          {{ t('builder.workBuilder.findContractor') }}
         </button>
         <button
           v-else-if="isDraftRequest"
@@ -177,7 +179,7 @@ function handleViewOrder() {
           @click="handlePublishRequest"
         >
           <UiIcon name="store" :size="14" />
-          {{ publishing ? 'Публикуем…' : 'Черновик · опубликовать' }}
+          {{ publishing ? t('builder.workBuilder.publishing') : t('builder.workBuilder.draftPublish') }}
         </button>
         <button
           v-else-if="showViewRequest"
@@ -187,7 +189,7 @@ function handleViewOrder() {
           @click="handleViewRequest"
         >
           <UiIcon name="store" :size="14" />
-          Заявка размещена · посмотреть
+          {{ t('builder.workBuilder.requestPlacedView') }}
         </button>
         <button
           v-else-if="showViewOrder"
@@ -197,28 +199,28 @@ function handleViewOrder() {
           @click="handleViewOrder"
         >
           <UiIcon name="check" :size="14" />
-          Заказ · посмотреть
+          {{ t('builder.workBuilder.viewOrder') }}
         </button>
         <p v-else-if="isClosedRequest" class="text-caption text-muted work-card__panel-loading">
-          Заказ создан
+          {{ t('builder.workBuilder.orderCreated') }}
         </p>
         <p v-else class="text-caption text-muted work-card__panel-loading">
-          Проверяем биржу…
+          {{ t('builder.workBuilder.checkingMarketplace') }}
         </p>
 
         <div class="work-card__panel-divider" />
         <button type="button" class="work-card__panel-item work-card__panel-item--danger" role="menuitem" @click="handleDeleteRequest">
           <UiIcon name="trash" :size="14" />
-          Удалить
+          {{ t('common.delete') }}
         </button>
       </div>
     </div>
 
     <UiConfirmDialog
       :open="confirmOpen"
-      title="Удалить работу?"
-      :message="`«${title}» будет удалена из плана работ проекта.`"
-      confirm-text="Удалить"
+      :title="t('dialogs.deleteWork.title')"
+      :message="t('dialogs.deleteWork.message', { title })"
+      :confirm-text="t('common.delete')"
       danger
       @confirm="handleDeleteConfirm"
       @cancel="confirmOpen = false"

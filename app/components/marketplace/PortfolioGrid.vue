@@ -45,6 +45,8 @@ const emit = defineEmits<{
   open: [item: GridItem]
 }>()
 
+const { t } = useI18n()
+
 const gridEl = ref<HTMLElement | null>(null)
 const draggingId = ref<string | null>(null)
 const localOrder = ref<GridItem[]>([...props.items])
@@ -115,7 +117,7 @@ function handleOpen(item: GridItem) {
       <button type="button" class="portfolio-grid__image-btn" @click="handleOpen(item)">
         <img
           :src="item.imageUrl"
-          :alt="portfolioImageAlt(item.title)"
+          :alt="portfolioImageAlt(item.title, t)"
           class="portfolio-grid__image"
           loading="lazy"
         >
@@ -134,7 +136,7 @@ function handleOpen(item: GridItem) {
         <button
           type="button"
           class="portfolio-grid__handle"
-          aria-label="Изменить порядок"
+          :aria-label="t('portfolio.reorderAriaLabel')"
           :disabled="reordering"
           @pointerdown="handlePointerDown($event, item.id)"
         >
@@ -143,7 +145,7 @@ function handleOpen(item: GridItem) {
         <button
           type="button"
           class="portfolio-grid__delete"
-          aria-label="Удалить работу"
+          :aria-label="t('portfolio.deleteWorkAriaLabel')"
           :disabled="deletingId === item.id"
           @click="emit('delete', item.id)"
         >

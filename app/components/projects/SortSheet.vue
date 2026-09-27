@@ -10,36 +10,36 @@ export type SortOption = 'updatedAt' | 'createdAt' | 'name' | 'area'
 defineProps<{ open: boolean, modelValue: SortOption }>()
 const emit = defineEmits<{ 'update:modelValue': [SortOption], apply: [], cancel: [] }>()
 
-const options: { value: SortOption, label: string }[] = [
-  { value: 'updatedAt', label: 'По дате изменения' },
-  { value: 'createdAt', label: 'По дате создания' },
-  { value: 'name', label: 'По названию' },
-  { value: 'area', label: 'По площади' },
-]
+const { t } = useI18n()
+
+// Те же 4 опции и i18n-ключи, что и sortLabel() на pages/projects/index.vue
+// (namespace projects.sort.*) — единственный источник текста для сортировки,
+// не дублируется отдельным набором строк здесь.
+const optionValues: SortOption[] = ['updatedAt', 'createdAt', 'name', 'area']
 </script>
 
 <template>
   <Teleport to="body">
     <div v-if="open" class="sort-sheet__overlay" @click.self="emit('cancel')">
-      <div class="sort-sheet__panel" role="dialog" aria-modal="true" aria-label="Сортировка">
+      <div class="sort-sheet__panel" role="dialog" aria-modal="true" :aria-label="t('projects.sortSheetTitle')">
         <div class="sort-sheet__handle" aria-hidden="true" />
         <h3 class="sort-sheet__title">
-          Сортировка
+          {{ t('projects.sortSheetTitle') }}
         </h3>
 
-        <label v-for="opt in options" :key="opt.value" class="sort-sheet__option">
+        <label v-for="value in optionValues" :key="value" class="sort-sheet__option">
           <input
             type="radio"
             name="project-sort"
-            :value="opt.value"
-            :checked="modelValue === opt.value"
-            @change="emit('update:modelValue', opt.value)"
+            :value="value"
+            :checked="modelValue === value"
+            @change="emit('update:modelValue', value)"
           >
-          <span>{{ opt.label }}</span>
+          <span>{{ t(`projects.sort.${value}`) }}</span>
         </label>
 
         <button type="button" class="btn btn-primary sort-sheet__apply" @click="emit('apply')">
-          Применить
+          {{ t('common.apply') }}
         </button>
       </div>
     </div>

@@ -10,12 +10,17 @@
 // когда/как собрать их в Location для API (см. utils/location.ts
 // setLocationCity/setLocationDistrict — тем же местом, где это тестируется
 // как чистые функции, раз тут нет @vue/test-utils для рендер-тестов).
-import { districtsForCity, LOCATION_CITIES } from '~/utils/location'
+import { districtsForCity, LOCATION_CITIES, locationDisplayName } from '~/utils/location'
 
 const props = defineProps<{ city: string, district: string }>()
 const emit = defineEmits<{ 'update:city': [string], 'update:district': [string] }>()
 
+const { t, locale } = useI18n()
+
 const districts = computed(() => districtsForCity(props.city))
+function displayName(name: string): string {
+  return locationDisplayName(name, locale.value)
+}
 
 function handleCityChange(event: Event) {
   const value = (event.target as HTMLSelectElement).value
@@ -33,25 +38,25 @@ function handleDistrictChange(event: Event) {
 <template>
   <div class="project-location-fields">
     <label class="field">
-      <span class="field__label">Город</span>
+      <span class="field__label">{{ t('location.city') }}</span>
       <select class="input" :value="city" @change="handleCityChange">
         <option value="">
-          Выберите город
+          {{ t('location.selectCity') }}
         </option>
         <option v-for="c in LOCATION_CITIES" :key="c" :value="c">
-          {{ c }}
+          {{ displayName(c) }}
         </option>
       </select>
     </label>
 
     <label class="field">
-      <span class="field__label">Район</span>
+      <span class="field__label">{{ t('location.district') }}</span>
       <select class="input" :value="district" :disabled="!city" @change="handleDistrictChange">
         <option value="">
-          {{ city ? 'Выберите район' : 'Сначала выберите город' }}
+          {{ city ? t('location.selectDistrict') : t('location.selectCityFirst') }}
         </option>
         <option v-for="d in districts" :key="d" :value="d">
-          {{ d }}
+          {{ displayName(d) }}
         </option>
       </select>
     </label>

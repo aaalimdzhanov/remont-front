@@ -6,6 +6,8 @@ import type { ContractorService } from '~/api/types'
 
 defineProps<{ service: ContractorService, busy: boolean }>()
 defineEmits<{ edit: [], delete: [] }>()
+
+const { t, locale } = useI18n()
 </script>
 
 <template>
@@ -15,14 +17,14 @@ defineEmits<{ edit: [], delete: [] }>()
         {{ service.workType }}
       </p>
       <p class="text-caption text-muted service-card__meta">
-        {{ unitLabel(service.unit) }} · {{ formatPriceRange(service.priceFrom, service.priceTo) }}
+        {{ unitLabel(service.unit, t) }} · {{ formatPriceRange(service.priceFrom, service.priceTo, t, locale, t('common.currency')) }}
       </p>
     </div>
     <div class="service-card__actions">
-      <button type="button" class="service-card__icon-btn" aria-label="Изменить цену" :disabled="busy" @click="$emit('edit')">
+      <button type="button" class="service-card__icon-btn" :aria-label="t('contractorProfile.editPrice')" :disabled="busy" @click="$emit('edit')">
         <UiIcon name="edit" :size="16" />
       </button>
-      <button type="button" class="service-card__icon-btn service-card__icon-btn--danger" aria-label="Удалить услугу" :disabled="busy" @click="$emit('delete')">
+      <button type="button" class="service-card__icon-btn service-card__icon-btn--danger" :aria-label="t('contractorProfile.deleteService')" :disabled="busy" @click="$emit('delete')">
         <UiIcon name="trash" :size="16" />
       </button>
     </div>

@@ -34,19 +34,20 @@ export function normalizeReviewComment(raw: string): string | null {
 // ---- Rating aggregate display (OrderContractorCard) ----
 // rating/reviewsCount уже посчитаны backend'ом (см. api/types.ts
 // OrderContractorSummary) — здесь только форматирование, никакого счёта.
-export function contractorRatingLabel(rating: number | null, reviewsCount: number): string {
-  if (reviewsCount === 0) return 'Пока нет отзывов'
-  if (rating === null) return 'Нет отзывов' // defensive: не должно происходить при reviewsCount>0
+// t — переданный вызывающим компонентом useI18n().t (см. тот же паттерн в
+// utils/marketplace.ts/work.ts — этот файл остаётся без Vue-контекста).
+export function contractorRatingLabel(rating: number | null, reviewsCount: number, t: (key: string) => string): string {
+  if (reviewsCount === 0) return t('reviews.noneYet')
+  if (rating === null) return t('reviews.none') // defensive: не должно происходить при reviewsCount>0
   return rating.toFixed(1)
 }
 
-// 1 отзыв / 2-4 отзыва / 5+ отзывов — тот же паттерн склонения, что
-// pluralRooms() в ProjectCard.vue ("комната/комнаты/комнат").
-export function reviewsCountLabel(count: number): string {
-  const mod10 = count % 10
-  const mod100 = count % 100
-  const word = (mod10 === 1 && mod100 !== 11) ? 'отзыв' : ([2, 3, 4].includes(mod10) && ![12, 13, 14].includes(mod100)) ? 'отзыва' : 'отзывов'
-  return `${count} ${word}`
+// vue-i18n plural message (namespace reviews.count) — реальная RU 3-форменная
+// плюрализация (1 отзыв / 2-4 отзыва / 5+ отзывов) резолвится самим
+// vue-i18n по числу, не собственной mod10/mod100-логикой, как раньше; uz —
+// одна инвариантная форма (см. locales/uz.json).
+export function reviewsCountLabel(count: number, t: (key: string, named: Record<string, unknown>, choice: number) => string): string {
+  return t('reviews.count', { count }, count)
 }
 
 // ---- Review author role (только внутри Order Detail, где Order уже есть) ----
@@ -66,10 +67,10 @@ export function otherReviewRole(role: ReviewRole): ReviewRole {
 // contractorName — order.contractor?.name, если роль 'contractor' и имя
 // реально известно (см. OrderContractorSummary) — иначе честный fallback
 // "Мастер"/"Клиент", без выдумывания.
-export function reviewRoleLabel(role: ReviewRole, contractorName?: string | null): string {
-  if (role === 'client') return 'Клиент'
+export function reviewRoleLabel(role: ReviewRole, t: (key: string) => string, contractorName?: string | null): string {
+  if (role === 'client') return t('reviews.roleClient')
   const trimmed = contractorName?.trim()
-  return trimmed ? trimmed : 'Мастер'
+  return trimmed ? trimmed : t('reviews.roleContractorFallback')
 }
 
 // Уже оставленный мной отзыв по этому заказу, если есть — см. задание,

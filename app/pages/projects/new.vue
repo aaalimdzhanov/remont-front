@@ -10,7 +10,9 @@
 // экрана — название (см. задание, секция NO MULTI-STEP FLOW). Молча
 // используется 'house' по умолчанию.
 definePageMeta({ middleware: 'auth' })
-useHead({ title: 'Новый проект' })
+
+const { t } = useI18n()
+useHead({ title: computed(() => t('projects.newTitle')) })
 
 const { createProject, isCreating, error, clearError } = useProjectPersistence()
 
@@ -36,7 +38,7 @@ async function handleCreate() {
 
   const trimmed = name.value.trim()
   if (!trimmed) {
-    validationError.value = 'Введите название проекта'
+    validationError.value = t('projects.nameRequired')
     return
   }
 
@@ -53,7 +55,7 @@ function handleBack() {
 <template>
   <div class="new-project">
     <header class="new-project__header">
-      <button type="button" class="new-project__back" aria-label="Назад к проектам" @click="handleBack">
+      <button type="button" class="new-project__back" :aria-label="t('projects.backToProjectsAriaLabel')" @click="handleBack">
         <UiIcon name="chevron-left" :size="20" />
       </button>
       <NuxtLink to="/marketplace" class="new-project__brand">
@@ -64,16 +66,16 @@ function handleBack() {
     <main class="new-project__content">
       <div class="new-project__intro">
         <h1 class="text-h1">
-          Новый проект
+          {{ t('projects.newTitle') }}
         </h1>
         <p class="text-secondary">
-          Создайте проект, чтобы начать планирование.
+          {{ t('projects.newSubtitle') }}
         </p>
       </div>
 
       <form class="new-project__form" @submit.prevent="handleCreate">
         <label class="field">
-          <span class="field__label">Название проекта</span>
+          <span class="field__label">{{ t('projects.nameLabel') }}</span>
           <input
             v-model="name"
             type="text"
@@ -82,7 +84,7 @@ function handleBack() {
             autofocus
             class="input"
             :class="{ 'input--error': validationError }"
-            placeholder="Например, Мой дом"
+            :placeholder="t('projects.namePlaceholder')"
             :disabled="isCreating"
             :aria-invalid="validationError ? 'true' : undefined"
             aria-describedby="new-project-name-error"
@@ -94,16 +96,16 @@ function handleBack() {
         </label>
 
         <div class="new-project__location">
-          <span class="field__label">Местоположение объекта</span>
+          <span class="field__label">{{ t('projects.locationLabel') }}</span>
           <p class="text-caption text-muted new-project__location-hint">
-            Где находится объект ремонта?
+            {{ t('projects.locationHint') }}
           </p>
           <ProjectLocationFields v-model:city="locationCity" v-model:district="locationDistrict" />
         </div>
 
         <p v-if="error" class="new-project__api-error">
           {{ error.message }}
-          <button type="button" class="new-project__api-error-close" aria-label="Скрыть ошибку" @click="clearError">
+          <button type="button" class="new-project__api-error-close" :aria-label="t('common.hideError')" @click="clearError">
             <UiIcon name="close" :size="14" />
           </button>
         </p>
@@ -111,7 +113,7 @@ function handleBack() {
         <div class="new-project__spacer" aria-hidden="true" />
 
         <button type="submit" class="btn btn-primary new-project__submit" :disabled="isCreating">
-          {{ isCreating ? 'Создаём проект…' : 'Создать проект' }}
+          {{ isCreating ? t('projects.creating') : t('projects.new') }}
         </button>
       </form>
     </main>

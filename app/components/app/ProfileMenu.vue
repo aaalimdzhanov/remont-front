@@ -21,6 +21,7 @@ const props = withDefaults(defineProps<{ onBeforeLogout?: () => boolean | Promis
 const { user, isAuthenticated, logout } = useAuth()
 const { isClient, isContractor, setMode } = useUserMode()
 const route = useRoute()
+const { t, locale, setLocale } = useI18n()
 
 // Гость (см. задание "Public Marketplace v1", секция 18: "не показывать
 // private user menu ... как будто пользователь авторизован") — этот
@@ -78,10 +79,10 @@ async function handleLogout() {
 <template>
   <div v-if="!isAuthenticated" class="profile-menu profile-menu--guest">
     <NuxtLink :to="{ path: '/auth/login', query: redirectQuery }" class="btn btn-secondary btn-sm">
-      Войти
+      {{ t('navigation.login') }}
     </NuxtLink>
     <NuxtLink :to="{ path: '/auth/register', query: redirectQuery }" class="btn btn-primary btn-sm">
-      Регистрация
+      {{ t('navigation.register') }}
     </NuxtLink>
   </div>
 
@@ -89,7 +90,7 @@ async function handleLogout() {
     <button
       type="button"
       class="profile-menu__avatar"
-      aria-label="Профиль"
+      :aria-label="t('navigation.profileAriaLabel')"
       :aria-expanded="open"
       @click="toggle"
     >
@@ -109,12 +110,12 @@ async function handleLogout() {
         @click="close"
       >
         <UiIcon name="camera" :size="16" />
-        Мои работы
+        {{ t('navigation.myWorks') }}
       </NuxtLink>
 
-      <div class="profile-menu__section" role="group" aria-label="Режим">
+      <div class="profile-menu__section" role="group" :aria-label="t('navigation.mode')">
         <p class="profile-menu__section-label text-caption text-muted">
-          Режим
+          {{ t('navigation.mode') }}
         </p>
 
         <button
@@ -127,8 +128,8 @@ async function handleLogout() {
         >
           <UiIcon name="home" :size="18" class="profile-menu__mode-icon" />
           <span class="profile-menu__mode-text">
-            <span class="profile-menu__mode-title">Клиент</span>
-            <span class="profile-menu__mode-desc">Создаю проекты и ищу мастеров</span>
+            <span class="profile-menu__mode-title">{{ t('navigation.modeClient') }}</span>
+            <span class="profile-menu__mode-desc">{{ t('navigation.modeClientDesc') }}</span>
           </span>
           <UiIcon v-if="isClient" name="check" :size="16" class="profile-menu__mode-check" />
         </button>
@@ -143,16 +144,39 @@ async function handleLogout() {
         >
           <UiIcon name="hammer" :size="18" class="profile-menu__mode-icon" />
           <span class="profile-menu__mode-text">
-            <span class="profile-menu__mode-title">Мастер</span>
-            <span class="profile-menu__mode-desc">Беру работы и отправляю предложения</span>
+            <span class="profile-menu__mode-title">{{ t('navigation.modeContractor') }}</span>
+            <span class="profile-menu__mode-desc">{{ t('navigation.modeContractorDesc') }}</span>
           </span>
           <UiIcon v-if="isContractor" name="check" :size="16" class="profile-menu__mode-check" />
         </button>
       </div>
 
+      <div class="profile-menu__section profile-menu__section--lang" role="group" :aria-label="t('navigation.language')">
+        <button
+          type="button"
+          class="profile-menu__lang-option"
+          :class="{ 'profile-menu__lang-option--active': locale === 'ru' }"
+          role="menuitemradio"
+          :aria-checked="locale === 'ru'"
+          @click="setLocale('ru')"
+        >
+          RU
+        </button>
+        <button
+          type="button"
+          class="profile-menu__lang-option"
+          :class="{ 'profile-menu__lang-option--active': locale === 'uz' }"
+          role="menuitemradio"
+          :aria-checked="locale === 'uz'"
+          @click="setLocale('uz')"
+        >
+          UZ
+        </button>
+      </div>
+
       <button type="button" class="profile-menu__logout" role="menuitem" @click="handleLogout">
         <UiIcon name="logout" :size="16" />
-        Выйти
+        {{ t('navigation.logout') }}
       </button>
     </div>
   </div>
@@ -237,6 +261,34 @@ async function handleLogout() {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
+}
+
+.profile-menu__section--lang {
+  flex-direction: row;
+  gap: var(--space-2);
+}
+
+.profile-menu__lang-option {
+  flex: 1;
+  min-height: 36px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-input);
+  background: none;
+  font-family: var(--font-family);
+  font-size: var(--font-small-size);
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.profile-menu__lang-option:hover {
+  background: var(--color-surface-subtle);
+}
+
+.profile-menu__lang-option--active {
+  border-color: var(--color-primary);
+  background: var(--color-primary-subtle);
+  color: var(--color-primary);
 }
 
 .profile-menu__section-label {

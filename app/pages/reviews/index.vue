@@ -15,7 +15,9 @@
 // карточка без роли + ссылка "Заказ" (order_id у Review есть всегда,
 // см. api/types.ts), по которой роль уже видна бесплатно на Order Detail.
 definePageMeta({ middleware: 'auth' })
-useHead({ title: 'Отзывы' })
+
+const { t } = useI18n()
+useHead({ title: computed(() => t('reviews.title')) })
 
 const { myReviews, myReviewsLoading, myReviewsError, receivedReviews, receivedReviewsLoading, receivedReviewsError, loadMyReviews, loadReceivedReviews } = useReviews()
 
@@ -35,11 +37,7 @@ function retry() {
   else void loadMyReviews()
 }
 
-const emptyText = computed(() => (
-  activeTab.value === 'received'
-    ? 'Пока нет полученных отзывов.'
-    : 'Вы ещё не оставляли отзывы.'
-))
+const emptyText = computed(() => t(activeTab.value === 'received' ? 'reviews.emptyReceived' : 'reviews.emptyMine'))
 </script>
 
 <template>
@@ -47,7 +45,7 @@ const emptyText = computed(() => (
     <div class="reviews-page__header">
       <NuxtLink to="/marketplace" class="reviews-page__back">
         <UiIcon name="chevron-left" :size="18" />
-        Биржа
+        {{ t('reviews.backToMarketplace') }}
       </NuxtLink>
       <AppProfileMenu />
     </div>
@@ -55,7 +53,7 @@ const emptyText = computed(() => (
     <AppModeNav class="reviews-page__mode-nav" />
 
     <h1 class="text-h1 reviews-page__title">
-      Отзывы
+      {{ t('reviews.title') }}
     </h1>
 
     <div class="reviews-page__tabs" role="tablist">
@@ -67,7 +65,7 @@ const emptyText = computed(() => (
         :aria-selected="activeTab === 'received'"
         @click="activeTab = 'received'"
       >
-        Полученные
+        {{ t('reviews.tabReceived') }}
       </button>
       <button
         type="button"
@@ -77,7 +75,7 @@ const emptyText = computed(() => (
         :aria-selected="activeTab === 'mine'"
         @click="activeTab = 'mine'"
       >
-        Мои
+        {{ t('reviews.tabMine') }}
       </button>
     </div>
 
@@ -87,10 +85,10 @@ const emptyText = computed(() => (
 
     <div v-else-if="activeError" class="reviews-page__state">
       <p class="text-secondary">
-        Не удалось загрузить отзывы.
+        {{ t('reviews.loadError') }}
       </p>
       <button type="button" class="btn btn-secondary" @click="retry">
-        Повторить
+        {{ t('common.retry') }}
       </button>
     </div>
 

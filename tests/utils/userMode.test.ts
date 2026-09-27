@@ -11,13 +11,13 @@ describe('getUserModeNavItems — 6. client / 7. contractor navigation (only rea
   it('client mode: Проекты + Биржа + Заказы + Отзывы, all real routes', () => {
     const items = getUserModeNavItems('client')
     expect(items.map(i => i.to)).toEqual(['/projects', '/marketplace', '/orders', '/reviews'])
-    expect(items.map(i => i.label)).toEqual(['Проекты', 'Биржа', 'Заказы', 'Отзывы'])
+    expect(items.map(i => i.labelKey)).toEqual(['navigation.projects', 'navigation.marketplace', 'navigation.orders', 'navigation.reviews'])
   })
 
   it('contractor mode: Заявки/Предложения/Заказы/Услуги/Отзывы, matching real marketplace/contractor/orders/reviews routes', () => {
     const items = getUserModeNavItems('contractor')
     expect(items.map(i => i.to)).toEqual(['/marketplace', '/marketplace/offers', '/orders', '/marketplace/contractor', '/reviews'])
-    expect(items.map(i => i.label)).toEqual(['Заявки', 'Предложения', 'Заказы', 'Услуги', 'Отзывы'])
+    expect(items.map(i => i.labelKey)).toEqual(['navigation.requests', 'navigation.offers', 'navigation.orders', 'navigation.services', 'navigation.reviews'])
   })
 
   it('never points at invented /client/* or /contractor/* routes (см. задание, секция ROUTING)', () => {

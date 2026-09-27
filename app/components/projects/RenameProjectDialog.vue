@@ -7,6 +7,8 @@
 const props = defineProps<{ open: boolean, currentName: string }>()
 const emit = defineEmits<{ confirm: [name: string], cancel: [] }>()
 
+const { t } = useI18n()
+
 const name = ref(props.currentName)
 
 watch(() => props.open, (isOpen) => {
@@ -23,20 +25,20 @@ function handleConfirm() {
 <template>
   <Teleport to="body">
     <div v-if="open" class="rename-dialog__overlay" @click.self="emit('cancel')">
-      <form class="rename-dialog__panel" role="dialog" aria-modal="true" aria-label="Переименовать проект" @submit.prevent="handleConfirm">
+      <form class="rename-dialog__panel" role="dialog" aria-modal="true" :aria-label="t('projects.renameDialogTitle')" @submit.prevent="handleConfirm">
         <h3 class="rename-dialog__title">
-          Переименовать проект
+          {{ t('projects.renameDialogTitle') }}
         </h3>
         <label class="field">
-          <span class="field__label">Название</span>
+          <span class="field__label">{{ t('projects.renameLabel') }}</span>
           <input v-model="name" type="text" class="input" required autofocus>
         </label>
         <div class="rename-dialog__actions">
           <button type="button" class="btn btn-secondary" @click="emit('cancel')">
-            Отмена
+            {{ t('common.cancel') }}
           </button>
           <button type="submit" class="btn btn-primary">
-            Сохранить
+            {{ t('common.save') }}
           </button>
         </div>
       </form>

@@ -4,26 +4,28 @@
 // это маркетинговые тезисы о продукте, а не отображение каких-либо данных.
 interface Benefit {
   icon: 'check' | 'coins' | 'star'
-  title: string
-  description: string
+  titleKey: string
+  descriptionKey: string
 }
 
+const { t } = useI18n()
+
 const items: Benefit[] = [
-  { icon: 'check', title: 'Реальные заказы', description: 'Заявки от клиентов, которым действительно нужен ремонт' },
-  { icon: 'coins', title: 'Прозрачные условия', description: 'Вы сами предлагаете цену и обсуждаете детали' },
-  { icon: 'star', title: 'Развивайте рейтинг', description: 'Отзывы клиентов остаются в вашем публичном профиле' },
+  { icon: 'check', titleKey: 'marketplace.benefitRealOrdersTitle', descriptionKey: 'marketplace.benefitRealOrdersDesc' },
+  { icon: 'coins', titleKey: 'marketplace.benefitTransparentTitle', descriptionKey: 'marketplace.benefitTransparentDesc' },
+  { icon: 'star', titleKey: 'marketplace.benefitRatingTitle', descriptionKey: 'marketplace.benefitRatingDesc' },
 ]
 </script>
 
 <template>
   <ul class="marketplace-benefits">
-    <li v-for="item in items" :key="item.title" class="marketplace-benefits__item">
+    <li v-for="item in items" :key="item.titleKey" class="marketplace-benefits__item">
       <span class="marketplace-benefits__icon" aria-hidden="true">
         <UiIcon :name="item.icon" :size="18" />
       </span>
       <span class="marketplace-benefits__text">
-        <span class="marketplace-benefits__title">{{ item.title }}</span>
-        <span class="marketplace-benefits__description text-caption text-muted">{{ item.description }}</span>
+        <span class="marketplace-benefits__title">{{ t(item.titleKey) }}</span>
+        <span class="marketplace-benefits__description text-caption text-muted">{{ t(item.descriptionKey) }}</span>
       </span>
     </li>
   </ul>

@@ -8,6 +8,8 @@
 const props = defineProps<{ open: boolean, submitting: boolean, error: string | null }>()
 const emit = defineEmits<{ submit: [name: string, description: string, phone: string], cancel: [] }>()
 
+const { t } = useI18n()
+
 const name = ref('')
 const description = ref('')
 const phone = ref('+998')
@@ -31,33 +33,33 @@ function handleSubmit() {
 <template>
   <Teleport to="body">
     <div v-if="open" class="contractor-sheet__overlay" @click.self="emit('cancel')">
-      <div class="contractor-sheet__panel" role="dialog" aria-modal="true" aria-label="Создать профиль исполнителя">
+      <div class="contractor-sheet__panel" role="dialog" aria-modal="true" :aria-label="t('contractorProfile.createProfileTitle')">
         <div class="contractor-sheet__handle" aria-hidden="true" />
         <h3 class="contractor-sheet__title">
-          Профиль исполнителя
+          {{ t('contractorProfile.createProfileTitle') }}
         </h3>
         <p class="text-secondary contractor-sheet__hint">
-          Чтобы отправлять предложения по заявкам, сначала заполните короткий профиль.
+          {{ t('contractorProfile.createProfileHint') }}
         </p>
 
         <form class="contractor-sheet__form" @submit.prevent="handleSubmit">
           <label class="field">
-            <span class="field__label">Имя или название</span>
-            <input v-model="name" type="text" class="input" placeholder="Например, Азиз" :disabled="submitting" autofocus>
+            <span class="field__label">{{ t('contractorProfile.nameLabel') }}</span>
+            <input v-model="name" type="text" class="input" :placeholder="t('contractorProfile.namePlaceholder')" :disabled="submitting" autofocus>
           </label>
 
           <label class="field">
-            <span class="field__label">Телефон</span>
-            <input v-model="phone" type="tel" inputmode="tel" class="input" placeholder="+998 90 123 45 67" :disabled="submitting">
+            <span class="field__label">{{ t('contractorProfile.phoneLabel') }}</span>
+            <input v-model="phone" type="tel" inputmode="tel" class="input" :placeholder="t('contractorProfile.phonePlaceholder')" :disabled="submitting">
           </label>
 
           <label class="field">
-            <span class="field__label">О себе (необязательно)</span>
+            <span class="field__label">{{ t('contractorProfile.aboutLabel') }}</span>
             <textarea
               v-model="description"
               class="input contractor-sheet__description"
               rows="3"
-              placeholder="Например, укладка плитки, 5 лет опыта"
+              :placeholder="t('contractorProfile.aboutPlaceholder')"
               :disabled="submitting"
             />
           </label>
@@ -67,7 +69,7 @@ function handleSubmit() {
           </p>
 
           <button type="submit" class="btn btn-primary contractor-sheet__submit" :disabled="!isValid || submitting">
-            {{ submitting ? 'Сохраняем…' : 'Создать профиль' }}
+            {{ submitting ? t('common.saving') : t('contractorProfile.createProfile') }}
           </button>
         </form>
       </div>

@@ -20,60 +20,71 @@ interface BackendErrorBody {
   }
 }
 
-// Человеческие RU-сообщения для конкретных backend-кодов ошибок (в основном
-// auth-flow) — единственное место такого маппинга во всём приложении, чтобы
-// ни одна страница не парсила ошибки сама. Коды вне этого списка используют
-// сообщение backend как есть (уже достаточно человеческое, см. writeAuthError/
-// writeServiceError на бэкенде) либо httpStatusMessage() ниже как fallback.
-const KNOWN_ERROR_MESSAGES: Record<string, string> = {
-  invalid_verification_code: 'Неверный код.',
-  verification_expired: 'Срок действия кода истёк.',
-  verification_attempts_exceeded: 'Превышено количество попыток.',
-  verification_not_found: 'Код не найден. Запросите новый код.',
-  // Код уже был подтверждён ранее (например, повторная отправка формы) —
-  // backend отдаёт 400 verification_consumed, раньше не было в этом списке,
-  // из-за чего пользователю показывалось сырое "Verification code already
-  // used" (см. body?.error?.message fallback ниже).
-  verification_consumed: 'Этот код уже был использован. Запросите новый код.',
-  sms_cooldown_active: 'Слишком частый запрос. Попробуйте позже.',
-  user_already_exists: 'Пользователь с таким номером уже существует.',
-  user_not_found: 'Пользователь не найден.',
-  invalid_phone: 'Некорректный номер телефона.',
+// i18n-ключи (namespace `errors.*`, см. locales/{ru,uz}.json) для конкретных
+// backend-кодов ошибок — единственное место такого маппинга во всём
+// приложении, чтобы ни одна страница не парсила ошибки сама. Раньше здесь
+// лежали сырые RU-строки напрямую; после локализации маппинг ведёт на ключ,
+// который резолвится в toApiError() через $i18n.t(). Коды вне этого списка
+// используют сообщение backend как есть, либо httpStatusMessage() как fallback.
+const KNOWN_ERROR_KEYS: Record<string, string> = {
+  invalid_verification_code: 'errors.invalid_verification_code',
+  verification_expired: 'errors.verification_expired',
+  verification_attempts_exceeded: 'errors.verification_attempts_exceeded',
+  verification_not_found: 'errors.verification_not_found',
+  verification_consumed: 'errors.verification_consumed',
+  sms_cooldown_active: 'errors.sms_cooldown_active',
+  user_already_exists: 'errors.user_already_exists',
+  user_not_found: 'errors.user_not_found',
+  invalid_phone: 'errors.invalid_phone',
   // Contractor / ContractorService (см. contractor_handler.go,
   // contractor_service_handler.go) — коды один-в-один из writeContractorError/
   // writeContractorServiceError на backend.
-  contractor_not_found: 'Профиль исполнителя не найден.',
-  contractor_already_exists: 'Профиль исполнителя уже создан.',
-  contractor_service_not_found: 'Услуга не найдена.',
-  contractor_service_already_exists: 'Такая услуга уже добавлена.',
-  work_type_not_found: 'Вид работы не найден.',
-  work_type_inactive: 'Этот вид работы больше не активен.',
-  invalid_price: 'Цена не может быть отрицательной.',
-  invalid_price_range: 'Цена «до» не может быть меньше цены «от».',
+  contractor_not_found: 'errors.contractor_not_found',
+  contractor_already_exists: 'errors.contractor_already_exists',
+  contractor_service_not_found: 'errors.contractor_service_not_found',
+  contractor_service_already_exists: 'errors.contractor_service_already_exists',
+  work_type_not_found: 'errors.work_type_not_found',
+  work_type_inactive: 'errors.work_type_inactive',
+  invalid_price: 'errors.invalid_price',
+  invalid_price_range: 'errors.invalid_price_range',
   // Order (см. order_handler.go writeOrderError) — коды один-в-один.
-  offer_not_accepted: 'Это предложение ещё не принято.',
-  offer_not_found: 'Предложение не найдено.',
-  order_already_exists: 'Заказ по этому предложению уже создан.',
-  order_not_found: 'Заказ не найден.',
-  invalid_order_transition: 'Такой переход статуса сейчас недоступен.',
-  invalid_order_status: 'Недопустимый статус заказа.',
-  marketplace_request_not_open: 'Эта заявка уже закрыта или отменена.',
-  marketplace_request_not_found: 'Заявка не найдена.',
+  offer_not_accepted: 'errors.offer_not_accepted',
+  offer_not_found: 'errors.offer_not_found',
+  order_already_exists: 'errors.order_already_exists',
+  order_not_found: 'errors.order_not_found',
+  invalid_order_transition: 'errors.invalid_order_transition',
+  invalid_order_status: 'errors.invalid_order_status',
+  marketplace_request_not_open: 'errors.marketplace_request_not_open',
+  marketplace_request_not_found: 'errors.marketplace_request_not_found',
   // Review (см. review_handler.go writeReviewError) — коды один-в-один.
-  order_not_completed: 'Отзыв можно оставить только после завершения заказа.',
-  review_already_exists: 'Вы уже оставили отзыв по этому заказу.',
-  review_not_found: 'Отзыв не найден.',
-  invalid_rating: 'Оценка должна быть от 1 до 5.',
-  invalid_comment: 'Комментарий слишком длинный (максимум 2000 символов).',
+  order_not_completed: 'errors.order_not_completed',
+  review_already_exists: 'errors.review_already_exists',
+  review_not_found: 'errors.review_not_found',
+  invalid_rating: 'errors.invalid_rating',
+  invalid_comment: 'errors.invalid_comment',
+  // Portfolio (см. portfolio_handler.go / application/portfolio/service.go) —
+  // раньше не было в этом списке вообще: любая из этих ошибок утекала к
+  // пользователю как сырой backend-текст (см. аудит локализации).
+  image_too_large: 'errors.image_too_large',
+  invalid_image_type: 'errors.invalid_image_type',
+  portfolio_item_not_found: 'errors.portfolio_item_not_found',
+  empty_reorder: 'errors.empty_reorder',
+}
+
+// Резолвит i18n-ключ в текущую локализованную строку. Вызывается только на
+// клиенте (весь app — routeRules ssr:false, см. nuxt.config.ts), поэтому
+// useNuxtApp() всегда внутри реального Nuxt app context к этому моменту.
+function t(key: string, params?: Record<string, unknown>): string {
+  return useNuxtApp().$i18n.t(key, params ?? {})
 }
 
 function httpStatusMessage(status: number): string {
   switch (status) {
-    case 400: return 'Некорректные данные запроса.'
-    case 404: return 'Проект не найден.'
-    case 409: return 'Конфликт данных на сервере.'
-    case 500: return 'Внутренняя ошибка сервера.'
-    default: return `Ошибка запроса (${status}).`
+    case 400: return t('errors.badRequest')
+    case 404: return t('errors.notFound')
+    case 409: return t('errors.conflict')
+    case 500: return t('errors.internal')
+    default: return t('errors.requestFailed', { status })
   }
 }
 
@@ -102,14 +113,14 @@ export function toApiError(error: unknown, requestUrl?: string): ApiError {
       return {
         status,
         code: 'session_expired',
-        message: 'Сессия истекла. Войдите заново.',
+        message: t('errors.session_expired'),
         details: error.response._data,
       }
     }
     const body = error.response._data as BackendErrorBody | undefined
-    const knownMessage = body?.error?.code ? KNOWN_ERROR_MESSAGES[body.error.code] : undefined
-    if (knownMessage) {
-      return { status, code: body!.error!.code!, message: knownMessage, details: body }
+    const knownKey = body?.error?.code ? KNOWN_ERROR_KEYS[body.error.code] : undefined
+    if (knownKey) {
+      return { status, code: body!.error!.code!, message: t(knownKey), details: body }
     }
     if (body?.error?.message) {
       return {
@@ -142,7 +153,7 @@ export function toApiError(error: unknown, requestUrl?: string): ApiError {
   return {
     status: 0,
     code: 'network_error',
-    message: `Не удалось подключиться к серверу${urlSuffix}. Проверьте, что backend запущен и доступен по этому адресу, и повторите попытку.${devSuffix}`,
+    message: t('errors.network', { urlSuffix, devSuffix }),
     details: rawMessage,
   }
 }

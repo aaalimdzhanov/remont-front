@@ -25,6 +25,8 @@ const emit = defineEmits<{
   cancel: []
 }>()
 
+const { t } = useI18n()
+
 const selectedCategoryId = ref('')
 const selectedWorkTypeId = ref('')
 // '' — поле не заполнено (price_from/price_to необязательны на backend).
@@ -83,18 +85,18 @@ function handleSubmit() {
 <template>
   <Teleport to="body">
     <div v-if="open" class="add-service-sheet__overlay" @click.self="emit('cancel')">
-      <div class="add-service-sheet__panel" role="dialog" aria-modal="true" aria-label="Добавить услугу">
+      <div class="add-service-sheet__panel" role="dialog" aria-modal="true" :aria-label="t('contractorProfile.addServiceTitle')">
         <div class="add-service-sheet__handle" aria-hidden="true" />
         <h3 class="add-service-sheet__title">
-          Добавить услугу
+          {{ t('contractorProfile.addServiceTitle') }}
         </h3>
 
         <form class="add-service-sheet__form" @submit.prevent="handleSubmit">
           <label class="field">
-            <span class="field__label">Категория работ</span>
+            <span class="field__label">{{ t('contractorProfile.categoryLabel') }}</span>
             <select class="input" :value="selectedCategoryId" :disabled="submitting" @change="handleCategoryChange">
               <option value="" disabled>
-                Выберите категорию
+                {{ t('contractorProfile.selectCategory') }}
               </option>
               <option v-for="category in categories" :key="category.id" :value="category.id">
                 {{ category.name }}
@@ -103,27 +105,27 @@ function handleSubmit() {
           </label>
 
           <label class="field">
-            <span class="field__label">Вид работы</span>
+            <span class="field__label">{{ t('contractorProfile.workTypeLabel') }}</span>
             <select v-model="selectedWorkTypeId" class="input" :disabled="submitting || !selectedCategoryId">
               <option value="" disabled>
-                {{ selectedCategoryId ? 'Выберите вид работы' : 'Сначала выберите категорию' }}
+                {{ selectedCategoryId ? t('contractorProfile.selectWorkType') : t('contractorProfile.selectCategoryFirst') }}
               </option>
               <option v-for="workType in availableWorkTypesForCategory" :key="workType.id" :value="workType.id">
                 {{ workType.name }}
               </option>
             </select>
             <span v-if="selectedCategoryId && availableWorkTypesForCategory.length === 0" class="text-caption text-muted">
-              Все виды работ этой категории уже добавлены.
+              {{ t('contractorProfile.allWorkTypesAdded') }}
             </span>
           </label>
 
           <p v-if="selectedWorkType" class="text-caption text-muted add-service-sheet__unit">
-            Единица измерения: {{ unitLabel(selectedWorkType.unit) }}
+            {{ t('contractorProfile.unitLabel', { unit: unitLabel(selectedWorkType.unit, t) }) }}
           </p>
 
           <div class="add-service-sheet__price-row">
             <label class="field">
-              <span class="field__label">Цена от, сум</span>
+              <span class="field__label">{{ t('contractorProfile.priceFromLabel') }}</span>
               <input
                 v-model="priceFromInput"
                 type="number"
@@ -132,12 +134,12 @@ function handleSubmit() {
                 step="1"
                 class="input"
                 :class="{ 'input--error': !priceFromEmpty && !priceFromValid }"
-                placeholder="Например, 100000"
+                :placeholder="t('contractorProfile.priceFromPlaceholder')"
                 :disabled="submitting"
               >
             </label>
             <label class="field">
-              <span class="field__label">Цена до, сум</span>
+              <span class="field__label">{{ t('contractorProfile.priceToLabel') }}</span>
               <input
                 v-model="priceToInput"
                 type="number"
@@ -146,14 +148,14 @@ function handleSubmit() {
                 step="1"
                 class="input"
                 :class="{ 'input--error': !priceToEmpty && (!priceToValid || !rangeValid) }"
-                placeholder="Например, 200000"
+                :placeholder="t('contractorProfile.priceToPlaceholder')"
                 :disabled="submitting"
               >
             </label>
           </div>
 
           <p v-if="!rangeValid" class="add-service-sheet__hint">
-            Цена «до» не может быть меньше цены «от».
+            {{ t('errors.invalid_price_range') }}
           </p>
 
           <p v-if="error" class="add-service-sheet__error">
@@ -161,7 +163,7 @@ function handleSubmit() {
           </p>
 
           <button type="submit" class="btn btn-primary add-service-sheet__submit" :disabled="!isValid || submitting">
-            {{ submitting ? 'Добавляем…' : 'Добавить услугу' }}
+            {{ submitting ? t('common.adding') : t('contractorProfile.addServiceSubmit') }}
           </button>
         </form>
       </div>

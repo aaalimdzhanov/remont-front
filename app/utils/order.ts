@@ -6,15 +6,10 @@
 // он всё же недопустим — см. api/orders.ts).
 import type { OrderContractorSummary, OrderStatus } from '~/api/types'
 
-const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
-  planned: 'Запланирован',
-  in_progress: 'В работе',
-  completed: 'Завершён',
-  cancelled: 'Отменён',
-}
-
-export function orderStatusLabel(status: OrderStatus): string {
-  return ORDER_STATUS_LABELS[status]
+// t — переданный вызывающим компонентом useI18n().t (см. тот же паттерн в
+// utils/marketplace.ts).
+export function orderStatusLabel(status: OrderStatus, t: (key: string) => string): string {
+  return t(`status.order.${status}`)
 }
 
 // Используется как модификатор BEM-класса (`order-card__status--${...}`) —
@@ -29,42 +24,45 @@ export type OrderAction = 'start' | 'complete' | 'cancel'
 
 export interface OrderActionConfig {
   action: OrderAction
-  label: string
+  // i18n-ключи (namespace orders.actions.*), не готовые строки — эти
+  // объекты собираются один раз при загрузке модуля, до того как useI18n()
+  // вообще доступен; резолвятся через t() в самом компоненте (orders/[id].vue).
+  labelKey: string
   // Конкретный статус, который уйдёт в PATCH .../status (см. api/orders.ts
   // updateOrderStatus — 'planned' туда никогда не передаётся).
   targetStatus: 'in_progress' | 'completed' | 'cancelled'
   danger: boolean
   // Необратимое действие — см. задание, секция STATUS ACTION UX: перед ним
   // нужен confirm dialog.
-  confirmTitle: string
-  confirmMessage: string
+  confirmTitleKey: string
+  confirmMessageKey: string
 }
 
 const START: OrderActionConfig = {
   action: 'start',
-  label: 'Начать работу',
+  labelKey: 'orders.actions.start.label',
   targetStatus: 'in_progress',
   danger: false,
-  confirmTitle: 'Начать работу?',
-  confirmMessage: 'Заказ перейдёт в статус «В работе».',
+  confirmTitleKey: 'orders.actions.start.confirmTitle',
+  confirmMessageKey: 'orders.actions.start.confirmMessage',
 }
 
 const COMPLETE: OrderActionConfig = {
   action: 'complete',
-  label: 'Завершить',
+  labelKey: 'orders.actions.complete.label',
   targetStatus: 'completed',
   danger: false,
-  confirmTitle: 'Завершить заказ?',
-  confirmMessage: 'Заказ будет отмечен как выполненный. Это действие нельзя отменить.',
+  confirmTitleKey: 'orders.actions.complete.confirmTitle',
+  confirmMessageKey: 'orders.actions.complete.confirmMessage',
 }
 
 const CANCEL_FROM_PLANNED: OrderActionConfig = {
   action: 'cancel',
-  label: 'Отменить',
+  labelKey: 'orders.actions.cancel.label',
   targetStatus: 'cancelled',
   danger: true,
-  confirmTitle: 'Отменить заказ?',
-  confirmMessage: 'После отмены заказ нельзя будет возобновить.',
+  confirmTitleKey: 'orders.actions.cancel.confirmTitle',
+  confirmMessageKey: 'orders.actions.cancel.confirmMessage',
 }
 
 const CANCEL_FROM_IN_PROGRESS: OrderActionConfig = CANCEL_FROM_PLANNED
@@ -102,9 +100,9 @@ export function isTerminalOrderStatus(status: OrderStatus): boolean {
 // создании профиля, см. remont-back), но здесь всё равно defensive fallback
 // на случай пустой строки/whitespace (см. задание: "Если имя отсутствует —
 // 'Мастер'").
-export function contractorDisplayName(contractor: OrderContractorSummary | null): string {
+export function contractorDisplayName(contractor: OrderContractorSummary | null, t: (key: string) => string): string {
   const name = contractor?.name?.trim()
-  return name ? name : 'Мастер'
+  return name ? name : t('contractors.fallbackName')
 }
 
 // null — либо контрактора нет вообще, либо description пустой/whitespace —

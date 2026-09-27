@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { getAvailableOrderActions, isTerminalOrderStatus, orderStatusClass, orderStatusLabel } from '~/utils/order'
 
+const t = (key: string) => key
+
 describe('orderStatusLabel — all 4 real backend statuses (см. domain/order)', () => {
-  it('maps every status to a human RU label', () => {
-    expect(orderStatusLabel('planned')).toBe('Запланирован')
-    expect(orderStatusLabel('in_progress')).toBe('В работе')
-    expect(orderStatusLabel('completed')).toBe('Завершён')
-    expect(orderStatusLabel('cancelled')).toBe('Отменён')
+  it('resolves each status through the status.order.* i18n namespace', () => {
+    expect(orderStatusLabel('planned', t)).toBe('status.order.planned')
+    expect(orderStatusLabel('in_progress', t)).toBe('status.order.in_progress')
+    expect(orderStatusLabel('completed', t)).toBe('status.order.completed')
+    expect(orderStatusLabel('cancelled', t)).toBe('status.order.cancelled')
   })
 })
 
@@ -56,13 +58,13 @@ describe('getAvailableOrderActions — mirrors domain/order.go transitions, neve
     for (const a of all) expect(a.targetStatus).not.toBe('planned')
   })
 
-  it('irreversible actions (complete, cancel) carry a confirm title/message; start does not need one to be meaningful but still has copy', () => {
+  it('irreversible actions (complete, cancel) carry a confirm title/message i18n key; start does not need one to be meaningful but still has copy', () => {
     const cancelAction = getAvailableOrderActions('planned').find(a => a.action === 'cancel')!
-    expect(cancelAction.confirmTitle).toMatch(/Отменить/)
+    expect(cancelAction.confirmTitleKey).toBe('orders.actions.cancel.confirmTitle')
     expect(cancelAction.danger).toBe(true)
 
     const completeAction = getAvailableOrderActions('in_progress').find(a => a.action === 'complete')!
-    expect(completeAction.confirmTitle).toMatch(/Завершить/)
+    expect(completeAction.confirmTitleKey).toBe('orders.actions.complete.confirmTitle')
     expect(completeAction.danger).toBe(false)
   })
 })

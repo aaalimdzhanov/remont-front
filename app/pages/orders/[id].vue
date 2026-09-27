@@ -29,7 +29,8 @@ const {
   loadOrderReviews, createReview,
 } = useReviews()
 
-useHead({ title: 'Заказ' })
+const { t, locale } = useI18n()
+useHead({ title: computed(() => t('orders.title')) })
 
 onMounted(() => {
   void fetchOrder(orderId.value)
@@ -81,7 +82,7 @@ function handleActionClick(action: OrderActionConfig) {
 async function runAction(action: OrderActionConfig) {
   if (!currentOrder.value) return
   const ok = await updateStatus(currentOrder.value.id, action.targetStatus)
-  if (ok) successMessage.value = `Статус изменён: «${orderStatusLabel(action.targetStatus)}».`
+  if (ok) successMessage.value = t('orders.statusChanged', { status: orderStatusLabel(action.targetStatus, t) })
 }
 
 async function confirmPendingAction() {
@@ -102,7 +103,7 @@ const effectiveReviewRole = computed<'client' | 'contractor'>(
   () => viewerRole.value ?? (isContractor.value ? 'contractor' : 'client'),
 )
 
-const reviewCtaLabel = computed(() => (effectiveReviewRole.value === 'client' ? 'Оставить отзыв мастеру' : 'Оставить отзыв клиенту'))
+const reviewCtaLabel = computed(() => t(effectiveReviewRole.value === 'client' ? 'orders.reviewCtaClient' : 'orders.reviewCtaContractor'))
 
 const myReview = computed(() => findMyReview(orderReviews.value, user.value?.id))
 const otherReviews = computed(() => orderReviews.value.filter(r => r.id !== myReview.value?.id))
@@ -110,7 +111,7 @@ const otherReviews = computed(() => orderReviews.value.filter(r => r.id !== myRe
 function authorLabelFor(review: Review): string | null {
   if (!currentOrder.value) return null
   const role = resolveReviewAuthorRole(review, currentOrder.value)
-  return reviewRoleLabel(role, currentOrder.value.contractor?.name)
+  return reviewRoleLabel(role, t, currentOrder.value.contractor?.name)
 }
 
 const showReviewSheet = ref(false)
@@ -141,7 +142,7 @@ async function handleReviewSubmit(rating: number, comment: string) {
     <div class="order-page__header">
       <NuxtLink to="/orders" class="order-page__back">
         <UiIcon name="chevron-left" :size="18" />
-        Заказы
+        {{ t('orders.listTitle') }}
       </NuxtLink>
       <AppProfileMenu />
     </div>
@@ -149,17 +150,17 @@ async function handleReviewSubmit(rating: number, comment: string) {
     <div v-if="currentOrderLoading && currentOrder === undefined" class="order-page__status">
       <div class="order-page__spinner" aria-hidden="true" />
       <p class="text-secondary">
-        Загрузка заказа…
+        {{ t('orders.loading') }}
       </p>
     </div>
 
     <div v-else-if="currentOrder === null" class="order-page__status">
       <UiIcon name="alert" :size="28" class="order-page__status-icon" />
       <p class="text-h3">
-        Заказ не найден
+        {{ t('orders.notFoundTitle') }}
       </p>
       <NuxtLink to="/orders" class="btn btn-secondary">
-        Вернуться к заказам
+        {{ t('orders.backToOrders') }}
       </NuxtLink>
     </div>
 
@@ -169,39 +170,39 @@ async function handleReviewSubmit(rating: number, comment: string) {
         {{ currentOrderError.message }}
       </p>
       <button type="button" class="btn btn-secondary" @click="fetchOrder(orderId)">
-        Повторить
+        {{ t('common.retry') }}
       </button>
     </div>
 
     <template v-else-if="currentOrder">
       <div class="order-page__title-row">
         <h1 class="text-h1 order-page__title">
-          {{ workTitle ?? 'Заказ' }}
+          {{ workTitle ?? t('orders.title') }}
         </h1>
         <span class="order-page__status-pill" :class="`order-page__status-pill--${orderStatusClass(currentOrder.status)}`">
-          {{ orderStatusLabel(currentOrder.status) }}
+          {{ orderStatusLabel(currentOrder.status, t) }}
         </span>
       </div>
       <p v-if="viewerRole" class="text-caption text-muted order-page__role">
-        {{ viewerRole === 'client' ? 'Вы — клиент по этому заказу' : 'Вы — мастер по этому заказу' }}
+        {{ viewerRole === 'client' ? t('orders.roleClient') : t('orders.roleContractor') }}
       </p>
 
       <section class="order-page__card">
         <div class="order-page__field">
-          <span class="text-caption text-muted">Количество</span>
-          <span class="text-body">{{ formatQuantity(currentOrder.quantity, currentOrder.unit) }}</span>
+          <span class="text-caption text-muted">{{ t('orders.quantity') }}</span>
+          <span class="text-body">{{ formatQuantity(currentOrder.quantity, currentOrder.unit, t) }}</span>
         </div>
         <div class="order-page__field">
-          <span class="text-caption text-muted">Цена</span>
-          <span class="order-page__price">{{ formatPrice(currentOrder.price) }}</span>
+          <span class="text-caption text-muted">{{ t('orders.price') }}</span>
+          <span class="order-page__price">{{ formatPrice(currentOrder.price, locale, t('common.currency')) }}</span>
         </div>
         <div class="order-page__field">
-          <span class="text-caption text-muted">Создан</span>
-          <span class="text-body">{{ formatMarketplaceDate(currentOrder.createdAt) }}</span>
+          <span class="text-caption text-muted">{{ t('orders.createdAt') }}</span>
+          <span class="text-body">{{ formatMarketplaceDate(currentOrder.createdAt, locale) }}</span>
         </div>
         <div class="order-page__field">
-          <span class="text-caption text-muted">Обновлён</span>
-          <span class="text-body">{{ formatMarketplaceDate(currentOrder.updatedAt) }}</span>
+          <span class="text-caption text-muted">{{ t('orders.updatedAt') }}</span>
+          <span class="text-body">{{ formatMarketplaceDate(currentOrder.updatedAt, locale) }}</span>
         </div>
       </section>
 
@@ -225,26 +226,26 @@ async function handleReviewSubmit(rating: number, comment: string) {
           :disabled="statusActionId === currentOrder.id"
           @click="handleActionClick(action)"
         >
-          {{ statusActionId === currentOrder.id ? 'Сохраняем…' : action.label }}
+          {{ statusActionId === currentOrder.id ? t('common.saving') : t(action.labelKey) }}
         </button>
       </div>
       <p v-else class="text-caption text-muted order-page__terminal-note">
-        Заказ завершён — изменения статуса больше недоступны.
+        {{ t('orders.terminalNote') }}
       </p>
 
       <section v-if="currentOrder.status === 'completed'" class="order-page__reviews">
         <h2 class="text-h3 order-page__reviews-title">
-          Отзывы
+          {{ t('orders.reviewsTitle') }}
         </h2>
 
         <p v-if="reviewSuccessMessage" class="order-page__success">
           <UiIcon name="check" :size="16" />
-          Отзыв добавлен.
+          {{ t('orders.reviewSuccessMessage') }}
         </p>
 
         <div v-if="myReview" class="order-page__my-review">
           <p class="text-caption text-muted order-page__my-review-label">
-            Вы оставили отзыв
+            {{ t('orders.myReviewLabel') }}
           </p>
           <ReviewCard :review="myReview" />
         </div>
@@ -272,9 +273,9 @@ async function handleReviewSubmit(rating: number, comment: string) {
 
     <UiConfirmDialog
       :open="pendingAction !== null"
-      :title="pendingAction?.confirmTitle ?? ''"
-      :message="pendingAction?.confirmMessage ?? ''"
-      :confirm-text="pendingAction?.label ?? 'Подтвердить'"
+      :title="pendingAction ? t(pendingAction.confirmTitleKey) : ''"
+      :message="pendingAction ? t(pendingAction.confirmMessageKey) : ''"
+      :confirm-text="pendingAction ? t(pendingAction.labelKey) : t('common.confirm')"
       :danger="pendingAction?.danger ?? false"
       @confirm="confirmPendingAction"
       @cancel="pendingAction = null"

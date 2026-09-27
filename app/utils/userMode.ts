@@ -55,7 +55,10 @@ export function clearStoredUserMode(): void {
 // "глобальных Работ" без проекта (их не существует, см. финальный отчёт,
 // Known limitations) и никаких /client/* или /contractor/* (секция ROUTING).
 export interface UserModeNavItem {
-  label: string
+  // i18n-ключ (namespace navigation.*), не готовая строка — резолвится через
+  // t() в AppModeNav.vue, самом месте, где рендерится (этот файл — чистый
+  // TS-util без доступа к useI18n()).
+  labelKey: string
   to: string
   icon: 'folder' | 'store' | 'coins' | 'hammer' | 'list' | 'star'
 }
@@ -69,18 +72,18 @@ export interface UserModeNavItem {
 // ли пункт "Отзывы" в client- или contractor-набор навигации, не на
 // содержимое самой страницы.
 const CLIENT_NAV_ITEMS: UserModeNavItem[] = [
-  { label: 'Проекты', to: '/projects', icon: 'folder' },
-  { label: 'Биржа', to: '/marketplace', icon: 'store' },
-  { label: 'Заказы', to: '/orders', icon: 'list' },
-  { label: 'Отзывы', to: '/reviews', icon: 'star' },
+  { labelKey: 'navigation.projects', to: '/projects', icon: 'folder' },
+  { labelKey: 'navigation.marketplace', to: '/marketplace', icon: 'store' },
+  { labelKey: 'navigation.orders', to: '/orders', icon: 'list' },
+  { labelKey: 'navigation.reviews', to: '/reviews', icon: 'star' },
 ]
 
 const CONTRACTOR_NAV_ITEMS: UserModeNavItem[] = [
-  { label: 'Заявки', to: '/marketplace', icon: 'store' },
-  { label: 'Предложения', to: '/marketplace/offers', icon: 'coins' },
-  { label: 'Заказы', to: '/orders', icon: 'list' },
-  { label: 'Услуги', to: '/marketplace/contractor', icon: 'hammer' },
-  { label: 'Отзывы', to: '/reviews', icon: 'star' },
+  { labelKey: 'navigation.requests', to: '/marketplace', icon: 'store' },
+  { labelKey: 'navigation.offers', to: '/marketplace/offers', icon: 'coins' },
+  { labelKey: 'navigation.orders', to: '/orders', icon: 'list' },
+  { labelKey: 'navigation.services', to: '/marketplace/contractor', icon: 'hammer' },
+  { labelKey: 'navigation.reviews', to: '/reviews', icon: 'star' },
 ]
 
 export function getUserModeNavItems(mode: UserMode): UserModeNavItem[] {

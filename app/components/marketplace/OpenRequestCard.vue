@@ -29,7 +29,9 @@ const props = withDefaults(defineProps<{ request: OpenMarketplaceRequest, icon?:
   icon: 'hammer',
 })
 
-const locationLabel = computed(() => formatLocation(props.request.location))
+const { t, locale } = useI18n()
+
+const locationLabel = computed(() => formatLocation(props.request.location, locale.value))
 </script>
 
 <template>
@@ -44,8 +46,8 @@ const locationLabel = computed(() => formatLocation(props.request.location))
     </div>
 
     <div class="open-request-card__meta">
-      <span class="open-request-card__quantity">{{ formatQuantity(request.quantity, request.unit) }}</span>
-      <span class="text-caption text-muted">{{ formatMarketplaceDate(request.createdAt) }}</span>
+      <span class="open-request-card__quantity">{{ formatQuantity(request.quantity, request.unit, t) }}</span>
+      <span class="text-caption text-muted">{{ formatMarketplaceDate(request.createdAt, locale) }}</span>
     </div>
 
     <p v-if="locationLabel" class="open-request-card__location">
@@ -56,7 +58,7 @@ const locationLabel = computed(() => formatLocation(props.request.location))
     <div class="open-request-card__foot">
       <span class="open-request-card__status">
         <span class="open-request-card__status-dot" aria-hidden="true" />
-        Открыта
+        {{ t('marketplaceRequest.openBadge') }}
       </span>
       <span class="open-request-card__arrow" aria-hidden="true">
         <UiIcon name="chevron-left" :size="16" />

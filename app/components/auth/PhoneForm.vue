@@ -3,9 +3,10 @@
 // то, что видит пользователь; в domain state (что уходит в emit) попадает
 // не "как напечатано", а после лёгкой нормализации в родительской странице —
 // backend остаётся authoritative validator формата E.164.
-withDefaults(defineProps<{ isLoading: boolean, label?: string }>(), {
-  label: 'Телефон',
-})
+const { t } = useI18n()
+
+const props = defineProps<{ isLoading: boolean, label?: string }>()
+const displayLabel = computed(() => props.label ?? t('auth.phoneLabel'))
 const emit = defineEmits<{ submit: [phone: string] }>()
 
 const phone = ref('+998')
@@ -25,7 +26,7 @@ function handleSubmit() {
 <template>
   <form class="phone-form" @submit.prevent="handleSubmit">
     <label class="field">
-      <span class="field__label">{{ label }}</span>
+      <span class="field__label">{{ displayLabel }}</span>
       <input
         ref="inputRef"
         v-model="phone"
@@ -38,7 +39,7 @@ function handleSubmit() {
       >
     </label>
     <button type="submit" class="btn btn-primary phone-form__submit" :disabled="isLoading">
-      {{ isLoading ? 'Отправка…' : 'Получить код' }}
+      {{ isLoading ? t('auth.sendingCode') : t('auth.getCode') }}
     </button>
   </form>
 </template>

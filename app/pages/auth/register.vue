@@ -1,6 +1,8 @@
 <script setup lang="ts">
 definePageMeta({ middleware: 'guest', layout: 'auth' })
-useHead({ title: 'Регистрация' })
+
+const { t } = useI18n()
+useHead({ title: computed(() => t('auth.registerTitle')) })
 
 const RESEND_COOLDOWN_SECONDS = 60
 
@@ -46,10 +48,10 @@ function handleBack() {
   <div class="auth-card">
     <template v-if="step === 'phone'">
       <h1 class="text-h1">
-        Создание аккаунта
+        {{ t('auth.registerHeading') }}
       </h1>
       <p class="auth-card__subtitle text-secondary">
-        Введите номер телефона, чтобы получить SMS-код для регистрации.
+        {{ t('auth.registerSubtitle') }}
       </p>
 
       <AuthPhoneForm :is-loading="isLoading" @submit="handlePhoneSubmit" />
@@ -67,14 +69,14 @@ function handleBack() {
 
     <p v-if="error" class="auth-card__error">
       {{ error.message }}
-      <button type="button" class="auth-card__error-close" aria-label="Скрыть ошибку" @click="clearError">
+      <button type="button" class="auth-card__error-close" :aria-label="t('common.hideError')" @click="clearError">
         <UiIcon name="close" :size="14" />
       </button>
     </p>
 
     <p v-if="step === 'phone'" class="auth-card__switch text-small">
-      Уже есть аккаунт? <NuxtLink :to="{ path: '/auth/login', query: route.query }" class="auth-card__link">
-        Войти
+      {{ t('auth.haveAccount') }} <NuxtLink :to="{ path: '/auth/login', query: route.query }" class="auth-card__link">
+        {{ t('auth.loginLink') }}
       </NuxtLink>
     </p>
   </div>

@@ -7,6 +7,7 @@
 // (PropertiesRoom.vue уже это умеет) — дублировать форму здесь не нужно.
 const { clearSelection } = useBuilding()
 const { roomDrawActive, activateRoomDraw, deactivateRoomDraw } = useEditorView()
+const { t } = useI18n()
 
 function toggle() {
   if (roomDrawActive.value) {
@@ -25,20 +26,20 @@ function toggle() {
       class="tool-btn"
       :class="{ 'tool-btn--active': roomDrawActive }"
       data-tool="room"
-      aria-label="Инструмент «Помещение» (R)"
+      :aria-label="t('builder.roomToolAriaLabel')"
       :aria-pressed="roomDrawActive"
       @click="toggle"
     >
       <UiIcon name="room" :size="18" />
-      Помещение
+      {{ t('builder.room') }}
     </button>
 
     <div v-if="roomDrawActive" class="room-tool__hint">
       <span class="text-small">
-        Нарисуйте прямоугольник на плане, чтобы создать помещение
+        {{ t('builder.drawRoomHint') }}
       </span>
       <button type="button" class="btn btn-secondary btn-sm" @click="deactivateRoomDraw">
-        Отмена
+        {{ t('common.cancel') }}
       </button>
     </div>
   </div>

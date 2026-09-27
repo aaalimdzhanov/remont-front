@@ -14,14 +14,9 @@ const {
   getIntersectingRoomNames,
 } = useBuilding()
 
-const roomTypes: { value: RoomType, label: string }[] = [
-  { value: 'living_room', label: 'Гостиная' },
-  { value: 'bedroom', label: 'Спальня' },
-  { value: 'kitchen', label: 'Кухня' },
-  { value: 'bathroom', label: 'Ванная' },
-  { value: 'hallway', label: 'Коридор' },
-  { value: 'other', label: 'Другое' },
-]
+const { t } = useI18n()
+
+const roomTypeValues: RoomType[] = ['living_room', 'bedroom', 'kitchen', 'bathroom', 'hallway', 'other']
 
 const name = ref('')
 const width = ref(0)
@@ -66,7 +61,7 @@ function applySize() {
   // constraint модели, который стоит показать пользователю (не NaN/silent).
   const widthClamped = Math.abs(geometry.width - width.value) > 1e-6
   const lengthClamped = Math.abs(geometry.length - length.value) > 1e-6
-  sizeWarning.value = widthClamped || lengthClamped ? 'Минимальный размер помещения — 0.5 × 0.5 м, шаг — 0.1 м.' : ''
+  sizeWarning.value = widthClamped || lengthClamped ? t('builder.minRoomSizeWarning') : ''
   width.value = geometry.width
   length.value = geometry.length
 }
@@ -91,31 +86,31 @@ function handleDelete() {
     <div class="properties__header">
       <span class="properties__header-title">
         <UiIcon name="room" :size="18" />
-        Помещение
+        {{ t('builder.room') }}
       </span>
-      <button type="button" class="btn btn-ghost btn-icon" aria-label="Удалить помещение" @click="handleDelete">
+      <button type="button" class="btn btn-ghost btn-icon" :aria-label="t('builder.deleteRoomAriaLabel')" @click="handleDelete">
         <UiIcon name="trash" :size="16" />
       </button>
     </div>
 
     <label class="field">
-      <span class="field__label">Название</span>
+      <span class="field__label">{{ t('builder.nameLabel') }}</span>
       <input v-model="name" type="text" class="input" @change="applyName">
     </label>
 
     <div class="properties__row">
       <label class="field">
-        <span class="field__label">Ширина</span>
+        <span class="field__label">{{ t('builder.widthShort') }}</span>
         <div class="field__unit-input">
           <input v-model.number="width" type="number" min="0.5" step="0.1" class="input" @change="applySize">
-          <span class="field__unit">м</span>
+          <span class="field__unit">{{ t('builder.unit.m') }}</span>
         </div>
       </label>
       <label class="field">
-        <span class="field__label">Длина</span>
+        <span class="field__label">{{ t('builder.lengthShort') }}</span>
         <div class="field__unit-input">
           <input v-model.number="length" type="number" min="0.5" step="0.1" class="input" @change="applySize">
-          <span class="field__unit">м</span>
+          <span class="field__unit">{{ t('builder.unit.m') }}</span>
         </div>
       </label>
     </div>
@@ -124,41 +119,41 @@ function handleDelete() {
     </p>
 
     <label class="field">
-      <span class="field__label">Площадь</span>
+      <span class="field__label">{{ t('builder.areaLabel') }}</span>
       <div class="field__unit-input">
         <input :value="area.toFixed(1)" type="text" class="input" readonly disabled>
-        <span class="field__unit">м²</span>
+        <span class="field__unit">{{ t('builder.unit.m2') }}</span>
       </div>
     </label>
 
     <label class="field">
-      <span class="field__label">Периметр</span>
+      <span class="field__label">{{ t('builder.perimeterLabel') }}</span>
       <div class="field__unit-input">
         <input :value="perimeter.toFixed(1)" type="text" class="input" readonly disabled>
-        <span class="field__unit">м</span>
+        <span class="field__unit">{{ t('builder.unit.m') }}</span>
       </div>
     </label>
 
     <label class="field">
-      <span class="field__label">Высота потолка</span>
+      <span class="field__label">{{ t('builder.ceilingHeightLabel') }}</span>
       <div class="field__unit-input">
         <input v-model.number="ceilingHeight" type="number" min="2" step="0.1" class="input" @change="applyCeilingHeight">
-        <span class="field__unit">м</span>
+        <span class="field__unit">{{ t('builder.unit.m') }}</span>
       </div>
     </label>
 
     <label class="field">
-      <span class="field__label">Тип помещения</span>
+      <span class="field__label">{{ t('builder.roomTypeLabel') }}</span>
       <select :value="room.type" class="input" @change="applyType">
-        <option v-for="opt in roomTypes" :key="opt.value" :value="opt.value">
-          {{ opt.label }}
+        <option v-for="value in roomTypeValues" :key="value" :value="value">
+          {{ t(`builder.roomTypes.${value}`) }}
         </option>
       </select>
     </label>
 
     <p v-if="hasConflict" class="properties__conflict">
       <UiIcon name="alert" :size="14" />
-      Пересечение с помещением «{{ conflictNames.join('», «') }}»
+      {{ t('builder.roomIntersection', { names: conflictNames.join('», «') }) }}
     </p>
   </div>
 </template>

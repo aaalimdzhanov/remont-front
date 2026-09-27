@@ -19,6 +19,12 @@ const EXTERIOR_COLOR = 0xdad4c8
 const INTERIOR_COLOR = 0xf2efe7
 const SELECTED_COLOR = 0xff6a00 // brand accent — совпадает с 2D-выделением (var(--color-primary))
 const MIN_FILLER_HEIGHT = 1e-3
+// Тонкие тёмные рёбра по силуэту каждого сегмента стены — архитектурный
+// приём чёткого "массинга" (как силуэты объёмов в SketchUp/Revit), не
+// материал и не деталь интерьера. Низкая opacity — линия читается, но не
+// спорит по контрасту с самой заливкой стены.
+const EDGE_COLOR = 0x21252b
+const EDGE_OPACITY = 0.35
 
 function wallUserData(wall: Wall, color: number) {
   return { kind: 'wall', id: wall.id, baseColor: color, selectedColor: SELECTED_COLOR }
@@ -43,6 +49,15 @@ function boxMesh(
   mesh.userData = wallUserData(wall, color)
   mesh.castShadow = true
   mesh.receiveShadow = true
+
+  // Ребро — child меша (наследует его позицию/поворот, отдельно не
+  // позиционируется) — disposeObject3D обходит поддерево целиком.
+  const edges = new THREE.LineSegments(
+    new THREE.EdgesGeometry(geometry),
+    new THREE.LineBasicMaterial({ color: EDGE_COLOR, transparent: true, opacity: EDGE_OPACITY }),
+  )
+  mesh.add(edges)
+
   return mesh
 }
 

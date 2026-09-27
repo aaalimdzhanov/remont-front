@@ -23,28 +23,29 @@ const props = withDefaults(defineProps<{ projectId: string, variant?: 'top' | 'b
 
 const route = useRoute()
 const isWorksActive = computed(() => isWorksRouteActive(route.path))
+const { t } = useI18n()
 </script>
 
 <template>
-  <nav class="project-nav" :class="`project-nav--${variant}`" aria-label="Разделы проекта">
+  <nav class="project-nav" :class="`project-nav--${variant}`" :aria-label="t('builder.navSections')">
     <NuxtLink v-if="variant === 'bottom'" to="/projects" class="project-nav__tab">
       <UiIcon name="folder" :size="20" />
-      Проекты
+      {{ t('navigation.projects') }}
     </NuxtLink>
 
     <NuxtLink :to="`/projects/${props.projectId}`" class="project-nav__tab" :class="{ 'project-nav__tab--active': !isWorksActive }">
       <UiIcon v-if="variant === 'bottom'" name="room" :size="20" />
-      План
+      {{ t('builder.tabPlan') }}
     </NuxtLink>
 
     <NuxtLink :to="`/projects/${props.projectId}/works`" class="project-nav__tab" :class="{ 'project-nav__tab--active': isWorksActive }">
       <UiIcon v-if="variant === 'bottom'" name="list" :size="20" />
-      Работы
+      {{ t('builder.tabWorks') }}
     </NuxtLink>
 
-    <span class="project-nav__tab project-nav__tab--disabled" aria-disabled="true" title="Скоро">
+    <span class="project-nav__tab project-nav__tab--disabled" aria-disabled="true" :title="t('builder.comingSoon')">
       <UiIcon v-if="variant === 'bottom'" name="grid" :size="20" />
-      Расчёты
+      {{ t('builder.tabCalculations') }}
     </span>
   </nav>
 </template>

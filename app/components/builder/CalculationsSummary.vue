@@ -1,64 +1,80 @@
 <script setup lang="ts">
 const { document: buildingDocument } = useBuilding()
+const { t } = useI18n()
 
 const calculated = computed(() => buildingDocument.value.calculated)
+
+// calculated.warnings — фиксированный, закрытый набор EN-строк из Geometry
+// Engine (см. app/geometry/calculations.ts) — тот файл не трогаем (он не
+// presentation-слой), маппинг на i18n-ключ живёт только здесь, на выводе.
+const WARNING_KEYS: Record<string, string> = {
+  'Rooms overlap': 'builder.warnings.roomsOverlap',
+  'Opening area exceeds wall area': 'builder.warnings.openingAreaExceedsWall',
+  'Invalid wall height': 'builder.warnings.invalidWallHeight',
+  'Invalid opening geometry': 'builder.warnings.invalidOpeningGeometry',
+}
+
+function warningLabel(warning: string): string {
+  const key = WARNING_KEYS[warning]
+  return key ? t(key) : warning
+}
 </script>
 
 <template>
   <div class="calculations">
     <h3 class="calculations__title">
-      Расчёты
+      {{ t('builder.calculationsTitle') }}
     </h3>
 
     <div class="calculations__areas">
       <div class="calculations__row">
-        <span>Площадь пола</span>
-        <span>{{ calculated.areas.floor.toFixed(1) }} м²</span>
+        <span>{{ t('builder.floorArea') }}</span>
+        <span>{{ calculated.areas.floor.toFixed(1) }} {{ t('builder.unit.m2') }}</span>
       </div>
       <div class="calculations__row">
-        <span>Площадь потолка</span>
-        <span>{{ calculated.areas.ceiling.toFixed(1) }} м²</span>
+        <span>{{ t('builder.ceilingArea') }}</span>
+        <span>{{ calculated.areas.ceiling.toFixed(1) }} {{ t('builder.unit.m2') }}</span>
       </div>
       <div class="calculations__row">
-        <span>Площадь стен</span>
-        <span>{{ calculated.areas.wallGross.toFixed(1) }} м²</span>
+        <span>{{ t('builder.wallArea') }}</span>
+        <span>{{ calculated.areas.wallGross.toFixed(1) }} {{ t('builder.unit.m2') }}</span>
       </div>
       <div class="calculations__row">
-        <span>Двери</span>
-        <span>{{ calculated.openings.doors.toFixed(1) }} м²</span>
+        <span>{{ t('builder.doors') }}</span>
+        <span>{{ calculated.openings.doors.toFixed(1) }} {{ t('builder.unit.m2') }}</span>
       </div>
       <div class="calculations__row">
-        <span>Окна</span>
-        <span>{{ calculated.openings.windows.toFixed(1) }} м²</span>
+        <span>{{ t('builder.windows') }}</span>
+        <span>{{ calculated.openings.windows.toFixed(1) }} {{ t('builder.unit.m2') }}</span>
       </div>
       <div class="calculations__row calculations__row--emphasis">
-        <span>Чистые стены</span>
-        <span>{{ calculated.areas.wallNet.toFixed(1) }} м²</span>
+        <span>{{ t('builder.netWallArea') }}</span>
+        <span>{{ calculated.areas.wallNet.toFixed(1) }} {{ t('builder.unit.m2') }}</span>
       </div>
     </div>
 
     <div class="calculations__stats">
       <div class="calculations__stat">
         <span class="calculations__stat-value">{{ calculated.statistics.roomCount }}</span>
-        <span class="calculations__stat-label">Комнат</span>
+        <span class="calculations__stat-label">{{ t('builder.roomsStat') }}</span>
       </div>
       <div class="calculations__stat">
         <span class="calculations__stat-value">{{ calculated.statistics.wallCount }}</span>
-        <span class="calculations__stat-label">Стен</span>
+        <span class="calculations__stat-label">{{ t('builder.wallsStat') }}</span>
       </div>
       <div class="calculations__stat">
         <span class="calculations__stat-value">{{ calculated.statistics.doorCount }}</span>
-        <span class="calculations__stat-label">Дверей</span>
+        <span class="calculations__stat-label">{{ t('builder.doorsStat') }}</span>
       </div>
       <div class="calculations__stat">
         <span class="calculations__stat-value">{{ calculated.statistics.windowCount }}</span>
-        <span class="calculations__stat-label">Окон</span>
+        <span class="calculations__stat-label">{{ t('builder.windowsStat') }}</span>
       </div>
     </div>
 
     <ul v-if="calculated.warnings.length" class="calculations__warnings">
       <li v-for="warning in calculated.warnings" :key="warning">
-        ⚠ {{ warning }}
+        ⚠ {{ warningLabel(warning) }}
       </li>
     </ul>
   </div>

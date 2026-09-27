@@ -57,30 +57,28 @@ describe('normalizeReviewComment — empty/whitespace-only -> null (backend stor
   })
 })
 
+const t = (key: string) => key
+
 describe('contractorRatingLabel — backend aggregate is the source of truth, never recomputed', () => {
-  it('reviews_count === 0 -> "Пока нет отзывов" (см. задание секция 13)', () => {
-    expect(contractorRatingLabel(null, 0)).toBe('Пока нет отзывов')
+  it('reviews_count === 0 -> resolves reviews.noneYet (см. задание секция 13)', () => {
+    expect(contractorRatingLabel(null, 0, t)).toBe('reviews.noneYet')
   })
 
-  it('rating === null but reviews_count > 0 (defensive edge case) -> "Нет отзывов"', () => {
-    expect(contractorRatingLabel(null, 3)).toBe('Нет отзывов')
+  it('rating === null but reviews_count > 0 (defensive edge case) -> resolves reviews.none', () => {
+    expect(contractorRatingLabel(null, 3, t)).toBe('reviews.none')
   })
 
-  it('a real rating formats to one decimal place', () => {
-    expect(contractorRatingLabel(4.8, 12)).toBe('4.8')
-    expect(contractorRatingLabel(5, 1)).toBe('5.0')
+  it('a real rating formats to one decimal place (no i18n needed for a number)', () => {
+    expect(contractorRatingLabel(4.8, 12, t)).toBe('4.8')
+    expect(contractorRatingLabel(5, 1, t)).toBe('5.0')
   })
 })
 
-describe('reviewsCountLabel — RU pluralization (тот же паттерн, что pluralRooms в ProjectCard.vue)', () => {
-  it('1 отзыв, 2/3/4 отзыва, 5+/0/11-14 отзывов', () => {
-    expect(reviewsCountLabel(1)).toBe('1 отзыв')
-    expect(reviewsCountLabel(2)).toBe('2 отзыва')
-    expect(reviewsCountLabel(4)).toBe('4 отзыва')
-    expect(reviewsCountLabel(5)).toBe('5 отзывов')
-    expect(reviewsCountLabel(0)).toBe('0 отзывов')
-    expect(reviewsCountLabel(11)).toBe('11 отзывов')
-    expect(reviewsCountLabel(21)).toBe('21 отзыв')
+describe('reviewsCountLabel — delegates pluralization to vue-i18n (no hand-rolled mod10/mod100 logic)', () => {
+  it('passes count as both the named param and the plural choice', () => {
+    const tPlural = (key: string, named: Record<string, unknown>, choice: number) => `${key}:${named.count}:${choice}`
+    expect(reviewsCountLabel(1, tPlural)).toBe('reviews.count:1:1')
+    expect(reviewsCountLabel(21, tPlural)).toBe('reviews.count:21:21')
   })
 })
 
@@ -108,19 +106,19 @@ describe('resolveReviewAuthorRole / otherReviewRole — the only way to tell cli
 })
 
 describe('reviewRoleLabel — real contractor name when known, honest fallback otherwise', () => {
-  it('client role is always labeled "Клиент" (no Client display-name exists anywhere in the API)', () => {
-    expect(reviewRoleLabel('client')).toBe('Клиент')
-    expect(reviewRoleLabel('client', 'ignored')).toBe('Клиент')
+  it('client role always resolves reviews.roleClient (no Client display-name exists anywhere in the API)', () => {
+    expect(reviewRoleLabel('client', t)).toBe('reviews.roleClient')
+    expect(reviewRoleLabel('client', t, 'ignored')).toBe('reviews.roleClient')
   })
 
   it('contractor role uses the real contractor name when provided', () => {
-    expect(reviewRoleLabel('contractor', 'Азиз')).toBe('Азиз')
+    expect(reviewRoleLabel('contractor', t, 'Азиз')).toBe('Азиз')
   })
 
-  it('contractor role falls back to "Мастер" when no name is known', () => {
-    expect(reviewRoleLabel('contractor', null)).toBe('Мастер')
-    expect(reviewRoleLabel('contractor', undefined)).toBe('Мастер')
-    expect(reviewRoleLabel('contractor', '   ')).toBe('Мастер')
+  it('contractor role falls back to reviews.roleContractorFallback when no name is known', () => {
+    expect(reviewRoleLabel('contractor', t, null)).toBe('reviews.roleContractorFallback')
+    expect(reviewRoleLabel('contractor', t, undefined)).toBe('reviews.roleContractorFallback')
+    expect(reviewRoleLabel('contractor', t, '   ')).toBe('reviews.roleContractorFallback')
   })
 })
 

@@ -22,6 +22,8 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits<{ update: [patch: Partial<RequestFilters>] }>()
 
+const { t } = useI18n()
+
 const workTypesForCategory = computed(() => {
   if (!props.filters.categoryId) return []
   return props.workTypes.filter(w => w.categoryId === props.filters.categoryId)
@@ -59,10 +61,10 @@ function handleSortChange(event: Event) {
 <template>
   <div class="filter-fields" :class="{ 'filter-fields--compact': compact }">
     <label class="field">
-      <span class="field__label">Категория</span>
+      <span class="field__label">{{ t('marketplace.categoryLabel') }}</span>
       <select class="input" :value="filters.categoryId ?? ''" @change="handleCategoryChange">
         <option value="">
-          Все категории
+          {{ t('marketplace.allCategories') }}
         </option>
         <option v-for="category in categories" :key="category.id" :value="category.id">
           {{ category.name }}
@@ -71,10 +73,10 @@ function handleSortChange(event: Event) {
     </label>
 
     <label class="field">
-      <span class="field__label">Вид работы</span>
+      <span class="field__label">{{ t('contractorProfile.workTypeLabel') }}</span>
       <select class="input" :value="filters.workTypeId ?? ''" :disabled="!filters.categoryId" @change="handleWorkTypeChange">
         <option value="">
-          {{ filters.categoryId ? 'Все виды работ' : 'Сначала выберите категорию' }}
+          {{ filters.categoryId ? t('marketplace.allWorkTypes') : t('contractorProfile.selectCategoryFirst') }}
         </option>
         <option v-for="workType in workTypesForCategory" :key="workType.id" :value="workType.id">
           {{ workType.name }}
@@ -84,7 +86,7 @@ function handleSortChange(event: Event) {
 
     <div class="filter-fields__quantity-row">
       <label class="field">
-        <span class="field__label">Количество от</span>
+        <span class="field__label">{{ t('marketplace.quantityFrom') }}</span>
         <input
           type="number"
           inputmode="decimal"
@@ -96,7 +98,7 @@ function handleSortChange(event: Event) {
         >
       </label>
       <label class="field">
-        <span class="field__label">Количество до</span>
+        <span class="field__label">{{ t('marketplace.quantityTo') }}</span>
         <input
           type="number"
           inputmode="decimal"
@@ -110,13 +112,13 @@ function handleSortChange(event: Event) {
     </div>
 
     <label class="field">
-      <span class="field__label">Сортировка</span>
+      <span class="field__label">{{ t('marketplace.sortLabel') }}</span>
       <select class="input" :value="filters.sort" @change="handleSortChange">
         <option value="newest">
-          Сначала новые
+          {{ t('marketplace.sortNewest') }}
         </option>
         <option value="oldest">
-          Сначала старые
+          {{ t('marketplace.sortOldest') }}
         </option>
       </select>
     </label>

@@ -1,46 +1,48 @@
 import { describe, expect, it } from 'vitest'
 import { categoryIcon, formatQuantity, measurementSourceLabel, statusLabel, unitLabel, workTypeIcon } from '~/utils/work'
 
+const t = (key: string) => key
+
 describe('formatQuantity', () => {
   it('formats m2 with 2 decimal places', () => {
-    expect(formatQuantity(5.6, 'm2')).toBe('5.60 м²')
-    expect(formatQuantity(38.4, 'm2')).toBe('38.40 м²')
+    expect(formatQuantity(5.6, 'm2', t)).toBe('5.60 builder.unit.m2')
+    expect(formatQuantity(38.4, 'm2', t)).toBe('38.40 builder.unit.m2')
   })
 
   it('formats m with 2 decimal places', () => {
-    expect(formatQuantity(12.5, 'm')).toBe('12.50 м')
+    expect(formatQuantity(12.5, 'm', t)).toBe('12.50 builder.unit.m')
   })
 
   it('formats pcs as a rounded whole number', () => {
-    expect(formatQuantity(4, 'pcs')).toBe('4 шт')
-    expect(formatQuantity(4.0, 'pcs')).toBe('4 шт')
+    expect(formatQuantity(4, 'pcs', t)).toBe('4 builder.unit.pcs')
+    expect(formatQuantity(4.0, 'pcs', t)).toBe('4 builder.unit.pcs')
   })
 })
 
 describe('unitLabel', () => {
-  it('maps every backend unit to its Russian label', () => {
-    expect(unitLabel('m2')).toBe('м²')
-    expect(unitLabel('m')).toBe('м')
-    expect(unitLabel('pcs')).toBe('шт')
+  it('resolves every backend unit through the builder.unit.* i18n namespace', () => {
+    expect(unitLabel('m2', t)).toBe('builder.unit.m2')
+    expect(unitLabel('m', t)).toBe('builder.unit.m')
+    expect(unitLabel('pcs', t)).toBe('builder.unit.pcs')
   })
 })
 
 describe('measurementSourceLabel', () => {
-  it('maps every backend measurement_source to a human-readable label', () => {
-    expect(measurementSourceLabel('floor_area')).toBe('Площадь пола')
-    expect(measurementSourceLabel('ceiling_area')).toBe('Площадь потолка')
-    expect(measurementSourceLabel('wall_net_area')).toBe('Площадь стен')
-    expect(measurementSourceLabel('door_count')).toBe('Количество дверей')
-    expect(measurementSourceLabel('window_count')).toBe('Количество окон')
-    expect(measurementSourceLabel('fixed')).toBe('Ввод вручную')
+  it('resolves every backend measurement_source through builder.measurementSource.*', () => {
+    expect(measurementSourceLabel('floor_area', t)).toBe('builder.measurementSource.floor_area')
+    expect(measurementSourceLabel('ceiling_area', t)).toBe('builder.measurementSource.ceiling_area')
+    expect(measurementSourceLabel('wall_net_area', t)).toBe('builder.measurementSource.wall_net_area')
+    expect(measurementSourceLabel('door_count', t)).toBe('builder.measurementSource.door_count')
+    expect(measurementSourceLabel('window_count', t)).toBe('builder.measurementSource.window_count')
+    expect(measurementSourceLabel('fixed', t)).toBe('builder.measurementSource.fixed')
   })
 })
 
 describe('statusLabel', () => {
-  it('maps every backend status to a human-readable label', () => {
-    expect(statusLabel('planned')).toBe('Запланировано')
-    expect(statusLabel('in_progress')).toBe('В работе')
-    expect(statusLabel('completed')).toBe('Выполнено')
+  it('resolves every backend status through status.work.*', () => {
+    expect(statusLabel('planned', t)).toBe('status.work.planned')
+    expect(statusLabel('in_progress', t)).toBe('status.work.in_progress')
+    expect(statusLabel('completed', t)).toBe('status.work.completed')
   })
 })
 

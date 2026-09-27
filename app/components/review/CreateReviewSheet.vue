@@ -8,6 +8,8 @@
 const props = defineProps<{ open: boolean, title: string, submitting: boolean, error: string | null }>()
 const emit = defineEmits<{ submit: [rating: number, comment: string], cancel: [] }>()
 
+const { t } = useI18n()
+
 const rating = ref(0)
 const comment = ref('')
 
@@ -40,18 +42,18 @@ function handleSubmit() {
 
         <form class="create-review-sheet__form" @submit.prevent="handleSubmit">
           <div class="field create-review-sheet__rating-field">
-            <span class="field__label">Оценка</span>
+            <span class="field__label">{{ t('reviews.ratingLabel') }}</span>
             <ReviewRatingStars :rating="rating" interactive :size="32" @update:rating="rating = $event" />
           </div>
 
           <label class="field">
-            <span class="field__label">Комментарий (необязательно)</span>
+            <span class="field__label">{{ t('reviews.commentLabel') }}</span>
             <textarea
               v-model="comment"
               class="input create-review-sheet__comment"
               rows="4"
               maxlength="2000"
-              placeholder="Расскажите, как прошла работа"
+              :placeholder="t('reviews.commentPlaceholder')"
               :disabled="submitting"
             />
             <span class="text-caption text-muted create-review-sheet__counter">{{ commentLength }}/2000</span>
@@ -62,7 +64,7 @@ function handleSubmit() {
           </p>
 
           <button type="submit" class="btn btn-primary create-review-sheet__submit" :disabled="!isValid || submitting">
-            {{ submitting ? 'Отправляем…' : 'Оставить отзыв' }}
+            {{ submitting ? t('reviews.submitting') : t('reviews.submit') }}
           </button>
         </form>
       </div>

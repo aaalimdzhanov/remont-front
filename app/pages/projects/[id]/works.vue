@@ -43,7 +43,9 @@ const {
 } = useMarketplace()
 const { findOrderByRequestId, fetchOrders, cleanup: cleanupOrders } = useOrders()
 
-useHead({ title: computed(() => `Работы — ${buildingDocument.value.project.name}`) })
+const { t, locale } = useI18n()
+
+useHead({ title: computed(() => t('builder.workBuilder.pageTitle', { name: buildingDocument.value.project.name })) })
 
 type Phase = 'loading' | 'not-found' | 'error' | 'ready'
 const phase = ref<Phase>('loading')
@@ -84,9 +86,9 @@ const selectedCategory = computed(() => categories.value.find(c => c.id === sele
 
 const scopeLabel = computed(() => {
   if (currentStep.value === 'room') return ''
-  if (selectedIsProjectLevel.value) return 'Весь проект'
+  if (selectedIsProjectLevel.value) return t('builder.workBuilder.wholeProject')
   const room = buildingDocument.value.building.rooms.find(r => r.id === selectedRoomId.value)
-  return room ? `${room.name} · ${calculateRoomArea(room).toFixed(1)} м²` : ''
+  return room ? t('builder.workBuilder.roomAreaLabel', { name: room.name, area: calculateRoomArea(room).toFixed(1) }) : ''
 })
 
 interface WorkGroup { roomId: string | null, label: string, works: ProjectWork[] }
@@ -97,8 +99,8 @@ const groupedWorks = computed<WorkGroup[]>(() => {
     if (!groups.has(key)) {
       const room = work.roomId ? buildingDocument.value.building.rooms.find(r => r.id === work.roomId) : null
       const label = work.roomId
-        ? (room ? `${room.name} · ${calculateRoomArea(room).toFixed(1)} м²` : 'Помещение удалено')
-        : 'Весь проект'
+        ? (room ? t('builder.workBuilder.roomAreaLabel', { name: room.name, area: calculateRoomArea(room).toFixed(1) }) : t('builder.workBuilder.roomDeleted'))
+        : t('builder.workBuilder.wholeProject')
       groups.set(key, { roomId: work.roomId, label, works: [] })
     }
     groups.get(key)!.works.push(work)
@@ -108,7 +110,7 @@ const groupedWorks = computed<WorkGroup[]>(() => {
 })
 
 function resolveWorkTitle(work: ProjectWork): string {
-  return workTypeCatalog.value[work.workTypeId]?.name ?? 'Работа'
+  return workTypeCatalog.value[work.workTypeId]?.name ?? t('builder.workBuilder.fallbackWorkTitle')
 }
 
 function resolveWorkIcon(work: ProjectWork) {
@@ -242,27 +244,27 @@ function handleViewOrder(orderId: string) {
     <div v-if="phase === 'loading'" class="works-page__status">
       <div class="works-page__spinner" aria-hidden="true" />
       <p class="text-secondary">
-        Загрузка проекта…
+        {{ t('projects.loadingProject') }}
       </p>
     </div>
 
     <div v-else-if="phase === 'not-found'" class="works-page__status">
       <UiIcon name="alert" :size="28" class="works-page__status-icon" />
       <p class="text-h3">
-        Проект не найден
+        {{ t('projects.notFoundTitle') }}
       </p>
       <NuxtLink to="/projects" class="btn btn-secondary">
-        Вернуться к проектам
+        {{ t('projects.backToProjects') }}
       </NuxtLink>
     </div>
 
     <div v-else-if="phase === 'error'" class="works-page__status">
       <UiIcon name="alert" :size="28" class="works-page__status-icon" />
       <p class="text-h3">
-        Не удалось загрузить проект
+        {{ t('projects.loadErrorTitle') }}
       </p>
       <NuxtLink to="/projects" class="btn btn-secondary">
-        Вернуться к проектам
+        {{ t('projects.backToProjects') }}
       </NuxtLink>
     </div>
 
@@ -277,19 +279,19 @@ function handleViewOrder(orderId: string) {
 
       <div class="works-page__body">
         <p v-if="recalculateError" class="works-page__banner-error">
-          Не удалось обновить расчёты.
+          {{ t('builder.workBuilder.recalculateError') }}
           <button type="button" @click="handleRecalculate">
-            Повторить
+            {{ t('common.retry') }}
           </button>
         </p>
 
         <p v-if="marketplaceSuccessMessage" class="works-page__banner-success">
           <UiIcon name="check" :size="16" />
-          Заявка опубликована на бирже.
+          {{ t('builder.workBuilder.requestPublishedSuccess') }}
           <NuxtLink v-if="publishedRequestId" :to="`/marketplace/requests/${publishedRequestId}`">
-            Посмотреть заявку
+            {{ t('builder.workBuilder.viewRequest') }}
           </NuxtLink>
-          <button type="button" aria-label="Скрыть" @click="marketplaceSuccessMessage = false">
+          <button type="button" :aria-label="t('common.hide')" @click="marketplaceSuccessMessage = false">
             <UiIcon name="close" :size="14" />
           </button>
         </p>
@@ -300,10 +302,10 @@ function handleViewOrder(orderId: string) {
 
         <div v-else-if="projectWorksError" class="works-page__state">
           <p class="text-secondary">
-            Не удалось загрузить план работ.
+            {{ t('builder.workBuilder.loadPlanError') }}
           </p>
           <button type="button" class="btn btn-secondary" @click="loadProjectWorks(projectId)">
-            Повторить
+            {{ t('common.retry') }}
           </button>
         </div>
 
@@ -344,7 +346,7 @@ function handleViewOrder(orderId: string) {
 
           <button type="button" class="btn btn-primary works-page__fab" @click="startAddWork">
             <UiIcon name="plus" :size="18" />
-            <span class="works-page__fab-label">Добавить работу</span>
+            <span class="works-page__fab-label">{{ t('builder.workBuilder.addWork') }}</span>
           </button>
         </template>
       </div>
@@ -353,18 +355,18 @@ function handleViewOrder(orderId: string) {
     <template v-else>
       <div class="works-flow">
         <div class="works-flow__header">
-          <button type="button" class="works-flow__nav-btn" aria-label="Назад" @click="handleGoBack">
+          <button type="button" class="works-flow__nav-btn" :aria-label="t('common.back')" @click="handleGoBack">
             <UiIcon name="chevron-left" :size="20" />
           </button>
           <div class="works-flow__titles">
             <p class="works-flow__title">
-              Добавить работу
+              {{ t('builder.workBuilder.addWork') }}
             </p>
             <p v-if="scopeLabel" class="text-caption text-muted">
               {{ scopeLabel }}
             </p>
           </div>
-          <button type="button" class="works-flow__nav-btn" aria-label="Закрыть" @click="handleClose">
+          <button type="button" class="works-flow__nav-btn" :aria-label="t('common.close')" @click="handleClose">
             <UiIcon name="close" :size="18" />
           </button>
         </div>
@@ -411,9 +413,9 @@ function handleViewOrder(orderId: string) {
 
     <UiConfirmDialog
       :open="pendingMarketplaceWork !== null"
-      title="Разместить работу на бирже?"
-      :message="pendingMarketplaceWork ? `${resolveWorkTitle(pendingMarketplaceWork)} · Количество: ${formatQuantity(pendingMarketplaceWork.quantity, pendingMarketplaceWork.unit)}` : ''"
-      :confirm-text="isCreatingRequest ? 'Размещаем…' : 'Разместить заявку'"
+      :title="t('dialogs.publishRequest.title')"
+      :message="pendingMarketplaceWork ? t('dialogs.publishRequest.message', { title: resolveWorkTitle(pendingMarketplaceWork), quantity: formatQuantity(pendingMarketplaceWork.quantity, pendingMarketplaceWork.unit, t) }) : ''"
+      :confirm-text="isCreatingRequest ? t('dialogs.publishRequest.confirming') : t('dialogs.publishRequest.confirm')"
       :confirm-disabled="isCreatingRequest"
       @confirm="confirmPlaceOnMarketplace"
       @cancel="pendingMarketplaceWork = null"
@@ -426,10 +428,10 @@ function handleViewOrder(orderId: string) {
          видна мастерам — второй, отдельный шаг от диалога выше. -->
     <UiConfirmDialog
       :open="draftRequest !== null"
-      title="Заявка создана"
-      message="Она пока не опубликована и не видна мастерам."
-      :confirm-text="isPublishingDraft ? 'Публикуем…' : 'Опубликовать заявку'"
-      cancel-text="Оставить как черновик"
+      :title="t('dialogs.draftCreated.title')"
+      :message="t('dialogs.draftCreated.message')"
+      :confirm-text="isPublishingDraft ? t('dialogs.draftCreated.confirming') : t('dialogs.draftCreated.confirm')"
+      :cancel-text="t('dialogs.draftCreated.cancel')"
       :confirm-disabled="isPublishingDraft"
       @confirm="confirmPublishDraft"
       @cancel="dismissDraft"

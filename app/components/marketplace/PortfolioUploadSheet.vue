@@ -25,6 +25,8 @@ const emit = defineEmits<{
   cancel: []
 }>()
 
+const { t } = useI18n()
+
 const selectedFile = ref<File | null>(null)
 const previewUrl = ref<string | null>(null)
 const fileError = ref<string | null>(null)
@@ -60,7 +62,7 @@ watch(() => props.open, (isOpen) => {
 // Если пользователь выбирает другой файл — старый preview заменяется (см.
 // задание, секция IMAGE PREVIEW).
 function applyFile(file: File) {
-  const validationError = validatePortfolioImageFile(file)
+  const validationError = validatePortfolioImageFile(file, t)
   if (validationError) {
     fileError.value = validationError
     return
@@ -108,10 +110,10 @@ onUnmounted(clearPreview)
 <template>
   <Teleport to="body">
     <div v-if="open" class="portfolio-upload-sheet__overlay" @click.self="!submitting && emit('cancel')">
-      <div class="portfolio-upload-sheet__panel" role="dialog" aria-modal="true" aria-label="Добавить работу">
+      <div class="portfolio-upload-sheet__panel" role="dialog" aria-modal="true" :aria-label="t('portfolio.addWorkTitle')">
         <div class="portfolio-upload-sheet__handle" aria-hidden="true" />
         <h3 class="portfolio-upload-sheet__title">
-          Добавить работу
+          {{ t('portfolio.addWorkTitle') }}
         </h3>
 
         <form class="portfolio-upload-sheet__form" @submit.prevent="handleSubmit">
@@ -137,9 +139,9 @@ onUnmounted(clearPreview)
             >
               <UiIcon name="camera" :size="28" class="portfolio-upload-sheet__dropzone-icon" />
               <span class="portfolio-upload-sheet__dropzone-text">
-                Перетащите фото сюда или <span class="portfolio-upload-sheet__dropzone-link">выберите файл</span>
+                {{ t('portfolio.dropzoneText') }} <span class="portfolio-upload-sheet__dropzone-link">{{ t('portfolio.chooseFile') }}</span>
               </span>
-              <span class="text-caption text-muted">Поддерживаются JPG, PNG, WebP до 10 МБ</span>
+              <span class="text-caption text-muted">{{ t('portfolio.supportedFormats') }}</span>
             </label>
           </div>
 
@@ -148,7 +150,7 @@ onUnmounted(clearPreview)
             <button
               type="button"
               class="portfolio-upload-sheet__preview-remove"
-              aria-label="Убрать фото"
+              :aria-label="t('portfolio.removePhotoAriaLabel')"
               :disabled="submitting"
               @click="handleRemoveFile"
             >
@@ -161,26 +163,26 @@ onUnmounted(clearPreview)
           </p>
 
           <label class="field">
-            <span class="field__label">Название</span>
+            <span class="field__label">{{ t('portfolio.titleLabel') }}</span>
             <input
               v-model="title"
               type="text"
               class="input"
               :class="{ 'input--error': !titleValid }"
-              placeholder="Например, Ремонт кухни"
+              :placeholder="t('portfolio.titlePlaceholder')"
               :maxlength="PORTFOLIO_MAX_TITLE_LENGTH"
               :disabled="submitting"
             >
           </label>
 
           <label class="field">
-            <span class="field__label">Описание</span>
+            <span class="field__label">{{ t('portfolio.descriptionLabel') }}</span>
             <textarea
               v-model="description"
               class="input portfolio-upload-sheet__description"
               rows="3"
               :class="{ 'input--error': !descriptionValid }"
-              placeholder="Краткое описание работы"
+              :placeholder="t('portfolio.descriptionPlaceholder')"
               :maxlength="PORTFOLIO_MAX_DESCRIPTION_LENGTH"
               :disabled="submitting"
             />
@@ -192,10 +194,10 @@ onUnmounted(clearPreview)
 
           <div class="portfolio-upload-sheet__actions">
             <button type="button" class="btn btn-secondary" :disabled="submitting" @click="emit('cancel')">
-              Отмена
+              {{ t('common.cancel') }}
             </button>
             <button type="submit" class="btn btn-primary" :disabled="!isValid || submitting">
-              {{ submitting ? 'Добавляем…' : 'Добавить' }}
+              {{ submitting ? t('common.adding') : t('portfolio.addSubmit') }}
             </button>
           </div>
         </form>

@@ -14,6 +14,8 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ submit: [code: string], resend: [], back: [] }>()
 
+const { t } = useI18n()
+
 const code = ref('')
 const inputRef = ref<HTMLInputElement | null>(null)
 const remaining = ref(props.cooldownSeconds)
@@ -74,10 +76,10 @@ function handleResend() {
   <form class="sms-form" @submit.prevent="handleSubmit">
     <div class="sms-form__hint">
       <p class="text-h3">
-        Введите код
+        {{ t('auth.smsTitle') }}
       </p>
       <p class="text-small text-secondary">
-        Код отправлен на: <strong class="sms-form__phone">{{ maskPhone(phone) }}</strong>
+        {{ t('auth.smsSentTo', { phone: maskPhone(phone) }) }}
       </p>
     </div>
 
@@ -89,18 +91,18 @@ function handleResend() {
       autocomplete="one-time-code"
       maxlength="6"
       placeholder="000000"
-      aria-label="Код из SMS"
+      :aria-label="t('auth.smsCodeAriaLabel')"
       class="input sms-form__code-input"
       @input="handleInput"
     >
 
     <button type="submit" class="btn btn-primary sms-form__submit" :disabled="!canSubmit">
-      {{ isLoading ? 'Проверка…' : 'Подтвердить' }}
+      {{ isLoading ? t('auth.verifying') : t('auth.confirm') }}
     </button>
 
     <p class="sms-form__resend-hint text-small text-muted">
       <template v-if="remaining > 0">
-        Не получили код? Отправить ещё раз через {{ countdownLabel }}
+        {{ t('auth.resendIn', { timer: countdownLabel }) }}
       </template>
       <button
         v-else
@@ -109,13 +111,13 @@ function handleResend() {
         :disabled="!canResend"
         @click="handleResend"
       >
-        Отправить ещё раз
+        {{ t('auth.resend') }}
       </button>
     </p>
 
     <button type="button" class="btn btn-ghost sms-form__back" @click="emit('back')">
       <UiIcon name="chevron-left" :size="16" />
-      Изменить номер
+      {{ t('auth.changeNumber') }}
     </button>
   </form>
 </template>

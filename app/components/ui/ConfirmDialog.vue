@@ -4,7 +4,9 @@
 // dirty-navigation/logout — те завязаны на синхронный возврат значения в
 // местах, которые лучше не трогать сейчас; здесь — новый, явно запрошенный
 // UI-паттерн для деструктивных действий.
-withDefaults(defineProps<{
+const { t } = useI18n()
+
+const props = withDefaults(defineProps<{
   open: boolean
   title: string
   message: string
@@ -16,11 +18,11 @@ withDefaults(defineProps<{
   // click") — cancel остаётся кликабельным, закрыть диалог можно всегда.
   confirmDisabled?: boolean
 }>(), {
-  confirmText: 'Подтвердить',
-  cancelText: 'Отмена',
   danger: false,
   confirmDisabled: false,
 })
+const displayConfirmText = computed(() => props.confirmText ?? t('common.confirm'))
+const displayCancelText = computed(() => props.cancelText ?? t('common.cancel'))
 const emit = defineEmits<{ confirm: [], cancel: [] }>()
 </script>
 
@@ -36,7 +38,7 @@ const emit = defineEmits<{ confirm: [], cancel: [] }>()
         </p>
         <div class="confirm-dialog__actions">
           <button type="button" class="btn btn-secondary" @click="emit('cancel')">
-            {{ cancelText }}
+            {{ displayCancelText }}
           </button>
           <button
             type="button"
@@ -45,7 +47,7 @@ const emit = defineEmits<{ confirm: [], cancel: [] }>()
             :disabled="confirmDisabled"
             @click="emit('confirm')"
           >
-            {{ confirmText }}
+            {{ displayConfirmText }}
           </button>
         </div>
       </div>

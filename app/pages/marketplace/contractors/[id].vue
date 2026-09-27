@@ -18,8 +18,9 @@ const route = useRoute()
 const contractorId = computed(() => (typeof route.params.id === 'string' ? route.params.id : ''))
 
 const { contractor, isLoading, error, fetchContractor } = usePublicContractor()
+const { t, locale } = useI18n()
 
-const locationLabel = computed(() => (contractor.value ? formatLocation(contractor.value.location) : null))
+const locationLabel = computed(() => (contractor.value ? formatLocation(contractor.value.location, locale.value) : null))
 
 // Portfolio v1 — приходит вместе с самим GET /contractors/{id} (см.
 // api/types.ts PublicContractorProfile.portfolio), отдельного запроса нет
@@ -28,7 +29,7 @@ const locationLabel = computed(() => (contractor.value ? formatLocation(contract
 // (возможно пустой), но на всякий случай не считаем null "есть работы".
 const viewingPortfolioItem = ref<{ imageUrl: string, title: string, description: string } | null>(null)
 
-useHead({ title: 'Профиль мастера' })
+useHead({ title: computed(() => t('contractorProfile.title')) })
 
 onMounted(() => {
   void fetchContractor(contractorId.value)
@@ -40,13 +41,13 @@ onMounted(() => {
     <div class="public-contractor-page__header">
       <NuxtLink to="/marketplace" class="public-contractor-page__back">
         <UiIcon name="chevron-left" :size="18" />
-        Биржа
+        {{ t('navigation.marketplace') }}
       </NuxtLink>
       <AppProfileMenu />
     </div>
 
     <h1 class="text-h1 public-contractor-page__title">
-      Профиль мастера
+      {{ t('contractorProfile.title') }}
     </h1>
 
     <div v-if="isLoading && contractor === undefined" class="public-contractor-page__skeleton-wrap">
@@ -58,20 +59,20 @@ onMounted(() => {
     <div v-else-if="contractor === null" class="public-contractor-page__state">
       <UiIcon name="alert" :size="28" class="public-contractor-page__state-icon" />
       <p class="text-h3">
-        Мастер не найден
+        {{ t('contractors.notFoundTitle') }}
       </p>
       <NuxtLink to="/marketplace" class="btn btn-secondary">
-        Вернуться к бирже
+        {{ t('contractors.backToMarketplace') }}
       </NuxtLink>
     </div>
 
     <div v-else-if="error" class="public-contractor-page__state">
       <UiIcon name="alert" :size="28" class="public-contractor-page__state-icon" />
       <p class="text-secondary">
-        Не удалось загрузить профиль мастера.
+        {{ t('contractors.loadError') }}
       </p>
       <button type="button" class="btn btn-secondary" @click="fetchContractor(contractorId)">
-        Повторить
+        {{ t('common.retry') }}
       </button>
     </div>
 
@@ -81,7 +82,7 @@ onMounted(() => {
           <UiIcon name="user" :size="28" />
         </div>
         <p class="public-contractor-page__name">
-          {{ contractor.name.trim() || 'Мастер' }}
+          {{ contractor.name.trim() || t('contractors.fallbackName') }}
         </p>
         <p v-if="contractor.description.trim()" class="text-secondary public-contractor-page__description">
           {{ contractor.description.trim() }}
@@ -89,15 +90,15 @@ onMounted(() => {
         <div class="public-contractor-page__rating">
           <ReviewRatingStars :rating="contractor.rating" :size="18" />
           <span class="text-small text-secondary">
-            {{ contractorRatingLabel(contractor.rating, contractor.reviewsCount) }}
-            <template v-if="contractor.reviewsCount > 0">· {{ reviewsCountLabel(contractor.reviewsCount) }}</template>
+            {{ contractorRatingLabel(contractor.rating, contractor.reviewsCount, t) }}
+            <template v-if="contractor.reviewsCount > 0">· {{ reviewsCountLabel(contractor.reviewsCount, t) }}</template>
           </span>
         </div>
       </section>
 
       <section v-if="locationLabel" class="public-contractor-page__location">
         <h2 class="text-h3 public-contractor-page__location-title">
-          Работает в
+          {{ t('location.workingInTitle') }}
         </h2>
         <p class="public-contractor-page__location-value">
           <UiIcon name="pin" :size="16" />
@@ -107,17 +108,17 @@ onMounted(() => {
 
       <section class="public-contractor-page__services">
         <h2 class="text-h3 public-contractor-page__services-title">
-          Услуги мастера
+          {{ t('contractors.servicesTitle') }}
         </h2>
 
         <p v-if="contractor.services.length === 0" class="text-secondary public-contractor-page__services-empty">
-          Мастер пока не добавил услуги.
+          {{ t('contractors.noServices') }}
         </p>
         <div v-else class="public-contractor-page__service-list">
           <div v-for="service in contractor.services" :key="service.workTypeId" class="public-contractor-page__service">
             <span class="public-contractor-page__service-name">{{ service.workType }}</span>
             <span class="text-small text-secondary public-contractor-page__service-price">
-              {{ formatPriceRange(service.priceFrom, service.priceTo) }}
+              {{ formatPriceRange(service.priceFrom, service.priceTo, t, locale, t('common.currency')) }}
             </span>
           </div>
         </div>
@@ -125,7 +126,7 @@ onMounted(() => {
 
       <section v-if="contractor.portfolio && contractor.portfolio.length > 0" class="public-contractor-page__portfolio">
         <h2 class="text-h3 public-contractor-page__portfolio-title">
-          Работы мастера
+          {{ t('contractors.worksTitle') }}
         </h2>
         <MarketplacePortfolioGrid :items="contractor.portfolio" @open="(item) => (viewingPortfolioItem = item)" />
       </section>

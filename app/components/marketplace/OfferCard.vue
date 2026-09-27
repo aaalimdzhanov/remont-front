@@ -25,6 +25,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{ accept: [], reject: [], withdraw: [] }>()
 
+const { t, locale } = useI18n()
+
 const isPending = computed(() => props.offer.status === 'pending')
 </script>
 
@@ -36,45 +38,45 @@ const isPending = computed(() => props.offer.status === 'pending')
           {{ title }}
         </p>
         <p class="offer-card__price">
-          {{ formatPrice(offer.price) }}
+          {{ formatPrice(offer.price, locale, t('common.currency')) }}
         </p>
       </div>
       <span class="offer-card__status" :class="`offer-card__status--${offer.status}`">
-        {{ offerStatusLabel(offer.status) }}
+        {{ offerStatusLabel(offer.status, t) }}
       </span>
     </div>
 
     <NuxtLink v-if="mode === 'owner'" :to="`/marketplace/contractors/${offer.contractorId}`" class="offer-card__profile-link">
       <UiIcon name="user" :size="14" />
-      Профиль мастера
+      {{ t('contractors.profileLink') }}
     </NuxtLink>
 
     <p v-if="offer.comment" class="offer-card__comment">
-      «{{ offer.comment }}»
+      {{ t('offers.quotedComment', { comment: offer.comment }) }}
     </p>
 
     <p class="text-caption text-muted offer-card__date">
-      {{ formatMarketplaceDate(offer.createdAt) }}
+      {{ formatMarketplaceDate(offer.createdAt, locale) }}
     </p>
 
     <div v-if="mode === 'owner' && isPending" class="offer-card__actions">
       <button type="button" class="btn btn-primary" :disabled="busy" @click="emit('accept')">
-        Принять
+        {{ t('offers.accept') }}
       </button>
       <button type="button" class="btn btn-secondary" :disabled="busy" @click="emit('reject')">
-        Отклонить
+        {{ t('offers.reject') }}
       </button>
     </div>
 
     <div v-else-if="mode === 'mine' && isPending" class="offer-card__actions">
       <button type="button" class="btn btn-ghost" :disabled="busy" @click="emit('withdraw')">
-        Отозвать
+        {{ t('offers.withdraw') }}
       </button>
     </div>
 
     <NuxtLink v-if="offer.status === 'accepted' && orderId" :to="`/orders/${orderId}`" class="btn btn-secondary btn-sm offer-card__order-link">
       <UiIcon name="check" :size="14" />
-      Заказ
+      {{ t('orders.title') }}
     </NuxtLink>
   </div>
 </template>

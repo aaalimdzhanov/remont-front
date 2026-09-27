@@ -5,42 +5,26 @@
 // человекочитаемые подписи для уже готовых enum-значений/чисел.
 import type { MeasurementSource, WorkStatus, WorkUnit } from '~/api/types'
 
-export function unitLabel(unit: WorkUnit): string {
-  switch (unit) {
-    case 'm2': return 'м²'
-    case 'm': return 'м'
-    case 'pcs': return 'шт'
-  }
+// t — переданный вызывающим компонентом useI18n().t (namespace builder.unit.*/
+// status.work.*) — этот файл остаётся чистыми функциями без доступа к
+// Vue-контексту (см. тот же паттерн в utils/marketplace.ts).
+export function unitLabel(unit: WorkUnit, t: (key: string) => string): string {
+  return t(`builder.unit.${unit}`)
 }
 
 // 5.6 → "5.60 м²", 12.5 → "12.50 м", 4 → "4 шт" — см. задание, секция
 // AUTOMATIC QUANTITY DISPLAY. Значение не трогается, только вид.
-export function formatQuantity(quantity: number, unit: WorkUnit): string {
+export function formatQuantity(quantity: number, unit: WorkUnit, t: (key: string) => string): string {
   const number = unit === 'pcs' ? String(Math.round(quantity)) : quantity.toFixed(2)
-  return `${number} ${unitLabel(unit)}`
+  return `${number} ${unitLabel(unit, t)}`
 }
 
-const MEASUREMENT_SOURCE_LABELS: Record<MeasurementSource, string> = {
-  floor_area: 'Площадь пола',
-  ceiling_area: 'Площадь потолка',
-  wall_net_area: 'Площадь стен',
-  door_count: 'Количество дверей',
-  window_count: 'Количество окон',
-  fixed: 'Ввод вручную',
+export function measurementSourceLabel(source: MeasurementSource, t: (key: string) => string): string {
+  return t(`builder.measurementSource.${source}`)
 }
 
-export function measurementSourceLabel(source: MeasurementSource): string {
-  return MEASUREMENT_SOURCE_LABELS[source]
-}
-
-const STATUS_LABELS: Record<WorkStatus, string> = {
-  planned: 'Запланировано',
-  in_progress: 'В работе',
-  completed: 'Выполнено',
-}
-
-export function statusLabel(status: WorkStatus): string {
-  return STATUS_LABELS[status]
+export function statusLabel(status: WorkStatus, t: (key: string) => string): string {
+  return t(`status.work.${status}`)
 }
 
 export const WORK_STATUS_OPTIONS: WorkStatus[] = ['planned', 'in_progress', 'completed']

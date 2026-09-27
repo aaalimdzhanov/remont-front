@@ -29,7 +29,8 @@
 //     СОЗНАТЕЛЬНО не форкается по вкладке (см. комментарий у
 //     MarketplaceHeroSlider ниже) — единственное отклонение от буквального
 //     текста задания, объяснённое там же и в финальном отчёте.
-useHead({ title: 'Биржа заявок' })
+const { t } = useI18n()
+useHead({ title: computed(() => t('marketplace.title')) })
 
 const {
   openRequests, openRequestsLoading, openRequestsError, filteredOpenRequests, requestFilters,
@@ -139,11 +140,11 @@ onMounted(async () => {
     <template v-if="isAuthenticated && !isContractor">
       <div class="marketplace-page__owner-actions">
         <NuxtLink to="/marketplace/offers" class="btn btn-secondary btn-sm">
-          Мои предложения
+          {{ t('offers.myOffers') }}
         </NuxtLink>
         <NuxtLink to="/marketplace/contractor" class="btn btn-secondary btn-sm">
           <UiIcon name="user" :size="16" />
-          Профиль мастера
+          {{ t('contractorProfile.title') }}
         </NuxtLink>
       </div>
     </template>
@@ -154,7 +155,7 @@ onMounted(async () => {
          визуально скрыт (не дублирует видимый текст слайдов), но остаётся
          в DOM/accessibility tree. -->
     <h1 class="marketplace-page__sr-title">
-      Ishonchli Usta — биржа заявок на ремонт и мастеров
+      {{ t('marketplace.hiddenHeading') }}
     </h1>
 
     <!-- Hero НЕ меняется в зависимости от вкладки (см. задание, секция 9) —
@@ -177,7 +178,7 @@ onMounted(async () => {
 
     <!-- Tabs — см. задание, секция 1/10: "визуально понятные переключатели",
          "НЕ две огромные кнопки", "именно tabs/navigation". -->
-    <nav class="marketplace-page__tabs" aria-label="Раздел Marketplace">
+    <nav class="marketplace-page__tabs" :aria-label="t('marketplace.sectionAriaLabel')">
       <button
         type="button"
         class="marketplace-page__tab"
@@ -185,7 +186,7 @@ onMounted(async () => {
         :aria-current="activeTab === 'requests' ? 'page' : undefined"
         @click="setTab('requests')"
       >
-        Заявки
+        {{ t('marketplace.tabRequests') }}
       </button>
       <button
         type="button"
@@ -194,7 +195,7 @@ onMounted(async () => {
         :aria-current="activeTab === 'masters' ? 'page' : undefined"
         @click="setTab('masters')"
       >
-        Мастера
+        {{ t('marketplace.tabContractors') }}
       </button>
     </nav>
 
@@ -202,15 +203,15 @@ onMounted(async () => {
       <NuxtLink v-if="showContractorOnboardingBanner" to="/marketplace/contractor" class="marketplace-page__onboarding">
         <UiIcon name="hammer" :size="20" class="marketplace-page__onboarding-icon" />
         <span class="marketplace-page__onboarding-text">
-          <span class="marketplace-page__onboarding-title">Создайте профиль мастера</span>
-          <span class="text-caption text-muted">Добавьте свои услуги и цены, чтобы отправлять предложения на работы</span>
+          <span class="marketplace-page__onboarding-title">{{ t('marketplace.onboardingTitle') }}</span>
+          <span class="text-caption text-muted">{{ t('marketplace.onboardingSubtitle') }}</span>
         </span>
         <UiIcon name="chevron-left" :size="16" class="marketplace-page__onboarding-arrow" />
       </NuxtLink>
 
       <section ref="openRequestsSectionRef" class="marketplace-page__section" :style="{ order: openRequestsOrder }">
         <h2 class="text-h3 marketplace-page__section-title">
-          Открытые заявки
+          {{ t('marketplace.openRequestsHeading') }}
           <span v-if="!openRequestsLoading && !openRequestsError" class="marketplace-page__count">{{ filteredOpenRequests.length }}</span>
         </h2>
 
@@ -228,22 +229,22 @@ onMounted(async () => {
         </div>
         <div v-else-if="openRequestsError" class="marketplace-page__state">
           <p class="text-secondary">
-            Не удалось загрузить открытые заявки.
+            {{ t('marketplace.openRequestsLoadError') }}
           </p>
           <button type="button" class="btn btn-secondary" @click="loadOpenRequests">
-            Повторить
+            {{ t('common.retry') }}
           </button>
         </div>
         <div v-else-if="openRequests.length === 0" class="marketplace-page__empty">
           <p class="text-secondary">
-            Сейчас открытых заявок нет
+            {{ t('marketplace.openRequestsEmptyTitle') }}
           </p>
           <p class="text-caption text-muted">
-            Загляните позже — клиенты публикуют новые заявки на бирже постоянно.
+            {{ t('marketplace.openRequestsEmptyText') }}
           </p>
         </div>
         <p v-else-if="filteredOpenRequests.length === 0" class="text-secondary marketplace-page__empty">
-          Нет заявок, подходящих под выбранные фильтры.
+          {{ t('marketplace.noRequestsMatchFilters') }}
         </p>
         <div v-else class="marketplace-page__grid">
           <MarketplaceOpenRequestCard
@@ -257,7 +258,7 @@ onMounted(async () => {
 
       <section v-if="isAuthenticated" class="marketplace-page__section" :style="{ order: myRequestsOrder }">
         <h2 class="text-h3 marketplace-page__section-title">
-          Мои заявки
+          {{ t('marketplace.myRequestsHeading') }}
         </h2>
 
         <div v-if="myRequestsLoading" class="marketplace-page__skeletons">
@@ -265,14 +266,14 @@ onMounted(async () => {
         </div>
         <div v-else-if="myRequestsError" class="marketplace-page__state">
           <p class="text-secondary">
-            Не удалось загрузить ваши заявки.
+            {{ t('marketplace.myRequestsLoadError') }}
           </p>
           <button type="button" class="btn btn-secondary" @click="loadMyRequests">
-            Повторить
+            {{ t('common.retry') }}
           </button>
         </div>
         <p v-else-if="myRequests.length === 0" class="text-secondary marketplace-page__empty">
-          У вас пока нет заявок. Разместите работу проекта на бирже со страницы «Работы».
+          {{ t('marketplace.myRequestsEmpty') }}
         </p>
         <div v-else class="marketplace-page__grid">
           <MarketplaceMyRequestCard v-for="request in myRequests" :key="request.id" :request="request" />
@@ -289,11 +290,11 @@ onMounted(async () => {
     <section v-else class="marketplace-page__section marketplace-page__masters">
       <div class="marketplace-page__masters-head">
         <h2 class="text-h3 marketplace-page__section-title">
-          Мастера на платформе
+          {{ t('marketplace.contractorsHeading') }}
           <span v-if="!contractorsLoading && !contractorsError" class="marketplace-page__count">{{ filteredContractors.length }}</span>
         </h2>
         <p class="text-secondary marketplace-page__masters-subtitle">
-          Найдите специалиста для своей задачи
+          {{ t('marketplace.contractorsSubtitle') }}
         </p>
       </div>
 
@@ -304,7 +305,7 @@ onMounted(async () => {
         @click="showContractorFilterSheet = true"
       >
         <UiIcon name="sort" :size="16" />
-        Фильтры
+        {{ t('marketplace.filters') }}
         <span v-if="selectedContractorWorkTypeId" class="marketplace-page__filters-badge">1</span>
       </button>
 
@@ -313,22 +314,22 @@ onMounted(async () => {
       </div>
       <div v-else-if="contractorsError" class="marketplace-page__state">
         <p class="text-secondary">
-          Не удалось загрузить мастеров.
+          {{ t('marketplace.contractorsLoadError') }}
         </p>
         <button type="button" class="btn btn-secondary" @click="retryContractors">
-          Повторить
+          {{ t('common.retry') }}
         </button>
       </div>
       <div v-else-if="contractors.length === 0" class="marketplace-page__empty">
         <p class="text-secondary">
-          Пока нет мастеров
+          {{ t('marketplace.contractorsEmptyTitle') }}
         </p>
         <p class="text-caption text-muted">
-          Новые специалисты появятся здесь по мере подключения к платформе.
+          {{ t('marketplace.contractorsEmptyText') }}
         </p>
       </div>
       <p v-else-if="filteredContractors.length === 0" class="text-secondary marketplace-page__empty">
-        Нет мастеров с выбранным видом работы.
+        {{ t('marketplace.noContractorsMatchFilter') }}
       </p>
       <div v-else class="marketplace-page__masters-list">
         <MarketplacePublicContractorCard

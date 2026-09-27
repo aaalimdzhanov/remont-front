@@ -45,3 +45,47 @@ vi.stubGlobal('navigateTo', vi.fn())
 // среде "node" (где нет window). Именно поэтому beforeunload-регистрация
 // не тестируется юнит-тестами напрямую — только вручную в браузере
 // (см. финальный отчёт, Known limitations).
+
+// useNuxtApp().$i18n.t — используется app/api/client.ts (toApiError/
+// httpStatusMessage) для резолва errors.* ключей. Стаб на РЕАЛЬНОМ
+// locales/ru.json (не заглушка "вернуть ключ как есть") — так тесты
+// tests/api/client.test.ts продолжают проверять настоящий RU-текст, а не
+// потеряли бы смысл, если бы key просто эхом возвращался; заодно ловит
+// реальный дрейф, если ключ в client.ts разъедется с locales/ru.json.
+import ruMessages from '../locales/ru.json'
+
+function resolveMessage(path: string): string | undefined {
+  const parts = path.split('.')
+  let node: unknown = ruMessages
+  for (const part of parts) {
+    if (typeof node !== 'object' || node === null) return undefined
+    node = (node as Record<string, unknown>)[part]
+  }
+  return typeof node === 'string' ? node : undefined
+}
+
+function interpolate(message: string, params?: Record<string, unknown>): string {
+  if (!params) return message
+  let result = message
+  for (const [key, value] of Object.entries(params)) {
+    result = result.replaceAll(`{${key}}`, String(value))
+  }
+  return result
+}
+
+vi.stubGlobal('useNuxtApp', () => ({
+  $i18n: {
+    t: (key: string, params?: Record<string, unknown>) => interpolate(resolveMessage(key) ?? key, params),
+  },
+}))
+
+// useI18n() — тот же реальный ru.json-бэкенд, что и useNuxtApp().$i18n.t
+// выше, нужен отдельно, потому что composables (не только api/client.ts)
+// вызывают именно useI18n() напрямую (см. app/composables/useBuilding.ts
+// getIntersectingOpeningLabels и т.п.), а не через useNuxtApp().
+const i18nLocale = ref<'ru' | 'uz'>('ru')
+vi.stubGlobal('useI18n', () => ({
+  t: (key: string, params?: Record<string, unknown>) => interpolate(resolveMessage(key) ?? key, params),
+  locale: i18nLocale,
+  setLocale: (next: 'ru' | 'uz') => { i18nLocale.value = next },
+}))

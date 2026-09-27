@@ -17,6 +17,8 @@ function makeFile(name: string, type: string, size: number): File {
   return file
 }
 
+const t = (key: string) => key
+
 describe('moveItem', () => {
   it('moves an item from one index to another, preserving the rest', () => {
     expect(moveItem(['a', 'b', 'c', 'd'], 0, 2)).toEqual(['b', 'c', 'a', 'd'])
@@ -44,16 +46,16 @@ describe('moveItem', () => {
 
 describe('portfolioImageAlt', () => {
   it('uses the real title when filled in', () => {
-    expect(portfolioImageAlt('Ремонт кухни')).toBe('Ремонт кухни')
+    expect(portfolioImageAlt('Ремонт кухни', t)).toBe('Ремонт кухни')
   })
 
   it('trims whitespace', () => {
-    expect(portfolioImageAlt('  Ремонт кухни  ')).toBe('Ремонт кухни')
+    expect(portfolioImageAlt('  Ремонт кухни  ', t)).toBe('Ремонт кухни')
   })
 
   it('falls back to a generic label when title is empty/whitespace — never a fabricated description', () => {
-    expect(portfolioImageAlt('')).toBe('Работа мастера')
-    expect(portfolioImageAlt('   ')).toBe('Работа мастера')
+    expect(portfolioImageAlt('', t)).toBe('portfolio.defaultAlt')
+    expect(portfolioImageAlt('   ', t)).toBe('portfolio.defaultAlt')
   })
 })
 
@@ -92,22 +94,22 @@ describe('isPortfolioImageSizeValid', () => {
 describe('validatePortfolioImageFile', () => {
   it('returns null (valid) for an allowed type within the size limit', () => {
     const file = makeFile('photo.jpg', 'image/jpeg', 1024)
-    expect(validatePortfolioImageFile(file)).toBeNull()
+    expect(validatePortfolioImageFile(file, t)).toBeNull()
   })
 
   it('returns a human message for an unsupported type', () => {
     const file = makeFile('photo.gif', 'image/gif', 1024)
-    expect(validatePortfolioImageFile(file)).toBe('Поддерживаются только JPG, PNG и WebP.')
+    expect(validatePortfolioImageFile(file, t)).toBe('errors.invalid_image_type')
   })
 
   it('returns a human message for an oversized file', () => {
     const file = makeFile('photo.jpg', 'image/jpeg', PORTFOLIO_MAX_IMAGE_BYTES + 1)
-    expect(validatePortfolioImageFile(file)).toBe('Размер файла не должен превышать 10 МБ.')
+    expect(validatePortfolioImageFile(file, t)).toBe('errors.image_too_large')
   })
 
   it('checks type before size (an unsupported oversized file reports the type error)', () => {
     const file = makeFile('photo.gif', 'image/gif', PORTFOLIO_MAX_IMAGE_BYTES + 1)
-    expect(validatePortfolioImageFile(file)).toBe('Поддерживаются только JPG, PNG и WebP.')
+    expect(validatePortfolioImageFile(file, t)).toBe('errors.invalid_image_type')
   })
 })
 

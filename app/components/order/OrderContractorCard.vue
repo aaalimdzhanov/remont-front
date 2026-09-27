@@ -13,12 +13,14 @@
 import type { OrderContractorSummary } from '~/api/types'
 
 defineProps<{ contractor: OrderContractorSummary | null }>()
+
+const { t } = useI18n()
 </script>
 
 <template>
   <section class="order-contractor">
     <p class="text-caption text-muted order-contractor__label">
-      Мастер
+      {{ t('orders.contractorSection') }}
     </p>
 
     <NuxtLink v-if="contractor" :to="`/marketplace/contractors/${contractor.id}`" class="order-contractor__card">
@@ -27,13 +29,13 @@ defineProps<{ contractor: OrderContractorSummary | null }>()
       </div>
       <div class="order-contractor__info">
         <p class="order-contractor__name">
-          {{ contractorDisplayName(contractor) }}
+          {{ contractorDisplayName(contractor, t) }}
         </p>
         <div class="order-contractor__rating">
           <ReviewRatingStars :rating="contractor.rating" :size="14" />
           <span class="text-caption text-muted">
-            {{ contractorRatingLabel(contractor.rating, contractor.reviewsCount) }}
-            <template v-if="contractor.reviewsCount > 0">· {{ reviewsCountLabel(contractor.reviewsCount) }}</template>
+            {{ contractorRatingLabel(contractor.rating, contractor.reviewsCount, t) }}
+            <template v-if="contractor.reviewsCount > 0">· {{ reviewsCountLabel(contractor.reviewsCount, t) }}</template>
           </span>
         </div>
         <p v-if="contractorDescription(contractor)" class="text-small text-secondary order-contractor__description">
@@ -44,7 +46,7 @@ defineProps<{ contractor: OrderContractorSummary | null }>()
     </NuxtLink>
 
     <p v-else class="text-secondary order-contractor__fallback">
-      Информация о мастере недоступна.
+      {{ t('orders.contractorUnavailable') }}
     </p>
   </section>
 </template>

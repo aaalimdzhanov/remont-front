@@ -21,6 +21,8 @@ defineProps<{
 
 const emit = defineEmits<{ 'update:selected': [string | null], close: [] }>()
 
+const { t } = useI18n()
+
 function select(id: string | null) {
   emit('update:selected', id)
   emit('close')
@@ -30,13 +32,13 @@ function select(id: string | null) {
 <template>
   <Teleport to="body">
     <div v-if="open" class="cf-sheet__overlay" @click.self="emit('close')">
-      <div class="cf-sheet__panel" role="dialog" aria-modal="true" aria-label="Фильтр по виду работы">
+      <div class="cf-sheet__panel" role="dialog" aria-modal="true" :aria-label="t('marketplace.workTypeFilterTitle')">
         <div class="cf-sheet__handle" aria-hidden="true" />
         <h3 class="cf-sheet__title">
-          Вид работы
+          {{ t('contractorProfile.workTypeLabel') }}
         </h3>
 
-        <div class="cf-sheet__options" role="radiogroup" aria-label="Вид работы">
+        <div class="cf-sheet__options" role="radiogroup" :aria-label="t('contractorProfile.workTypeLabel')">
           <button
             type="button"
             class="cf-sheet__option"
@@ -45,7 +47,7 @@ function select(id: string | null) {
             :aria-checked="selected === null"
             @click="select(null)"
           >
-            Все виды работ
+            {{ t('marketplace.allWorkTypes') }}
             <UiIcon v-if="selected === null" name="check" :size="16" />
           </button>
           <button
