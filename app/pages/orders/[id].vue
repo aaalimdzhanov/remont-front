@@ -1,8 +1,13 @@
 <script setup lang="ts">
 // /orders/{id} — детали заказа. Order response (см. api/types.ts) содержит
 // только IDs — ни названия работы, ни имени клиента/мастера backend не
-// отдаёт (нет публичного "get user/contractor by id"). workTitle —
-// best-effort из requestTitleCache (см. useMarketplace.ts), может быть null.
+// отдаёт (нет публичного "get user/contractor by id"). Order Card work
+// title v1: workTitle резолвится активно через
+// useMarketplace().loadRequestTitle(order.marketplaceRequestId) —
+// канонический публичный GET /marketplace-requests/{id} (см.
+// useMarketplace.ts requestTitleCache/loadRequestTitle), тот же кэш, что
+// теперь самостоятельно заполняет и OrderCard.vue в списке /orders. Может
+// быть null (сеть подвела) — тогда честный fallback "Заказ", не выдумка.
 // 404 — честное "Заказ не найден", НИКОГДА не переинтерпретируется как 403
 // (см. задание, секция SECURITY/OWNERSHIP) — GET /orders/{id} на backend
 // сам решает видимость (Client ИЛИ Contractor), фронтенд не проверяет
@@ -10,13 +15,17 @@
 import type { OrderActionConfig } from '~/utils/order'
 import type { Review } from '~/api/types'
 
-definePageMeta({ middleware: 'auth' })
+// layout:'app' — см. правку "Header consistency" (тот же AppHeader.vue, что
+// и на /orders): AppProfileMenu теперь приходит из layout, здесь остаётся
+// только страничный breadcrumb "← Заказы" (это ссылка на список, а не
+// дубликат AppModeNav/global nav).
+definePageMeta({ middleware: 'auth', layout: 'app' })
 
 const route = useRoute()
 const orderId = computed(() => (typeof route.params.id === 'string' ? route.params.id : ''))
 
 const { user } = useAuth()
-const { contractor, requestTitleCache, loadContractor } = useMarketplace()
+const { contractor, requestTitleCache, loadContractor, loadRequestTitle } = useMarketplace()
 const { isContractor } = useUserMode()
 const {
   currentOrder, currentOrderLoading, currentOrderError,
@@ -43,6 +52,11 @@ onMounted(() => {
 // каждого статуса подряд).
 watch(currentOrder, (order) => {
   if (order && order.status === 'completed') void loadOrderReviews(orderId.value)
+}, { immediate: true })
+
+// Order Card work title v1 — см. doc comment в шапке файла.
+watch(currentOrder, (order) => {
+  if (order) void loadRequestTitle(order.marketplaceRequestId)
 }, { immediate: true })
 
 const workTitle = computed(() => {
@@ -139,13 +153,10 @@ async function handleReviewSubmit(rating: number, comment: string) {
 
 <template>
   <main class="order-page">
-    <div class="order-page__header">
-      <NuxtLink to="/orders" class="order-page__back">
-        <UiIcon name="chevron-left" :size="18" />
-        {{ t('orders.listTitle') }}
-      </NuxtLink>
-      <AppProfileMenu />
-    </div>
+    <NuxtLink to="/orders" class="order-page__back">
+      <UiIcon name="chevron-left" :size="18" />
+      {{ t('orders.listTitle') }}
+    </NuxtLink>
 
     <div v-if="currentOrderLoading && currentOrder === undefined" class="order-page__status">
       <div class="order-page__spinner" aria-hidden="true" />
@@ -299,18 +310,11 @@ async function handleReviewSubmit(rating: number, comment: string) {
   padding: var(--space-5) var(--space-4) var(--space-16);
 }
 
-.order-page__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  margin-bottom: var(--space-5);
-}
-
 .order-page__back {
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
+  margin-bottom: var(--space-5);
   font-size: var(--font-small-size);
   color: var(--color-text-secondary);
   text-decoration: none;

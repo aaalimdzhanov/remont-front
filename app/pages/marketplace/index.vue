@@ -1,43 +1,56 @@
 <script setup lang="ts">
-// /marketplace — публичная биржа заявок (Marketplace Tabs v1: две вкладки,
-// «Заявки»/«Мастера», см. задание). Данные/бизнес-логика НЕ менялись — то
-// же самое поведение, что и раньше: "Открытые заявки" (публичный список) и
-// "Мои заявки" (client-сценарий, authenticated-only). Public Marketplace
-// v1: /marketplace не требует auth — гость видит обе вкладки без сессии
-// (backend: GET /marketplace/requests/open и GET /contractors — оба
-// публичные, см. api/marketplace.ts, api/contractor.ts). "Мои
-// заявки"/onboarding-баннер/переключатель режима остаются
-// authenticated-only ниже (isAuthenticated-гварды), как и раньше.
+// /marketplace — публичная биржа заявок. Public Marketplace v1: /marketplace
+// не требует auth — гость видит обе вкладки без сессии (backend: GET
+// /marketplace/requests/open и GET /contractors — оба публичные, см.
+// api/marketplace.ts, api/contractor.ts). Onboarding-баннер/переключатель
+// режима остаются authenticated-only ниже (isAuthenticated-гварды).
 //
-// Визуал (накопленная история правок, ничего из этого не меняет
-// данные/API/routes):
-//   - шапка стала компактной (лого + AppProfileMenu, без "← Проекты" —
-//     эта ссылка была не нужна: авторизованный Client и так получает
-//     "Проекты" через AppModeNav, а для гостя вела в auth-gated тупик);
-//   - статичный MarketplaceHero.vue заменён на MarketplaceHeroSlider.vue —
-//     mobile-first swipe-карусель из 3 слайдов (см. этот компонент и
-//     utils/marketplaceHeroSlider.ts); единственный настоящий <h1>
-//     страницы теперь — визуально скрытый marketplace-page__sr-title ниже
-//     (у слайдов заголовки — <p>, их несколько, они не могут быть <h1>);
-//   - добавлен MarketplaceBenefits — чисто визуальный, без своих
-//     API-вызовов (см. его файл);
-//   - карточка (OpenRequestCard.vue) и сетка стали наряднее — те же поля,
-//     та же navigation;
-//   - Marketplace Tabs v1: горизонтальный carousel мастеров заменён на
-//     вертикальный список во второй вкладке «Мастера» (см. задание, секция
-//     4/15: "это НЕ carousel", "нормальный вертикальный scroll"). Hero
-//     СОЗНАТЕЛЬНО не форкается по вкладке (см. комментарий у
-//     MarketplaceHeroSlider ниже) — единственное отклонение от буквального
-//     текста задания, объяснённое там же и в финальном отчёте.
-const { t } = useI18n()
+// "Биржа" restructure (UI/UX v3, см. финальный отчёт): страница раньше
+// показывала ДВА визуально смешивающихся списка — "Открытые заявки"
+// (заявки других клиентов, contractor-сценарий) и "Мои заявки" (свои же
+// заявки, client-сценарий) — визуально почти неотличимые друг от друга,
+// хотя это разные сущности. Теперь /marketplace = именно "биржа для
+// мастера": единственный контент вкладки "Заявки" — открытые заявки,
+// единообразные карточки (см. OpenRequestCard.vue). "Мои заявки" с этой
+// страницы УБРАНЫ (не удалены как функциональность — см. ниже, "что не
+// изменилось").
+//
+// Промо-баннер (MarketplacePromoBanner.vue) — между заголовком/описанием и
+// табами. Promo Banner v1 (см. задание "Переработать верхний промо-блок"):
+// прежний carousel (MarketplaceHeroSlider.vue, 3 слайда, dots, стрелки,
+// scroll-snap) полностью удалён вместе со своим data-модулем
+// (utils/marketplaceHeroSlider.ts) — заменён одним статичным кликабельным
+// баннером (текст + фотография), см. doc comment в самом PromoBanner.vue.
+// Компонент использовался только на этой странице (проверено перед
+// удалением), поэтому переписан "на месте" новым файлом без риска для
+// других страниц.
+//
+// Что НЕ изменилось: сами composables/API/маршруты/бизнес-логика заявок,
+// офферов, фильтров (только один новый client-side фильтр — city, см.
+// utils/marketplace.ts RequestFilters, никакого нового backend-запроса).
+// MyRequestCard.vue по-прежнему используется на /marketplace/requests/{id}
+// (см. задачу "Marketplace request plan thumbnail"), MarketplaceBenefits.vue
+// по-прежнему НЕ рендерится здесь (эта задача просила вернуть только
+// slider, не весь прежний hero-блок). Своя заявка по-прежнему полностью
+// управляема через /projects/{id}/works (там и создаётся — см.
+// ProjectWorkCard.vue) и через прямую ссылку на /marketplace/requests/{id}:
+// отдельного плоского cross-project route "все мои заявки" в архитектуре
+// не существует — создавать новый ради этой задачи не стали (см. задание:
+// "не создавать дубликат списка").
+//
+// layout:'app' — тот же общий AppHeader.vue, что и на /projects (Dashboard),
+// вместо собственной шапки страницы — см. правку "Header consistency
+// /projects vs /marketplace" из более ранней задачи этой сессии.
+definePageMeta({ layout: 'app' })
+
+const { t, locale } = useI18n()
 useHead({ title: computed(() => t('marketplace.title')) })
 
 const {
   openRequests, openRequestsLoading, openRequestsError, filteredOpenRequests, requestFilters,
-  myRequests, myRequestsLoading, myRequestsError,
   catalogCategories, catalogWorkTypes,
   contractor, loadContractor,
-  loadOpenRequests, loadMyRequests, loadFilterCatalog, setRequestFilter, resetRequestFilters,
+  loadOpenRequests, loadFilterCatalog, setRequestFilter, resetRequestFilters,
 } = useMarketplace()
 const { mode, isContractor } = useUserMode()
 const { isAuthenticated, isInitialized, initialize } = useAuth()
@@ -74,33 +87,10 @@ const contractorWorkTypeOptions = computed(() => uniqueContractorWorkTypes(contr
 const filteredContractors = computed(() => filterContractorsByWorkType(contractors.value, selectedContractorWorkTypeId.value))
 const showContractorFilterSheet = ref(false)
 
-// В режиме «Мастер» открытые заявки — главный сценарий — показываются
-// первыми; «Мои заявки» (client-сценарий) остаются доступны без исчезновения
-// (один User может быть и клиентом, и мастером одновременно) — mode только
-// переставляет порядок через CSS `order`, ничего не скрывает.
-const openRequestsOrder = computed(() => (isContractor.value ? 0 : 1))
-const myRequestsOrder = computed(() => (isContractor.value ? 1 : 0))
-
 // Contractor Profile Gate: mode==='contractor' не доказывает наличие
 // профиля — только реальный GET /contractor (contractor === null, не
 // undefined) решает, показывать ли этот nudge.
 const showContractorOnboardingBanner = computed(() => shouldShowContractorOnboarding(mode.value, contractor.value))
-
-// Hero CTA ("Смотреть заявки") — просто scroll к уже существующей секции,
-// без роутинга и без нового API-запроса (см. задание, секция HERO: "НЕ
-// делать отдельный API call"). Секция "Открытые заявки" теперь рендерится
-// только на вкладке "requests" (v-if) — если CTA сработал с вкладки
-// "masters" (слайд hero долистали вручную), сперва переключаем вкладку и
-// ждём следующий тик, чтобы ref успел появиться в DOM, и только потом
-// скроллим.
-const openRequestsSectionRef = ref<HTMLElement | null>(null)
-async function scrollToOpenRequests() {
-  if (activeTab.value !== 'requests') {
-    await setTab('requests')
-    await nextTick()
-  }
-  openRequestsSectionRef.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-}
 
 onMounted(async () => {
   void loadOpenRequests()
@@ -116,11 +106,13 @@ onMounted(async () => {
   // залогиненного пользователя. initialize() идемпотентен, безопасно
   // вызывать здесь же (см. requests/[id].vue — тот же фикс, тот же race).
   if (!isInitialized.value) await initialize()
-  // /marketplace/requests и /contractor требуют auth (401 для гостя) — не
-  // отправляем эти запросы вообще, если сессии нет (см. задание, секция
-  // SECURITY: "не отправлять auth-required requests без необходимости").
+  // /contractor требует auth (401 для гостя) — не отправляем этот запрос
+  // вообще, если сессии нет (см. задание, секция SECURITY: "не отправлять
+  // auth-required requests без необходимости"). loadMyRequests() здесь
+  // больше не нужен — "Мои заявки" эта страница больше не показывает (см.
+  // doc comment выше); requests/[id].vue по-прежнему грузит их сам для
+  // определения владельца.
   if (isAuthenticated.value) {
-    void loadMyRequests()
     void loadContractor()
   }
 })
@@ -128,53 +120,34 @@ onMounted(async () => {
 
 <template>
   <main class="marketplace-page">
-    <header class="marketplace-page__header">
-      <NuxtLink to="/" class="marketplace-page__brand" aria-label="ishonchliusta">
-        <img src="/brand/ishonchliusta-full.png" alt="ishonchliusta" class="marketplace-page__logo">
-      </NuxtLink>
-      <AppProfileMenu />
-    </header>
-
-    <AppModeNav class="marketplace-page__mode-nav" />
-
-    <template v-if="isAuthenticated && !isContractor">
-      <div class="marketplace-page__owner-actions">
-        <NuxtLink to="/marketplace/offers" class="btn btn-secondary btn-sm">
-          {{ t('offers.myOffers') }}
-        </NuxtLink>
-        <NuxtLink to="/marketplace/contractor" class="btn btn-secondary btn-sm">
-          <UiIcon name="user" :size="16" />
-          {{ t('contractorProfile.title') }}
-        </NuxtLink>
+    <!-- "Биржа" restructure v3: единственный настоящий <h1> страницы (не
+         визуально-скрытый — раньше им был sr-only заголовок, потому что
+         видимых заголовков у прежнего hero-carousel было несколько, теперь
+         ровно один). "Мои предложения" — вторичная, но
+         заметная кнопка рядом с заголовком (см. задание, секция "МОИ
+         ПРЕДЛОЖЕНИЯ"): это ДРУГАЯ сущность и от "Мои заявки" (убраны с
+         этой страницы, см. doc comment в script), и от самой биржи —
+         поэтому не смешивается с списком заявок ниже. Видимость — та же,
+         что и раньше (contractor-mode пользователи уже видят "Мои
+         предложения" в AppModeNav, повторять там же ссылку не нужно). -->
+    <div class="marketplace-page__hero">
+      <div class="marketplace-page__hero-text">
+        <h1 class="text-h1 marketplace-page__title">
+          {{ t('marketplace.title') }}
+        </h1>
+        <p class="text-secondary">
+          {{ t('marketplace.pageSubtitle') }}
+        </p>
       </div>
-    </template>
+      <NuxtLink v-if="isAuthenticated && !isContractor" to="/marketplace/offers" class="btn btn-secondary marketplace-page__my-offers">
+        <UiIcon name="coins" :size="16" />
+        {{ t('offers.myOffers') }}
+      </NuxtLink>
+    </div>
 
-    <!-- Слайды слайдера — не <h1> (их 3, а на странице должен быть ровно
-         один настоящий заголовок для SEO/screen reader'ов, см.
-         HeroSlider.vue — там заголовки слайдов теперь <p>). Этот h1
-         визуально скрыт (не дублирует видимый текст слайдов), но остаётся
-         в DOM/accessibility tree. -->
-    <h1 class="marketplace-page__sr-title">
-      {{ t('marketplace.hiddenHeading') }}
-    </h1>
-
-    <!-- Hero НЕ меняется в зависимости от вкладки (см. задание, секция 9) —
-         сознательное решение, не пропуск. Слайд 2 уже называется "Найдите
-         мастера для своей задачи" и текстово соответствует вкладке
-         "Мастера", но его CTA ведёт на /projects (разместить заявку) — это
-         РЕАЛЬНЫЙ, уже проверенный flow "найти мастера" в этом продукте.
-         Форкнуть hero под вкладку значило бы либо продублировать компонент
-         (прямо запрещено), либо завести 4-й слайд/новое действие "проскроллить
-         к вертикальному списку мастеров" — а по секции 22 задания вход с
-         вкладки "Мастера" НЕ должен вести через /projects. Эти два
-         требования (не создавать новый hero-контент И не вести на /projects
-         с "Мастера") противоречат друг другу при попытке форкнуть один и тот
-         же слайд под оба контекста, поэтому — по КРИТИЧЕСКОМУ ПРАВИЛУ
-         задания ("не придумывай решение — сначала сообщи") — Hero оставлен
-         полностью как есть (см. финальный отчёт, "Hero и вкладки"). -->
-    <MarketplaceHeroSlider class="marketplace-page__hero" @browse="scrollToOpenRequests" />
-
-    <MarketplaceBenefits class="marketplace-page__benefits" />
+    <!-- Промо-баннер — см. doc comment в script: Promo Banner v1, статичный
+         кликабельный блок вместо прежнего carousel. -->
+    <MarketplacePromoBanner class="marketplace-page__promo-banner" />
 
     <!-- Tabs — см. задание, секция 1/10: "визуально понятные переключатели",
          "НЕ две огромные кнопки", "именно tabs/navigation". -->
@@ -209,20 +182,48 @@ onMounted(async () => {
         <UiIcon name="chevron-left" :size="16" class="marketplace-page__onboarding-arrow" />
       </NuxtLink>
 
-      <section ref="openRequestsSectionRef" class="marketplace-page__section" :style="{ order: openRequestsOrder }">
-        <h2 class="text-h3 marketplace-page__section-title">
-          {{ t('marketplace.openRequestsHeading') }}
-          <span v-if="!openRequestsLoading && !openRequestsError" class="marketplace-page__count">{{ filteredOpenRequests.length }}</span>
-        </h2>
+      <section class="marketplace-page__section">
+        <!-- Filters row — "Фильтры" (существующий sheet: категория/вид
+             работы/количество/сортировка, см. MarketplaceFilters.vue, не
+             переписан) + "Локация" — единственный НОВЫЙ фильтр в этой
+             задаче, полностью client-side, над уже загруженным списком
+             (location.city у OpenMarketplaceRequest уже был в ответе
+             backend — см. utils/marketplace.ts RequestFilters.city). Не
+             считается в activeFilterCount — отдельный, всегда видимый
+             контрол, а не часть скрытого набора за кнопкой "Фильтры" (см.
+             задание: "[ Фильтры ] [ Локация ▼ ]" — два раздельных элемента). -->
+        <div class="marketplace-page__filter-row">
+          <MarketplaceFilters
+            :categories="catalogCategories"
+            :work-types="catalogWorkTypes"
+            :filters="requestFilters"
+            :active-count="activeFilterCount"
+            @update="setRequestFilter"
+            @reset="resetRequestFilters"
+          />
 
-        <MarketplaceFilters
-          :categories="catalogCategories"
-          :work-types="catalogWorkTypes"
-          :filters="requestFilters"
-          :active-count="activeFilterCount"
-          @update="setRequestFilter"
-          @reset="resetRequestFilters"
-        />
+          <label class="marketplace-page__location-filter">
+            <UiIcon name="pin" :size="14" class="marketplace-page__location-pin" />
+            <select
+              class="marketplace-page__location-select"
+              :value="requestFilters.city ?? ''"
+              :aria-label="t('marketplace.locationFilterLabel')"
+              @change="setRequestFilter({ city: ($event.target as HTMLSelectElement).value || null })"
+            >
+              <option value="">
+                {{ t('marketplace.allCities') }}
+              </option>
+              <option v-for="city in LOCATION_CITIES" :key="city" :value="city">
+                {{ locationDisplayName(city, locale) }}
+              </option>
+            </select>
+            <UiIcon name="chevron-left" :size="14" class="marketplace-page__location-chevron" />
+          </label>
+        </div>
+
+        <p v-if="!openRequestsLoading && !openRequestsError" class="text-caption text-muted marketplace-page__count-text">
+          {{ t('marketplace.foundRequestsCount', { count: filteredOpenRequests.length }, filteredOpenRequests.length) }}
+        </p>
 
         <div v-if="openRequestsLoading" class="marketplace-page__skeletons">
           <div v-for="n in 3" :key="n" class="marketplace-page__skeleton" />
@@ -253,30 +254,6 @@ onMounted(async () => {
             :request="request"
             :icon="requestCardIcon(request.workTypeId, catalogWorkTypes, catalogCategories)"
           />
-        </div>
-      </section>
-
-      <section v-if="isAuthenticated" class="marketplace-page__section" :style="{ order: myRequestsOrder }">
-        <h2 class="text-h3 marketplace-page__section-title">
-          {{ t('marketplace.myRequestsHeading') }}
-        </h2>
-
-        <div v-if="myRequestsLoading" class="marketplace-page__skeletons">
-          <div v-for="n in 2" :key="n" class="marketplace-page__skeleton" />
-        </div>
-        <div v-else-if="myRequestsError" class="marketplace-page__state">
-          <p class="text-secondary">
-            {{ t('marketplace.myRequestsLoadError') }}
-          </p>
-          <button type="button" class="btn btn-secondary" @click="loadMyRequests">
-            {{ t('common.retry') }}
-          </button>
-        </div>
-        <p v-else-if="myRequests.length === 0" class="text-secondary marketplace-page__empty">
-          {{ t('marketplace.myRequestsEmpty') }}
-        </p>
-        <div v-else class="marketplace-page__grid">
-          <MarketplaceMyRequestCard v-for="request in myRequests" :key="request.id" :request="request" />
         </div>
       </section>
     </template>
@@ -354,117 +331,44 @@ onMounted(async () => {
 .marketplace-page {
   max-width: 1100px;
   margin: 0 auto;
-  padding: var(--space-3) var(--space-4) var(--space-16);
+  /* space-5 top — то же значение, что и .dash в pages/projects/index.vue
+     использует под общим AppHeader (см. header-consistency правку выше);
+     раньше здесь стоял space-3, подобранный под тесную посадку под
+     собственной (уже удалённой) шапкой страницы. */
+  padding: var(--space-5) var(--space-4) var(--space-16);
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
 }
 
-.marketplace-page__header {
+/* Hero v3 — заголовок "Биржа" + подзаголовок слева, "Мои предложения"
+   справа (см. задание: "Справа или рядом"). На mobile — колонка (кнопка
+   full-width под текстом), на desktop — один ряд. */
+.marketplace-page__hero {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
   gap: var(--space-3);
-  min-height: 40px;
 }
 
-/* flex-shrink:0 — критично на узких viewport: без него flex вместе со
-   sibling'ом (AppProfileMenu guest-кнопки) сжимал бы этот контейнер, а
-   значит и картинку логотипа, ниже её заданной ширины (см. .marketplace-
-   page__logo) — картинка не искажается при сжатии (width/height оба auto-
-   пропорциональны), но выглядела бы мельче задуманного и "плавала" бы в
-   размере в зависимости от того, сколько места остаётся guest-кнопкам.
-   Сжиматься теперь может только guest-actions (см. :deep() ниже), логотип
-   — никогда. */
-.marketplace-page__brand {
+.marketplace-page__hero-text {
   display: flex;
-  align-items: center;
-  flex-shrink: 0;
-}
-
-/* Логотип публичной шапки — по прямому требованию задания: именно файл
-   public/brand/ishonchliusta-full.png (полный лок-ап знак+wordmark+tagline,
-   тот же самый файл, что и variant="full" в UiBrandLogo.vue, см. компонент
-   для истории approved-asset'а), НЕ вариант "header" (значок+обычный текст
-   без tagline), который использовался здесь раньше. Реальные пропорции
-   файла — 1985x573px (≈3.46:1, проверено через `sips`), поэтому width
-   задан, height:auto держит их без искажения; object-fit:contain — защита
-   на случай, если высота когда-либо станет фиксированной. 180px/240px —
-   середина/верх диапазонов из задания (mobile 170-190px, desktop
-   220-250px), подобрано и проверено визуально в реальном Chromium QA.
-   min-height:40px у .marketplace-page__header (выше) больше не актуален
-   как ограничитель — просто больше не сжимает контент, реальная высота
-   шапки теперь определяется этой картинкой (~52px на mobile). */
-.marketplace-page__logo {
-  display: block;
-  width: 180px;
-  height: auto;
-  object-fit: contain;
-}
-
-/* < 375px (реальный минимум — 360px, см. задание "Marketplace Tabs v1",
-   секция "Сначала проектируй интерфейс для: 360px, 390px, 414px") — 180px
-   логотип + guest-кнопки (Войти/Регистрация) в сумме не помещаются в
-   360px даже с сжатыми выше отступами (измерено: overflow ровно 9px).
-   Ужимаем логотип дальше только на этой самой узкой полосе, а не везде —
-   180px остаётся дефолтом с 375px и выше, как было проверено раньше. */
-@media (max-width: 374px) {
-  .marketplace-page__logo {
-    width: 150px;
-  }
-}
-
-@media (min-width: 1024px) {
-  .marketplace-page__logo {
-    width: 240px;
-  }
-}
-
-/* Guest-кнопки (Войти/Регистрация) внутри AppProfileMenu — сам компонент не
-   трогаем (переиспользуется на /marketplace/contractors/[id] и т.д., там
-   рядом с ним нет логотипа и это сжатие не нужно), но именно в этой шапке,
-   где рядом полноразмерный логотип, чуть плотнее padding/gap нужны, чтобы
-   [логотип] + [Войти] + [Регистрация] реально помещались в 375px без
-   сжатия логотипа. Высота (min-height:44px, touch target) не трогается —
-   только горизонтальные отступы. */
-.marketplace-page__header :deep(.profile-menu--guest) {
+  flex-direction: column;
   gap: var(--space-1);
 }
 
-.marketplace-page__header :deep(.profile-menu--guest .btn) {
-  padding: 0 var(--space-2);
+.marketplace-page__title {
+  margin: 0;
 }
 
-.marketplace-page__owner-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-
-.marketplace-page__owner-actions .btn {
-  flex: 1;
-  min-width: 0;
+.marketplace-page__my-offers {
+  align-self: flex-start;
   min-height: 44px;
-  justify-content: center;
 }
 
-.marketplace-page__hero {
+/* Позиционирует PromoBanner.vue относительно остального контента страницы,
+   не переопределяет его собственные внутренние стили. */
+.marketplace-page__promo-banner {
   margin-top: var(--space-1);
-}
-
-/* Стандартный визуально-скрытый паттерн (не display:none — тот убрал бы
-   элемент и из accessibility tree тоже). Единственный настоящий <h1>
-   страницы — см. комментарий в template. */
-.marketplace-page__sr-title {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
 }
 
 .marketplace-page__onboarding {
@@ -528,6 +432,69 @@ onMounted(async () => {
   font-weight: 600;
 }
 
+/* Filters row — "Фильтры" (MarketplaceFilters.vue, не изменён) + "Локация"
+   рядом, тот же ряд (см. задание: "[ Фильтры ]  [ Локация ▼ ]"). На
+   mobile — оба элемента компактны, MarketplaceFilters сам сворачивается в
+   одну кнопку-триггер на этой ширине (см. его собственный breakpoint). */
+.marketplace-page__filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+/* Простой flex-ряд (иконка + select + иконка-шеврон), без absolute-хаков —
+   визуальный текст берётся из самого <select> (его выбранной option). */
+.marketplace-page__location-filter {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: 44px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-button);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  max-width: 100%;
+}
+
+.marketplace-page__location-pin {
+  flex-shrink: 0;
+}
+
+.marketplace-page__location-select {
+  min-width: 0;
+  max-width: 160px;
+  border: none;
+  background: none;
+  font-family: var(--font-family);
+  font-size: var(--font-small-size);
+  color: var(--color-text);
+  appearance: none;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.marketplace-page__location-select:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.marketplace-page__location-chevron {
+  flex-shrink: 0;
+  transform: rotate(-90deg);
+  pointer-events: none;
+  color: var(--color-text-muted);
+}
+
+.marketplace-page__count-text {
+  margin: 0 0 var(--space-3);
+}
+
 .marketplace-page__grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -576,12 +543,15 @@ onMounted(async () => {
     grid-template-columns: repeat(2, 1fr);
   }
 
-  .marketplace-page__owner-actions {
-    align-self: flex-end;
+  .marketplace-page__hero {
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--space-4);
   }
 
-  .marketplace-page__owner-actions .btn {
-    flex: none;
+  .marketplace-page__my-offers {
+    flex-shrink: 0;
   }
 }
 

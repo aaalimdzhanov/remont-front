@@ -36,9 +36,13 @@ const rootEl = ref<HTMLElement | null>(null)
 const maskedPhone = computed(() => (user.value ? maskPhone(user.value.phone) : ''))
 
 // Режим — UI preference, не auth role (см. useUserMode.ts). Выбор сразу
-// закрывает меню (см. задание, секция 3: "При выборе режима меню закрывается").
+// закрывает меню (см. задание, секция 3: "При выборе режима меню закрывается") —
+// закрытие не ждёт setMode(), т.к. само переключение mode происходит внутри
+// него синхронно, до перехода на главную страницу режима (см. useUserMode.ts
+// setMode — там же и router.replace на /projects или /marketplace, устраняющий
+// desync header/body при смене режима).
 function selectMode(next: UserMode) {
-  setMode(next)
+  void setMode(next)
   close()
 }
 

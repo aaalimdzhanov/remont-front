@@ -7,14 +7,20 @@
 // one User may be both"), различать их здесь — чистая presentation-логика
 // (сравнение id), а не access control: backend уже отфильтровал список до
 // того, что реально видно вызывающему.
-definePageMeta({ middleware: 'auth' })
+// layout:'app' — тот же общий AppHeader.vue, что и на /projects и
+// /marketplace (см. правку "Header consistency"): раньше страница рисовала
+// собственный
+// back-link+AppProfileMenu+AppModeNav вместо общего header — из-за этого
+// не было логотипа и белого header-фона, которые есть у остальных
+// authenticated-страниц.
+definePageMeta({ middleware: 'auth', layout: 'app' })
 
 const { t } = useI18n()
 useHead({ title: computed(() => t('orders.listTitle')) })
 
 const { user } = useAuth()
 const { isContractor } = useUserMode()
-const { contractor, requestTitleCache, loadContractor } = useMarketplace()
+const { contractor, loadContractor } = useMarketplace()
 const { orders, ordersLoading, ordersError, fetchOrders } = useOrders()
 
 onMounted(() => {
@@ -28,24 +34,10 @@ const visibleOrders = computed(() => (isContractor.value ? myContractorOrders.va
 
 const pageTitle = computed(() => t(isContractor.value ? 'orders.listTitle' : 'orders.myOrdersTitle'))
 const emptyText = computed(() => t(isContractor.value ? 'orders.emptyContractor' : 'orders.emptyClient'))
-
-function titleFor(order: { marketplaceRequestId: string }): string | null {
-  return requestTitleCache.value[order.marketplaceRequestId]?.workType ?? null
-}
 </script>
 
 <template>
   <main class="orders-page">
-    <div class="orders-page__header">
-      <NuxtLink to="/marketplace" class="orders-page__back">
-        <UiIcon name="chevron-left" :size="18" />
-        {{ t('orders.backToMarketplace') }}
-      </NuxtLink>
-      <AppProfileMenu />
-    </div>
-
-    <AppModeNav class="orders-page__mode-nav" />
-
     <h1 class="text-h1 orders-page__title">
       {{ pageTitle }}
     </h1>
@@ -68,7 +60,7 @@ function titleFor(order: { marketplaceRequestId: string }): string | null {
     </p>
 
     <div v-else class="orders-page__grid">
-      <OrderCard v-for="order in visibleOrders" :key="order.id" :order="order" :work-title="titleFor(order)" />
+      <OrderCard v-for="order in visibleOrders" :key="order.id" :order="order" />
     </div>
   </main>
 </template>
@@ -78,27 +70,6 @@ function titleFor(order: { marketplaceRequestId: string }): string | null {
   max-width: 960px;
   margin: 0 auto;
   padding: var(--space-5) var(--space-4) var(--space-16);
-}
-
-.orders-page__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  margin-bottom: var(--space-3);
-}
-
-.orders-page__back {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  font-size: var(--font-small-size);
-  color: var(--color-text-secondary);
-  text-decoration: none;
-}
-
-.orders-page__mode-nav {
-  margin-bottom: var(--space-4);
 }
 
 .orders-page__title {

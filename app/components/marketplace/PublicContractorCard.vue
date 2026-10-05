@@ -17,9 +17,11 @@
 //     профиль мастера (contractors/[id].vue) и OrderContractorCard.vue;
 //   - formatPriceRange (через contractorCardPriceLabel) — тот же
 //     форматтер цены, что и везде в Marketplace;
-//   - avatar — тот же паттерн "круг + UiIcon 'user'", что уже используют
-//     OrderContractorCard.vue и сам публичный профиль мастера, а не новый
-//     letter-avatar, которого в проекте нет.
+//   - avatar — MarketplaceContractorAvatar.vue (Contractor Profile Photo v1):
+//     тот же переиспользуемый круг-плейсхолдер/фото, что и на
+//     contractor.vue/contractors/[id].vue, а не новый letter-avatar,
+//     которого в проекте нет. OrderContractorCard.vue photo не показывает —
+//     OrderContractorSummaryDto не содержит profile_photo_url (не тот DTO).
 //
 // Вся карточка — один NuxtLink (см. задание, секция 17: "не вкладывать
 // button внутрь link") — визуальная "кнопка" ниже это <span class="btn">,
@@ -41,9 +43,12 @@ const locationLabel = computed(() => formatLocation(props.contractor.location, l
 <template>
   <NuxtLink :to="`/marketplace/contractors/${contractor.id}`" class="public-contractor-card">
     <div class="public-contractor-card__head">
-      <span class="public-contractor-card__avatar" aria-hidden="true">
-        <UiIcon name="user" :size="20" />
-      </span>
+      <MarketplaceContractorAvatar
+        :photo-url="contractor.profilePhotoUrl"
+        :name="contractorDisplayName(contractor, t)"
+        :size="40"
+        :icon-size="20"
+      />
       <p class="public-contractor-card__name">
         {{ contractorDisplayName(contractor, t) }}
       </p>
@@ -103,18 +108,6 @@ const locationLabel = computed(() => formatLocation(props.contractor.location, l
   display: flex;
   align-items: center;
   gap: var(--space-2);
-}
-
-.public-contractor-card__avatar {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: var(--color-primary-subtle);
-  color: var(--color-primary);
 }
 
 .public-contractor-card__name {

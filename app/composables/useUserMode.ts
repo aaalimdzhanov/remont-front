@@ -3,7 +3,7 @@
 // Тот же useState-паттерн, что и остальные composables проекта (НЕ Pinia/Vuex).
 // Единственный источник истины для режима — один useState-ключ здесь, ничего
 // не дублируется в других composables.
-import { clearStoredUserMode, readStoredUserMode, writeStoredUserMode } from '~/utils/userMode'
+import { clearStoredUserMode, getModeHomeRoute, readStoredUserMode, writeStoredUserMode } from '~/utils/userMode'
 import type { UserMode } from '~/utils/userMode'
 
 export function useUserMode() {
@@ -17,13 +17,29 @@ export function useUserMode() {
   const isClient = computed(() => mode.value === 'client')
   const isContractor = computed(() => mode.value === 'contractor')
 
-  function setMode(next: UserMode): void {
+  // Header/body mode desync bugfix: setMode — единственный существующий
+  // вход для смены режима (вызывается только ProfileMenu.selectMode) — до
+  // этой правки менял только это useState, ничего не зная о текущем route.
+  // Header (AppModeNav/AppHeader) реактивно читает mode и перерисовывался
+  // сразу; body оставался от старого route — получалось "header одного
+  // режима, body другого" (см. баг-репорт). Вместо воркэраунда в вызывающем
+  // компоненте, переход на главную страницу режима встроен прямо сюда —
+  // единственную точку изменения mode, — чтобы mode и route не могли
+  // разойтись независимо от того, кто в будущем вызовет setMode.
+  // navigateTo(..., {replace:true}) — тот же паттерн, что и в
+  // middleware/home.ts и pages/marketplace/index.vue: смена режима — это
+  // смена рабочего контекста, а не обычный переход, и replace (не push) не
+  // оставляет в истории Back/Forward "устаревшую" страницу, на которой
+  // route уже не соответствует новому активному mode.
+  async function setMode(next: UserMode): Promise<void> {
+    const changed = mode.value !== next
     mode.value = next
     writeStoredUserMode(next)
+    if (changed) await navigateTo(getModeHomeRoute(next), { replace: true })
   }
 
   function toggleMode(): void {
-    setMode(mode.value === 'client' ? 'contractor' : 'client')
+    void setMode(mode.value === 'client' ? 'contractor' : 'client')
   }
 
   // Вызывается useAuth().logout() (см. задание, секция 13: "После logout

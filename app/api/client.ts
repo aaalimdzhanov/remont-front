@@ -69,6 +69,19 @@ const KNOWN_ERROR_KEYS: Record<string, string> = {
   invalid_image_type: 'errors.invalid_image_type',
   portfolio_item_not_found: 'errors.portfolio_item_not_found',
   empty_reorder: 'errors.empty_reorder',
+  // Contractor Profile Photo v1 (см. contractor_photo_handler.go
+  // writeContractorPhotoError) — тот же реальный backend-код, которым теперь
+  // отвечают и Portfolio (после общего image_upload.go helper), и Contractor
+  // Photo на 415: "unsupported_media_type", не "invalid_image_type" — код
+  // выше остаётся в списке как есть (на случай старых ответов), просто
+  // добавлен второй код на ту же понятную формулировку, без второго текста.
+  // internal_error — тот же общий 500-код, что backend уже использует
+  // повсеместно (не только у фото) — раньше не был в этом словаре вообще,
+  // поэтому падал на сырой английский текст backend'а вместо
+  // локализованного "Внутренняя ошибка сервера." (тот же errors.internal,
+  // что уже показывает httpStatusMessage(500) как fallback без тела ответа).
+  unsupported_media_type: 'errors.invalid_image_type',
+  internal_error: 'errors.internal',
 }
 
 // Резолвит i18n-ключ в текущую локализованную строку. Вызывается только на

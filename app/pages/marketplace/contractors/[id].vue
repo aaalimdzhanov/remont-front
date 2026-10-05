@@ -13,6 +13,12 @@
 // требуется, см. комментарий выше) точно так же, как и авторизованный
 // пользователь; ранее эта страница была недостижима без сессии, хотя и
 // backend, и сам компонент уже были к этому готовы.
+//
+// layout:'public' (Footer v1) — эта страница не использует layout:'app'
+// (свой inline back-link-header, не AppHeader, см. template ниже) — здесь
+// только Footer добавлен, никакой другой layout не даёт. См.
+// layouts/public.vue.
+definePageMeta({ layout: 'public' })
 
 const route = useRoute()
 const contractorId = computed(() => (typeof route.params.id === 'string' ? route.params.id : ''))
@@ -78,9 +84,12 @@ onMounted(() => {
 
     <template v-else-if="contractor">
       <section class="public-contractor-page__profile">
-        <div class="public-contractor-page__avatar" aria-hidden="true">
-          <UiIcon name="user" :size="28" />
-        </div>
+        <MarketplaceContractorAvatar
+          :photo-url="contractor.profilePhotoUrl"
+          :name="contractor.name.trim() || t('contractors.fallbackName')"
+          :size="80"
+          :icon-size="32"
+        />
         <p class="public-contractor-page__name">
           {{ contractor.name.trim() || t('contractors.fallbackName') }}
         </p>
@@ -215,20 +224,8 @@ onMounted(() => {
   text-align: center;
 }
 
-.public-contractor-page__avatar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  background: var(--color-primary-subtle);
-  color: var(--color-primary);
-  margin-bottom: var(--space-1);
-}
-
 .public-contractor-page__name {
-  margin: 0;
+  margin: var(--space-1) 0 0;
   font-weight: 600;
   font-size: var(--font-h3-size);
   color: var(--color-text);

@@ -79,6 +79,10 @@
       "title": "Ish o'chirilsinmi?",
       "message": "Fotosurat portfolioingizdan o'chiriladi."
     },
+    "deleteContractorPhoto": {
+      "title": "Rasm o'chirilsinmi?",
+      "message": "Profil rasmi o'chiriladi."
+    },
     "publishRequest": {
       "title": "Ish birjaga joylansinmi?",
       "message": "{title} · Miqdori: {quantity}",
@@ -115,6 +119,20 @@
     "reviews": "Sharhlar",
     "backToProjects": "Loyihalar",
     "backToMarketplace": "Arizalar birjasi"
+  },
+  "footer": {
+    "publicTitle": "Navigatsiya",
+    "linkRequests": "Arizalar birjasi",
+    "linkMasters": "Ustalar",
+    "linkServices": "Xizmatlar",
+    "helpTitle": "Yordam",
+    "linkHowItWorks": "Bu qanday ishlaydi",
+    "linkHelp": "Yordam",
+    "linkContacts": "Kontaktlar",
+    "copyright": "© {year} Ishonchli Usta · O'zbekiston",
+    "brandAriaLabel": "Ishonchli Usta — arizalar birjasiga",
+    "publicNavAriaLabel": "Ommaviy navigatsiya",
+    "helpNavAriaLabel": "Yordam"
   },
   "auth": {
     "loginTitle": "Kirish",
@@ -377,6 +395,9 @@
     "openRequestsEmptyTitle": "Hozircha ochiq arizalar yo'q",
     "openRequestsEmptyText": "Keyinroq qarab turing — mijozlar birjaga doimiy ravishda yangi arizalar joylaydi.",
     "noRequestsMatchFilters": "Tanlangan filtrlarga mos arizalar topilmadi.",
+    "foundRequestsCount": "{count} ta ariza topildi",
+    "locationFilterLabel": "Manzil",
+    "allCities": "Butun O'zbekiston",
     "myRequestsHeading": "Mening arizalarim",
     "myRequestsLoadError": "Arizalaringizni yuklab bo'lmadi.",
     "myRequestsEmpty": "Sizda hali arizalar yo'q. Loyiha ishini «Ishlar» sahifasidan birjaga joylashtiring.",
@@ -406,25 +427,20 @@
     "benefitTransparentDesc": "Narxni o'zingiz taklif qilasiz va tafsilotlarni muhokama qilasiz",
     "benefitRatingTitle": "Reytingingizni oshiring",
     "benefitRatingDesc": "Mijozlarning sharhlari ochiq profilingizda saqlanadi",
-    "heroContractorEyebrow": "HAQIQIY BUYURTMALAR",
-    "heroContractorTitle": "O'zingiz uchun ish toping",
-    "heroContractorDescription": "Ta'mirlash va qurilishga ehtiyoji bor mijozlardan ochiq arizalar.",
-    "heroContractorCta": "Arizalarni ko'rish",
-    "heroClientEyebrow": "TA'MIRLASH KERAKMI?",
-    "heroClientTitle": "Vazifangiz uchun usta toping",
-    "heroClientDescription": "Ishni tasvirlab bering va ustalardan takliflar oling.",
-    "heroClientCta": "Usta topish",
-    "heroProfileEyebrow": "SIZNING REPUTATSIYANGIZ",
-    "heroProfileTitle": "Xizmatlaringiz va reytingingizni ko'rsating",
-    "heroProfileDescription": "Mijozlar siz haqingizda bilishi uchun ochiq profil yarating.",
-    "heroProfileCta": "Profil yaratish",
-    "heroAriaLabel": "Ishonchli Usta xizmati haqida",
-    "heroTrackAriaLabel": "Slaydlar: svayp yoki chap/o'ng strelkalar",
-    "heroPrevSlide": "Oldingi slayd",
-    "heroNextSlide": "Keyingi slayd",
-    "heroDotsAriaLabel": "Slaydlarni almashtirish",
-    "heroSlideOf": "{total} tadan {n}-slayd: {eyebrow}",
-    "heroCarouselRole": "karusel"
+    "pageSubtitle": "Mos vazifalarni tanlang va birjada taklif yuboring.",
+    "promoAriaLabel": "Yangi loyiha yaratish va vazifangiz uchun usta topish",
+    "promoSlide1Eyebrow": "TA'MIRLASH KERAKMI?",
+    "promoSlide1Title": "Vazifangiz uchun usta toping",
+    "promoSlide1Description": "Ishni tasvirlab bering va ustalardan takliflar oling.",
+    "promoSlide1ImageAlt": "Usta yorug' xonada yog'och panjarali panellarni o'rnatmoqda",
+    "promoSlide2Eyebrow": "ISH BORMI?",
+    "promoSlide2Title": "Xizmatlaringiz uchun mijoz toping",
+    "promoSlide2Description": "Arizalarni qabul qiling va birjada mos buyurtmalarni tanlang.",
+    "promoSlide2ImageAlt": "Usta oshxona shkaflarini o'rnatmoqda",
+    "promoSlide3Eyebrow": "TA'MIRNI BOSHLANG",
+    "promoSlide3Title": "Vazifani tasvirlab bering va takliflar oling",
+    "promoSlide3Description": "Ustalarni solishtiring va mos mutaxassisni tanlang.",
+    "promoSlide3ImageAlt": "Usta hammomda plitka yotqizmoqda"
   },
   "marketplaceRequest": {
     "createdAt": "Yaratildi: {date}",
@@ -438,11 +454,20 @@
     "notFoundText": "Havolani tekshiring — ehtimol, ariza o'chirilgan.",
     "backToMarketplace": "Birjaga qaytish",
     "quantity": "Miqdori: {quantity}",
+    "projectLabel": "Loyiha: {name}",
     "publishedAt": "E'lon qilindi: {date} ·",
     "orderCreatedTitle": "Buyurtma yaratildi",
     "creatingOrder": "Buyurtma yaratilmoqda…",
     "retryCreateOrder": "Buyurtma yaratishni qayta urinish",
     "offerAcceptedSuccess": "Taklif qabul qilindi."
+  },
+  "myRequests": {
+    "tabAll": "Barchasi",
+    "tabActive": "Faol",
+    "tabCompleted": "Yakunlangan",
+    "tabDraft": "Qoralamalar",
+    "statusTabsAriaLabel": "Arizalarni status bo'yicha filtrlash",
+    "noneInTab": "Bu bo'limda hali arizalar yo'q."
   },
   "offers": {
     "accept": "Qabul qilish",
@@ -556,7 +581,15 @@
     "editPrice": "Narxni o'zgartirish",
     "deleteService": "Xizmatni o'chirish",
     "createProfileTitle": "Ijrochi profili",
-    "createProfileHint": "Arizalarga taklif yuborish uchun avval qisqa profilni to'ldiring."
+    "createProfileHint": "Arizalarga taklif yuborish uchun avval qisqa profilni to'ldiring.",
+    "addPhoto": "Rasm qo'shish",
+    "changePhoto": "Rasmni almashtirish",
+    "deletePhoto": "Rasmni o'chirish",
+    "uploadPhotoTitle": "Profil rasmi",
+    "photoFormatsHint": "JPG, PNG yoki WebP, 5 MB gacha",
+    "photoTooLarge": "Fayl juda katta. Maksimal hajm — 5 MB.",
+    "photoUploadError": "Fotosuratni yuklab bo'lmadi. Qayta urinib ko'ring.",
+    "photoDeleteError": "Fotosuratni o'chirib bo'lmadi. Qayta urinib ko'ring."
   },
   "portfolio": {
     "reorderAriaLabel": "Tartibni o'zgartirish",

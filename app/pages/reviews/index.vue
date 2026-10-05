@@ -14,7 +14,13 @@
 // "не дублируй API-запросы без необходимости"). Вместо этого — честная
 // карточка без роли + ссылка "Заказ" (order_id у Review есть всегда,
 // см. api/types.ts), по которой роль уже видна бесплатно на Order Detail.
-definePageMeta({ middleware: 'auth' })
+//
+// layout:'app' — тот же общий AppHeader.vue, что и на /projects/
+// /marketplace/orders (см. правку "Header consistency"): раньше страница
+// рисовала собственный back-link+AppProfileMenu+AppModeNav вместо общего
+// header — из-за этого не было логотипа и белого header-фона, которые есть
+// у остальных authenticated-страниц.
+definePageMeta({ middleware: 'auth', layout: 'app' })
 
 const { t } = useI18n()
 useHead({ title: computed(() => t('reviews.title')) })
@@ -42,16 +48,6 @@ const emptyText = computed(() => t(activeTab.value === 'received' ? 'reviews.emp
 
 <template>
   <main class="reviews-page">
-    <div class="reviews-page__header">
-      <NuxtLink to="/marketplace" class="reviews-page__back">
-        <UiIcon name="chevron-left" :size="18" />
-        {{ t('reviews.backToMarketplace') }}
-      </NuxtLink>
-      <AppProfileMenu />
-    </div>
-
-    <AppModeNav class="reviews-page__mode-nav" />
-
     <h1 class="text-h1 reviews-page__title">
       {{ t('reviews.title') }}
     </h1>
@@ -107,27 +103,6 @@ const emptyText = computed(() => t(activeTab.value === 'received' ? 'reviews.emp
   max-width: 640px;
   margin: 0 auto;
   padding: var(--space-5) var(--space-4) var(--space-16);
-}
-
-.reviews-page__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  margin-bottom: var(--space-3);
-}
-
-.reviews-page__back {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  font-size: var(--font-small-size);
-  color: var(--color-text-secondary);
-  text-decoration: none;
-}
-
-.reviews-page__mode-nav {
-  margin-bottom: var(--space-4);
 }
 
 .reviews-page__title {

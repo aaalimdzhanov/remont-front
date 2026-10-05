@@ -8,11 +8,14 @@
 // header reference: "[logo] ... [avatar]", без текстовых пунктов меню) и
 // инлайн телефон/"Выйти" — теперь это ProfileMenu под аватаром.
 //
-// variant="header" (знак + подпись "ishonchliusta", без tagline) — здесь
-// достаточно места и на desktop, и на mobile (справа только аватар), в
-// отличие от EditorHeader.vue (Builder), где рядом ещё название проекта,
-// статус сохранения и кнопки — там компактный variant="compact" остаётся
-// как есть, этот файл его не трогает.
+// variant="header" — Header consistency: единый application header везде
+// (/projects, /marketplace, /orders, /reviews, /projects/new) показывает
+// ОДИН И ТОТ ЖЕ approved логотип, ishonchliusta-full.png, без текстового
+// fallback (см. UiBrandLogo.vue). EditorHeader.vue (Builder desktop toolbar)
+// по-прежнему использует variant="compact" (только знак) — там строка уже
+// плотно занята полем имени/статусом сохранения/чипом локации, и это
+// сознательное, задокументированное исключение (см. финальный отчёт задачи
+// "Header consistency"), а не второй вариант логотипа для того же экрана.
 //
 // Mode-aware nav (AppModeNav, см. задание "User Mode v1") заменяет прежнюю
 // одиночную иконку-ссылку на /marketplace: она была единственной точкой входа

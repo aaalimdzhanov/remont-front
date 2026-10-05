@@ -167,6 +167,10 @@ img {
   cursor: pointer;
   transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
   white-space: nowrap;
+  /* .btn часто рендерится через NuxtLink/<a> (см. marketplace owner-actions,
+     offers/contractor ссылки) — без явного сброса такие ссылки показывают
+     браузерный underline, которого нет у настоящих <button>. */
+  text-decoration: none;
 }
 
 .btn:disabled {

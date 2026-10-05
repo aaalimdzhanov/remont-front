@@ -15,6 +15,8 @@ import type {
   MarketplaceOfferDto,
   MarketplaceRequest,
   MarketplaceRequestDto,
+  MarketplaceRequestListItem,
+  MarketplaceRequestListItemDto,
   OfferStatus,
   OpenMarketplaceRequest,
   OpenMarketplaceRequestDto,
@@ -26,6 +28,20 @@ function toMarketplaceRequest(dto: MarketplaceRequestDto): MarketplaceRequest {
   return {
     id: dto.id,
     projectWorkId: dto.project_work_id,
+    quantity: dto.quantity,
+    unit: dto.unit,
+    status: dto.status,
+    createdAt: dto.created_at,
+    updatedAt: dto.updated_at,
+  }
+}
+
+function toMarketplaceRequestListItem(dto: MarketplaceRequestListItemDto): MarketplaceRequestListItem {
+  return {
+    id: dto.id,
+    projectWorkId: dto.project_work_id,
+    projectId: dto.project_id,
+    roomId: dto.room_id,
     quantity: dto.quantity,
     unit: dto.unit,
     status: dto.status,
@@ -124,9 +140,9 @@ export async function publishMarketplaceRequest(projectId: string, workId: strin
 
 // ---- Marketplace Requests (глобальные списки) ----
 
-export async function listMyMarketplaceRequests(): Promise<MarketplaceRequest[]> {
-  const items = await apiFetch<MarketplaceRequestDto[]>('/api/v1/marketplace/requests')
-  return items.map(toMarketplaceRequest)
+export async function listMyMarketplaceRequests(): Promise<MarketplaceRequestListItem[]> {
+  const items = await apiFetch<MarketplaceRequestListItemDto[]>('/api/v1/marketplace/requests')
+  return items.map(toMarketplaceRequestListItem)
 }
 
 // Публичный, не требует авторизации — см. router.go.

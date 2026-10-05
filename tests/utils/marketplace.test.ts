@@ -124,11 +124,21 @@ describe('price input normalization/validation — never float, never parseFloat
 
 describe('filterOpenRequests — client-side only (endpoint takes no query params)', () => {
   const requests: OpenMarketplaceRequest[] = [
-    { id: 'r1', workTypeId: 'wt-wall', workType: 'Поклейка обоев', quantity: 10, unit: 'm2', createdAt: '2026-09-10T10:00:00Z', location: null },
+    { id: 'r1', workTypeId: 'wt-wall', workType: 'Поклейка обоев', quantity: 10, unit: 'm2', createdAt: '2026-09-10T10:00:00Z', location: { city: 'Ташкент', district: 'Юнусабадский' } },
     { id: 'r2', workTypeId: 'wt-floor', workType: 'Укладка ламината', quantity: 40, unit: 'm2', createdAt: '2026-09-15T10:00:00Z', location: null },
-    { id: 'r3', workTypeId: 'wt-wall', workType: 'Поклейка обоев', quantity: 25, unit: 'm2', createdAt: '2026-09-12T10:00:00Z', location: null },
+    { id: 'r3', workTypeId: 'wt-wall', workType: 'Поклейка обоев', quantity: 25, unit: 'm2', createdAt: '2026-09-12T10:00:00Z', location: { city: 'Самарканд', district: 'Центр' } },
   ]
   const categoryMap: Record<string, string> = { 'wt-wall': 'cat-walls', 'wt-floor': 'cat-floors' }
+
+  it('filters by city (location.city) — null city means "весь Узбекистан", no filtering', () => {
+    const result = filterOpenRequests(requests, { ...defaultRequestFilters(), city: 'Ташкент' }, categoryMap)
+    expect(result.map(r => r.id)).toEqual(['r1'])
+  })
+
+  it('excludes requests with no location at all when a city is selected', () => {
+    const result = filterOpenRequests(requests, { ...defaultRequestFilters(), city: 'Самарканд' }, categoryMap)
+    expect(result.map(r => r.id)).toEqual(['r3'])
+  })
 
   it('filters by category using the work_type_id -> category_id map (OpenMarketplaceRequest itself has no category_id)', () => {
     const result = filterOpenRequests(requests, { ...defaultRequestFilters(), categoryId: 'cat-floors' }, categoryMap)
@@ -159,8 +169,14 @@ describe('countActiveRequestFilters — badge count (sort is not a "filter")', (
   })
 
   it('counts each set narrowing field, but not sort', () => {
-    expect(countActiveRequestFilters({ categoryId: 'c1', workTypeId: null, quantityMin: null, quantityMax: null, sort: 'oldest' })).toBe(1)
-    expect(countActiveRequestFilters({ categoryId: 'c1', workTypeId: 'w1', quantityMin: 1, quantityMax: 2, sort: 'newest' })).toBe(4)
+    expect(countActiveRequestFilters({ categoryId: 'c1', workTypeId: null, quantityMin: null, quantityMax: null, sort: 'oldest', city: null })).toBe(1)
+    expect(countActiveRequestFilters({ categoryId: 'c1', workTypeId: 'w1', quantityMin: 1, quantityMax: 2, sort: 'newest', city: null })).toBe(4)
+  })
+
+  // city — отдельный, всегда видимый селектор ("Локация"), не часть
+  // скрытого набора за кнопкой "Фильтры" (см. RequestFilters.city).
+  it('does not count city — it has its own always-visible control, not the "Фильтры" badge', () => {
+    expect(countActiveRequestFilters({ ...defaultRequestFilters(), city: 'Ташкент' })).toBe(0)
   })
 })
 

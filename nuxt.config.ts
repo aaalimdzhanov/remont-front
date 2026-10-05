@@ -69,5 +69,6 @@ export default defineNuxtConfig({
     '/orders/**': { ssr: false },
     '/reviews': { ssr: false },
     '/reviews/**': { ssr: false },
+    '/my-requests': { ssr: false },
   },
 })

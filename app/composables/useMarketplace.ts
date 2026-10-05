@@ -28,6 +28,7 @@ import {
 import {
   addContractorService as apiAddContractorService,
   createContractor as apiCreateContractor,
+  deleteContractorPhoto as apiDeleteContractorPhoto,
   deleteContractorService as apiDeleteContractorService,
   deletePortfolioItem as apiDeletePortfolioItem,
   getContractorOrNull,
@@ -36,9 +37,24 @@ import {
   reorderPortfolioItems as apiReorderPortfolioItems,
   updateContractor as apiUpdateContractor,
   updateContractorService as apiUpdateContractorService,
+  uploadContractorPhoto as apiUploadContractorPhoto,
   uploadPortfolioItem as apiUploadPortfolioItem,
 } from '~/api/contractor'
 import { getWorkCategories, getWorkTypes } from '~/api/workCatalog'
+// Название работы на карточке "Мои заявки" (My Requests Card v2) — тот же
+// GET /projects/{id}/works, что уже использует pages/projects/[id]/works.vue
+// для списка ProjectWork проекта, не новый endpoint. MarketplaceRequestListItem
+// (приватная ListMine-форма) содержит projectWorkId, но НЕ work_type/
+// work_type_id (см. комментарий у MarketplaceRequestListItemDto ниже) —
+// title резолвится тем же путём, что и privacy-safe project preview уже
+// резолвит Building JSON: project_id -> реальные данные владельца, здесь
+// project_id -> ProjectWork[] -> найти по projectWorkId -> work_type_id ->
+// имя из уже загружаемого catalogWorkTypes (см. loadFilterCatalog ниже).
+import { listProjectWorks } from '~/api/projectWorks'
+// Мини-план заявки на карточке "Мои заявки"/её detail-странице — тот же
+// GET /projects/{id}, что уже использует Dashboard (pages/projects/index.vue
+// loadDetail()) для превью карточки проекта, не новый endpoint.
+import { getProject } from '~/api/projects'
 import { isApiError, toApiError } from '~/api/client'
 import { defaultRequestFilters, filterOpenRequests } from '~/utils/marketplace'
 import type { RequestFilters } from '~/utils/marketplace'
@@ -51,9 +67,12 @@ import type {
   CreateOfferPayload,
   MarketplaceOffer,
   MarketplaceRequest,
+  MarketplaceRequestListItem,
   OfferStatus,
   OpenMarketplaceRequest,
   PortfolioItem,
+  Project,
+  ProjectWork,
   PublicMarketplaceRequest,
   UpdateContractorServicePayload,
   WorkCategory,
@@ -80,7 +99,7 @@ export function useMarketplace() {
   const requestDetailLoading = useState<boolean>('marketplace-request-detail-loading', () => false)
   const requestDetailError = useState<ApiError | null>('marketplace-request-detail-error', () => null)
 
-  const myRequests = useState<MarketplaceRequest[]>('marketplace-my-requests', () => [])
+  const myRequests = useState<MarketplaceRequestListItem[]>('marketplace-my-requests', () => [])
   const myRequestsLoading = useState<boolean>('marketplace-my-requests-loading', () => false)
   const myRequestsError = useState<ApiError | null>('marketplace-my-requests-error', () => null)
 
@@ -99,6 +118,11 @@ export function useMarketplace() {
   const contractorError = useState<ApiError | null>('marketplace-contractor-error', () => null)
   const isSavingContractor = useState<boolean>('marketplace-saving-contractor', () => false)
   const saveContractorError = useState<ApiError | null>('marketplace-save-contractor-error', () => null)
+  // Contractor Profile Photo v1 (см. use-функции ниже).
+  const isUploadingContractorPhoto = useState<boolean>('marketplace-uploading-contractor-photo', () => false)
+  const uploadContractorPhotoError = useState<ApiError | null>('marketplace-upload-contractor-photo-error', () => null)
+  const isDeletingContractorPhoto = useState<boolean>('marketplace-deleting-contractor-photo', () => false)
+  const deleteContractorPhotoError = useState<ApiError | null>('marketplace-delete-contractor-photo-error', () => null)
 
   // "Мои услуги" (ContractorService) — полный список своего профиля, см.
   // app/api/contractor.ts listContractorServices(). unit/work_type в каждом
@@ -151,15 +175,103 @@ export function useMarketplace() {
   const workRequestCache = useState<Record<string, WorkRequestState>>('marketplace-work-request-cache', () => ({}))
   const workRequestLoadingIds = useState<Set<string>>('marketplace-work-request-loading-ids', () => new Set())
 
-  // Best-effort "название работы" по requestId — НЕ выдумка: заполняется
-  // только реальными данными, которые фронтенд УЖЕ видел за эту сессию (при
-  // просмотре открытых заявок). Ни MarketplaceRequest (приватная форма), ни
-  // MarketplaceOffer не содержат work_type вообще (см. api/types.ts) — без
-  // этого кэша "Мои предложения"/"Мои заявки" не смогли бы показать название
-  // работы никак. Если заявки не было в открытом списке за эту сессию (или
-  // сервер перезагружен) — честно показываем только количество/статус, без
-  // фейковых данных.
+  // "Название работы" по requestId — ни MarketplaceRequest (приватная форма
+  // заявки владельца), ни MarketplaceOffer, ни Order не содержат work_type
+  // напрямую (см. api/types.ts) — без этого кэша "Мои предложения"/"Мои
+  // заявки"/"Заказы" не смогли бы показать название работы никак.
+  // Изначально (Marketplace Request Detail v1) заполнялся только
+  // best-effort — реальными данными, которые фронтенд УЖЕ видел за эту
+  // сессию при просмотре открытых заявок (loadOpenRequests ниже), поэтому
+  // для заказов (Order.marketplaceRequestId почти всегда ссылается на уже
+  // ЗАКРЫТУЮ заявку — открытых заявок владелец её не видел) título почти
+  // никогда не резолвился, и карточка заказа показывала голое "Заказ".
+  // Order Card work title v1: loadRequestTitle() ниже активно догружает
+  // сюда же запись через канонический публичный GET
+  // /marketplace-requests/{id} (тот же эндпоинт и тот же
+  // getPublicMarketplaceRequest(), что уже использует requestDetail для
+  // страницы деталей заявки, см. loadRequestDetail) — PublicMarketplaceRequest
+  // структурно расширяет OpenMarketplaceRequest (те же id/workTypeId/
+  // workType/quantity/unit/createdAt/location + status), поэтому это тот же
+  // самый кэш, не второй. Работает для ЛЮБОГО статуса, кроме 'draft' — а у
+  // заказа заявка 'draft' быть не может (Order создаётся только из
+  // принятого Offer, Offer — только из 'open' заявки).
   const requestTitleCache = useState<Record<string, OpenMarketplaceRequest>>('marketplace-request-title-cache', () => ({}))
+  const requestTitleLoadingIds = useState<Set<string>>('marketplace-request-title-loading-ids', () => new Set())
+
+  // Marketplace request plan thumbnail v1: миниатюра плана проекта на
+  // карточке "Мои заявки"/её detail-странице. Кэш по projectId (не по
+  // requestId) — несколько заявок владельца часто ссылаются на один и тот
+  // же проект (несколько видов работ одного ремонта), поэтому дедуп нужен,
+  // чтобы не грузить один и тот же Building JSON по нескольку раз. null =
+  // запрос выполнен, но проект не нашёлся (404/удалён) — честный fallback
+  // на placeholder, не broken image. Отсутствие ключа = ещё не грузили.
+  // ТОЛЬКО для владельца (MarketplaceRequestListItem.projectId существует
+  // исключительно в приватной ListMine-форме, см. api/types.ts) — публичные
+  // формы (Open/Public) проектов не раскрывают вообще, здесь этот кэш не
+  // применим и не используется.
+  const projectPreviewCache = useState<Record<string, Project | null>>('marketplace-project-preview-cache', () => ({}))
+  const projectPreviewLoadingIds = useState<Set<string>>('marketplace-project-preview-loading-ids', () => new Set())
+
+  // My Requests Card v2: название работы на карточке "Мои заявки" — тот же
+  // dedup-по-projectId кэш, что и projectPreviewCache выше (несколько заявок
+  // владельца часто указывают на один и тот же проект — не грузить его
+  // ProjectWork-список по нескольку раз). Ключ — projectId (не requestId):
+  // вызывающий компонент находит СВОЙ ProjectWork внутри списка сам по
+  // request.projectWorkId (см. MyRequestCard.vue).
+  const projectWorksCache = useState<Record<string, ProjectWork[] | null>>('marketplace-project-works-cache', () => ({}))
+  const projectWorksLoadingIds = useState<Set<string>>('marketplace-project-works-loading-ids', () => new Set())
+
+  // Пропускает уже загруженные/загружающиеся id — вызывающий компонент
+  // (MarketplaceMyRequestCard.vue, requests/[id].vue) может звать это для
+  // каждой отображаемой карточки без риска дублирующих запросов на один
+  // и тот же projectId (тот же приём, что checkWorkRequest() уже использует
+  // для workRequestLoadingIds ниже).
+  async function loadProjectPreview(projectId: string): Promise<void> {
+    if (projectId in projectPreviewCache.value || projectPreviewLoadingIds.value.has(projectId)) return
+    projectPreviewLoadingIds.value = new Set(projectPreviewLoadingIds.value).add(projectId)
+    try {
+      const project = await getProject(projectId)
+      projectPreviewCache.value = { ...projectPreviewCache.value, [projectId]: project }
+    } catch (err) {
+      // 404 (удалённый проект) — тот же честный "нет данных", что и любая
+      // другая 404-ветка в этом файле (см. loadRequestDetail/loadContractor);
+      // сеть/5xx — тоже просто "нет превью сейчас", у карточки уже есть
+      // architectural-sketch fallback (ProjectsProjectPreview.vue), отдельный
+      // retry-UI для декоративной миниатюры не нужен.
+      if (!isApiError(err) || err.status !== 404) {
+        // не запоминаем как null — временная сетевая ошибка не должна
+        // навсегда "залипнуть" в fallback, следующий заход на страницу
+        // попробует снова.
+        return
+      }
+      projectPreviewCache.value = { ...projectPreviewCache.value, [projectId]: null }
+    } finally {
+      const next = new Set(projectPreviewLoadingIds.value)
+      next.delete(projectId)
+      projectPreviewLoadingIds.value = next
+    }
+  }
+
+  // My Requests Card v2 — тот же dedup-guard/error-паттерн, что и
+  // loadProjectPreview() выше (404 — реально удалённый проект, кэшируется
+  // как null; сеть/5xx не кэшируется, чтобы следующий заход попробовал
+  // снова). НЕ кэшируется по requestId/workId — один и тот же список нужен
+  // всем карточкам одного проекта.
+  async function loadProjectWorks(projectId: string): Promise<void> {
+    if (projectId in projectWorksCache.value || projectWorksLoadingIds.value.has(projectId)) return
+    projectWorksLoadingIds.value = new Set(projectWorksLoadingIds.value).add(projectId)
+    try {
+      const works = await listProjectWorks(projectId)
+      projectWorksCache.value = { ...projectWorksCache.value, [projectId]: works }
+    } catch (err) {
+      if (!isApiError(err) || err.status !== 404) return
+      projectWorksCache.value = { ...projectWorksCache.value, [projectId]: null }
+    } finally {
+      const next = new Set(projectWorksLoadingIds.value)
+      next.delete(projectId)
+      projectWorksLoadingIds.value = next
+    }
+  }
 
   const isCreatingRequest = useState<boolean>('marketplace-creating-request', () => false)
   const createRequestError = useState<ApiError | null>('marketplace-create-request-error', () => null)
@@ -212,6 +324,31 @@ export function useMarketplace() {
       }
     } finally {
       requestDetailLoading.value = false
+    }
+  }
+
+  // Order Card work title v1: активное (не best-effort) заполнение
+  // requestTitleCache для requestId, который заведомо НЕ был среди открытых
+  // (заказ существует только для уже закрытой заявки) — см. комментарий у
+  // requestTitleCache выше. Тот же dedup-guard/error-паттерн, что и
+  // loadProjectPreview()/loadProjectWorks(): не перезапрашивать уже
+  // закэшированный/загружающийся id; 404 (теоретически недостижимо для
+  // заявки реального заказа, но defensive) не кэшируется как значение —
+  // вызывающий компонент просто продолжит показывать fallback "Заказ".
+  async function loadRequestTitle(requestId: string): Promise<void> {
+    if (requestId in requestTitleCache.value || requestTitleLoadingIds.value.has(requestId)) return
+    requestTitleLoadingIds.value = new Set(requestTitleLoadingIds.value).add(requestId)
+    try {
+      const detail = await getPublicMarketplaceRequest(requestId)
+      requestTitleCache.value = { ...requestTitleCache.value, [requestId]: detail }
+    } catch {
+      // Сеть/404 — просто не резолвилось сейчас, честный "Заказ"-fallback
+      // остаётся, следующий заход на страницу попробует снова (id не
+      // кэшируется как отсутствующий).
+    } finally {
+      const next = new Set(requestTitleLoadingIds.value)
+      next.delete(requestId)
+      requestTitleLoadingIds.value = next
     }
   }
 
@@ -283,6 +420,47 @@ export function useMarketplace() {
       return false
     } finally {
       isSavingContractor.value = false
+    }
+  }
+
+  // Contractor Profile Photo v1 — отдельные флаг/ошибка от
+  // isSavingContractor/saveContractorError (тот же принцип, что развёл их с
+  // createContractorProfile/loadContractor выше): фото — отдельное действие
+  // со своим UI (upload sheet/confirm dialog), не должно путаться с
+  // ошибкой/loading формы имени-телефона-описания. Оба метода пишут
+  // результат ПРЯМО в contractor.value — единственный источник профиля
+  // (см. задание, секция 12: "не создавать отдельное avatarUrl/masterPhoto
+  // состояние"), а не в какое-то отдельное поле.
+  async function uploadContractorPhoto(file: File): Promise<boolean> {
+    isUploadingContractorPhoto.value = true
+    uploadContractorPhotoError.value = null
+    try {
+      contractor.value = await apiUploadContractorPhoto(file)
+      return true
+    } catch (err) {
+      setErr(uploadContractorPhotoError, err)
+      return false
+    } finally {
+      isUploadingContractorPhoto.value = false
+    }
+  }
+
+  // DELETE отвечает 204 независимо от того, было фото или нет (см.
+  // contractor_photo_handler.go: "idempotent") — ответ не возвращает
+  // профиль, поэтому contractor.value обновляется локально (обнуление
+  // одного известного поля), а не перезапросом всего профиля с backend.
+  async function deleteContractorPhoto(): Promise<boolean> {
+    isDeletingContractorPhoto.value = true
+    deleteContractorPhotoError.value = null
+    try {
+      await apiDeleteContractorPhoto()
+      if (contractor.value) contractor.value = { ...contractor.value, profilePhotoUrl: null }
+      return true
+    } catch (err) {
+      setErr(deleteContractorPhotoError, err)
+      return false
+    } finally {
+      isDeletingContractorPhoto.value = false
     }
   }
 
@@ -476,13 +654,24 @@ export function useMarketplace() {
     }
   }
 
-  async function createRequestForWork(projectId: string, workId: string): Promise<MarketplaceRequest | null> {
+  // roomId — тот же ProjectWork.roomId, который уже известен вызывающей
+  // странице (см. pages/projects/[id]/works.vue confirmPlaceOnMarketplace:
+  // pendingMarketplaceWork.value.roomId) — не второй источник истины,
+  // просто прокидывается сюда, потому что POST .../marketplace-request
+  // возвращает старую форму без него (см. комментарий ниже).
+  async function createRequestForWork(projectId: string, workId: string, roomId: string | null): Promise<MarketplaceRequest | null> {
     if (isCreatingRequest.value) return null
     isCreatingRequest.value = true
     createRequestError.value = null
     try {
       const created = await apiCreateMarketplaceRequest(projectId, workId)
-      myRequests.value = [...myRequests.value, created]
+      // Create/Publish/Cancel/Close (см. api/marketplace.ts) по-прежнему
+      // возвращают старую форму MarketplaceRequest без project_id/room_id —
+      // только ListMine отдаёт MarketplaceRequestListItem (см. api/types.ts).
+      // Оба поля здесь уже известны (параметры), достраиваем локально, не
+      // выдумывая: тот же project/room, который только что использовали для
+      // самого запроса.
+      myRequests.value = [...myRequests.value, { ...created, projectId, roomId }]
       workRequestCache.value = { ...workRequestCache.value, [workId]: created }
       return created
     } catch (err) {
@@ -494,7 +683,10 @@ export function useMarketplace() {
   }
 
   function replaceMyRequest(updated: MarketplaceRequest) {
-    myRequests.value = myRequests.value.map(r => (r.id === updated.id ? updated : r))
+    // updated — старая форма без project_id (см. createRequestForWork
+    // выше) — сохраняем projectId уже загруженной записи (он неизменен для
+    // данной заявки), а не теряем его при замене остальных полей.
+    myRequests.value = myRequests.value.map(r => (r.id === updated.id ? { ...r, ...updated } : r))
     const workId = updated.projectWorkId
     if (workRequestCache.value[workId]) {
       workRequestCache.value = { ...workRequestCache.value, [workId]: updated }
@@ -627,6 +819,8 @@ export function useMarketplace() {
     addServiceError.value = null
     serviceActionError.value = null
     saveContractorError.value = null
+    uploadContractorPhotoError.value = null
+    deleteContractorPhotoError.value = null
     portfolio.value = []
     portfolioError.value = null
     uploadPortfolioError.value = null
@@ -657,6 +851,10 @@ export function useMarketplace() {
     contractorError,
     isSavingContractor,
     saveContractorError,
+    isUploadingContractorPhoto,
+    uploadContractorPhotoError,
+    isDeletingContractorPhoto,
+    deleteContractorPhotoError,
     services,
     servicesLoading,
     servicesError,
@@ -677,8 +875,13 @@ export function useMarketplace() {
     catalogCategoriesLoading,
     catalogWorkTypes,
     catalogWorkTypesLoading,
+    catalogLoaded,
     workRequestCache,
     requestTitleCache,
+    projectPreviewCache,
+    loadProjectPreview,
+    projectWorksCache,
+    loadProjectWorks,
     isCreatingRequest,
     createRequestError,
     publishRequestError,
@@ -689,11 +892,14 @@ export function useMarketplace() {
     requestActionId,
     loadOpenRequests,
     loadRequestDetail,
+    loadRequestTitle,
     loadMyRequests,
     loadMyOffers,
     loadContractor,
     createContractorProfile,
     updateContractorProfile,
+    uploadContractorPhoto,
+    deleteContractorPhoto,
     loadServices,
     addService,
     updateService,

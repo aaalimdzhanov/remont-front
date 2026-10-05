@@ -12,7 +12,12 @@
 // (см. contractor_dto.go), поэтому здесь только read-only подпись.
 import type { ContractorService, PortfolioItem } from '~/api/types'
 
-definePageMeta({ middleware: 'auth' })
+// layout:'app' — тот же общий AppHeader.vue, что и на /orders и /reviews (см.
+// правку "Header consistency"): раньше страница рисовала собственный
+// back-link "← Биржа заявок"+AppProfileMenu+AppModeNav вместо общего header —
+// единственная точка возврата в публичную биржу теперь логотип (AppHeader),
+// не текстовая стрелка.
+definePageMeta({ middleware: 'auth', layout: 'app' })
 
 const { t } = useI18n()
 useHead({ title: computed(() => t('contractorProfile.title')) })
@@ -20,6 +25,8 @@ useHead({ title: computed(() => t('contractorProfile.title')) })
 const {
   contractor, contractorLoading, contractorError,
   isSavingContractor, saveContractorError,
+  isUploadingContractorPhoto, uploadContractorPhotoError,
+  isDeletingContractorPhoto, deleteContractorPhotoError,
   services, servicesLoading, servicesError,
   isAddingService, addServiceError,
   serviceActionId, serviceActionError,
@@ -29,6 +36,7 @@ const {
   isReorderingPortfolio, reorderPortfolioError,
   catalogCategories, catalogCategoriesLoading, catalogWorkTypes,
   loadContractor, updateContractorProfile, createContractorProfile,
+  uploadContractorPhoto, deleteContractorPhoto,
   loadServices, addService, updateService, deleteService,
   loadPortfolio, uploadPortfolio, deletePortfolio, reorderPortfolio,
   loadFilterCatalog,
@@ -130,20 +138,48 @@ async function handleConfirmDeletePortfolio() {
 function handleReorderPortfolio(items: PortfolioItem[]) {
   void reorderPortfolio(items)
 }
+
+// ---- Profile photo (Contractor Profile Photo v1) ----
+// Реальное имя для alt/fallback — то же самое "trim() || fallbackName",
+// что уже показывает сама форма ниже (contractor.name.trim() ||
+// fallbackName нигде явно не было нужно раньше, т.к. форма всегда
+// показывает controlled-input, не read-only имя) — здесь это единственное
+// read-only место, где имя нужно как текст (alt изображения).
+const contractorDisplayNameValue = computed(() => contractor.value?.name?.trim() || t('contractors.fallbackName'))
+
+const showPhotoSheet = ref(false)
+const deletingPhoto = ref(false)
+
+// 413/415 — те же реальные backend-коды, что и readImageUpload()/
+// writeContractorPhotoError() на backend (см. utils/contractorPhoto.ts
+// шапка) — переопределяем текст ТОЛЬКО для image_too_large: общий
+// errors.image_too_large жёстко говорит "10 МБ" (это лимит Portfolio, не
+// этой формы, см. utils/contractorPhoto.ts), а у фото профиля лимит 5 МБ.
+// Остальные коды (unsupported_media_type/internal_error/session_expired/...)
+// уже корректно локализованы централизованно в api/client.ts
+// KNOWN_ERROR_KEYS — здесь просто err.message как везде в этой странице.
+function photoErrorMessage(err: { code: string, message: string } | null, fallbackKey: string): string | null {
+  if (!err) return null
+  if (err.code === 'image_too_large') return t('contractorProfile.photoTooLarge')
+  if (err.code === 'internal_error') return t(fallbackKey)
+  return err.message
+}
+const uploadPhotoErrorMessage = computed(() => photoErrorMessage(uploadContractorPhotoError.value, 'contractorProfile.photoUploadError'))
+const deletePhotoErrorMessage = computed(() => photoErrorMessage(deleteContractorPhotoError.value, 'contractorProfile.photoDeleteError'))
+
+async function handlePhotoUploadSubmit(file: File) {
+  const ok = await uploadContractorPhoto(file)
+  if (ok) showPhotoSheet.value = false
+}
+
+async function handleConfirmDeletePhoto() {
+  deletingPhoto.value = false
+  await deleteContractorPhoto()
+}
 </script>
 
 <template>
   <main class="contractor-page">
-    <div class="contractor-page__header">
-      <NuxtLink to="/marketplace" class="contractor-page__back">
-        <UiIcon name="chevron-left" :size="18" />
-        {{ t('navigation.backToMarketplace') }}
-      </NuxtLink>
-      <AppProfileMenu />
-    </div>
-
-    <AppModeNav class="contractor-page__mode-nav" />
-
     <h1 class="text-h1 contractor-page__title">
       {{ t('contractorProfile.title') }}
     </h1>
@@ -168,9 +204,43 @@ function handleReorderPortfolio(items: PortfolioItem[]) {
       </div>
 
       <section class="contractor-page__card">
-        <div class="contractor-page__avatar">
-          <UiIcon name="user" :size="28" />
+        <div class="contractor-page__avatar-wrap">
+          <MarketplaceContractorAvatar
+            :photo-url="contractor?.profilePhotoUrl ?? null"
+            :name="contractorDisplayNameValue"
+            :size="80"
+            :icon-size="32"
+          />
+          <!-- Загрузка/замена/удаление фото возможны только для УЖЕ
+               существующего профиля (см. задание, секция 4/11) — backend
+               отвечает 404 contractor_not_found без него (см. память
+               "Backend: contractor profile photo"), поэтому на onboarding-
+               форме (isNewProfile) эти действия не показываются вообще, не
+               показываются disabled — их в принципе нельзя выполнить. -->
+          <div v-if="!isNewProfile" class="contractor-page__avatar-actions">
+            <button
+              type="button"
+              class="contractor-page__avatar-action"
+              :disabled="isUploadingContractorPhoto || isDeletingContractorPhoto"
+              @click="showPhotoSheet = true"
+            >
+              {{ contractor?.profilePhotoUrl ? t('contractorProfile.changePhoto') : t('contractorProfile.addPhoto') }}
+            </button>
+            <button
+              v-if="contractor?.profilePhotoUrl"
+              type="button"
+              class="contractor-page__avatar-action contractor-page__avatar-action--danger"
+              :disabled="isUploadingContractorPhoto || isDeletingContractorPhoto"
+              @click="deletingPhoto = true"
+            >
+              {{ t('contractorProfile.deletePhoto') }}
+            </button>
+          </div>
         </div>
+
+        <p v-if="deletePhotoErrorMessage" class="contractor-page__error">
+          {{ deletePhotoErrorMessage }}
+        </p>
 
         <form class="contractor-page__form" @submit.prevent="handleSave">
           <label class="field">
@@ -367,6 +437,24 @@ function handleReorderPortfolio(items: PortfolioItem[]) {
     />
 
     <MarketplacePortfolioImageViewer :item="viewingPortfolioItem" @close="viewingPortfolioItem = null" />
+
+    <MarketplaceContractorPhotoUploadSheet
+      :open="showPhotoSheet"
+      :submitting="isUploadingContractorPhoto"
+      :error="uploadPhotoErrorMessage"
+      @submit="handlePhotoUploadSubmit"
+      @cancel="showPhotoSheet = false"
+    />
+
+    <UiConfirmDialog
+      :open="deletingPhoto"
+      :title="t('dialogs.deleteContractorPhoto.title')"
+      :message="t('dialogs.deleteContractorPhoto.message')"
+      :confirm-text="t('common.delete')"
+      danger
+      @confirm="handleConfirmDeletePhoto"
+      @cancel="deletingPhoto = false"
+    />
   </main>
 </template>
 
@@ -375,27 +463,6 @@ function handleReorderPortfolio(items: PortfolioItem[]) {
   max-width: 560px;
   margin: 0 auto;
   padding: var(--space-5) var(--space-4) var(--space-16);
-}
-
-.contractor-page__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  margin-bottom: var(--space-3);
-}
-
-.contractor-page__back {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  font-size: var(--font-small-size);
-  color: var(--color-text-secondary);
-  text-decoration: none;
-}
-
-.contractor-page__mode-nav {
-  margin-bottom: var(--space-5);
 }
 
 .contractor-page__title {
@@ -452,15 +519,40 @@ function handleReorderPortfolio(items: PortfolioItem[]) {
   background: var(--color-surface);
 }
 
-.contractor-page__avatar {
+.contractor-page__avatar-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.contractor-page__avatar-actions {
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  background: var(--color-primary-subtle);
+  gap: var(--space-3);
+}
+
+.contractor-page__avatar-action {
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+  border: none;
+  background: none;
+  font-family: var(--font-family);
+  font-size: var(--font-small-size);
+  font-weight: 500;
   color: var(--color-primary);
+  cursor: pointer;
+  min-height: 44px;
+}
+
+.contractor-page__avatar-action:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.contractor-page__avatar-action--danger {
+  color: var(--color-error);
 }
 
 .contractor-page__form {

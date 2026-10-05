@@ -29,6 +29,7 @@ function toContractor(dto: ContractorDto): Contractor {
     description: dto.description,
     phone: dto.phone,
     status: dto.status,
+    profilePhotoUrl: dto.profile_photo_url,
     createdAt: dto.created_at,
     updatedAt: dto.updated_at,
   }
@@ -72,6 +73,25 @@ export async function createContractor(payload: CreateContractorPayload): Promis
 export async function updateContractor(payload: CreateContractorPayload): Promise<Contractor> {
   const dto = await apiFetch<ContractorDto>('/api/v1/contractor', { method: 'PUT', body: payload })
   return toContractor(dto)
+}
+
+// ---- Contractor Profile Photo — PUT/DELETE /api/v1/contractor/photo (см.
+// contractor_photo_handler.go). Как и /services и /portfolio выше, нет
+// {contractor_id} в пути — backend сам резолвит "чей" профиль из JWT.
+// Ответ PUT — полный профиль (та же форма, что и getContractor()), поэтому
+// используется тот же toContractor()/ContractorDto — второй тип не заводится.
+export async function uploadContractorPhoto(file: File): Promise<Contractor> {
+  const formData = new FormData()
+  formData.append('file', file)
+  const dto = await apiFetch<ContractorDto>('/api/v1/contractor/photo', { method: 'PUT', body: formData })
+  return toContractor(dto)
+}
+
+// 204 No Content — apiFetch<void> тот же паттерн, что и deletePortfolioItem/
+// deleteContractorService выше (backend отвечает 204 даже если фото уже не
+// было, см. contractor_photo_handler.go Delete: "idempotent").
+export async function deleteContractorPhoto(): Promise<void> {
+  await apiFetch<void>('/api/v1/contractor/photo', { method: 'DELETE' })
 }
 
 // ---- ContractorService — /api/v1/contractor/services (см.
@@ -186,6 +206,7 @@ function toPublicContractorProfile(dto: PublicContractorProfileDto): PublicContr
     // null (список мастеров) остаётся null — не схлопывать в [] (см.
     // api/types.ts PublicContractorProfileDto.portfolio).
     portfolio: dto.portfolio ? dto.portfolio.map(toPublicPortfolioItem) : null,
+    profilePhotoUrl: dto.profile_photo_url,
   }
 }
 

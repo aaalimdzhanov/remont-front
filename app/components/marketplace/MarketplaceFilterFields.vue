@@ -149,9 +149,15 @@ function handleSortChange(event: Event) {
   width: 160px;
 }
 
+/* Bugfix: было grid-template-columns:1fr (одна колонка) при width:160px —
+   "от"/"до" оказывались НАМНОГО выше соседних полей (Категория/Вид работы/
+   Сортировка), а align-items:flex-end на родителе (.filter-fields--compact)
+   выравнивал их по низу, из-за чего "Количество от" визуально "улетало"
+   вверх над остальным рядом. Два поля рядом — та же высота, что и у
+   соседних одиночных полей, ряд выравнивается ровно. */
 .filter-fields--compact .filter-fields__quantity-row {
-  width: 160px;
-  grid-template-columns: 1fr;
-  gap: var(--space-1);
+  width: 336px;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
 }
 </style>

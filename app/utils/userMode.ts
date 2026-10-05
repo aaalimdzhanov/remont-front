@@ -71,15 +71,29 @@ export interface UserModeNavItem {
 // режима (см. pages/reviews/index.vue) — mode влияет только на то, попадает
 // ли пункт "Отзывы" в client- или contractor-набор навигации, не на
 // содержимое самой страницы.
+// Header nav label "Биржа" -> "Заявки" (navigation.requests — тот же ключ,
+// что раньше использовал и CONTRACTOR_NAV_ITEMS для /marketplace, до
+// Navigation split v2 ниже, который убрал оттуда этот пункт целиком; не
+// изменение navigation.marketplace, см. история этого файла).
+//
+// Navigation split v1: у CLIENT "Заявки" вело на /marketplace, где заодно
+// показывало "Мои заявки" вперемешку с чужими открытыми — теперь ведёт на
+// /my-requests, отдельную личную страницу ТОЛЬКО своих заявок (см.
+// pages/my-requests.vue).
 const CLIENT_NAV_ITEMS: UserModeNavItem[] = [
   { labelKey: 'navigation.projects', to: '/projects', icon: 'folder' },
-  { labelKey: 'navigation.marketplace', to: '/marketplace', icon: 'store' },
+  { labelKey: 'navigation.requests', to: '/my-requests', icon: 'store' },
   { labelKey: 'navigation.orders', to: '/orders', icon: 'list' },
   { labelKey: 'navigation.reviews', to: '/reviews', icon: 'star' },
 ]
 
+// Navigation split v2: у CONTRACTOR пункт "Заявки" (-> /marketplace) убран —
+// он дублировал назначение логотипа (тот уже ведёт на /marketplace для
+// любого пользователя, см. AppHeader.vue), создавая две точки входа на
+// один и тот же route рядом друг с другом. /marketplace остаётся
+// единственным местом, где мастер смотрит открытые заявки — просто
+// достижимым через логотип, а не ещё и через отдельный nav item.
 const CONTRACTOR_NAV_ITEMS: UserModeNavItem[] = [
-  { labelKey: 'navigation.requests', to: '/marketplace', icon: 'store' },
   { labelKey: 'navigation.offers', to: '/marketplace/offers', icon: 'coins' },
   { labelKey: 'navigation.orders', to: '/orders', icon: 'list' },
   { labelKey: 'navigation.services', to: '/marketplace/contractor', icon: 'hammer' },
@@ -88,6 +102,25 @@ const CONTRACTOR_NAV_ITEMS: UserModeNavItem[] = [
 
 export function getUserModeNavItems(mode: UserMode): UserModeNavItem[] {
   return mode === 'client' ? CLIENT_NAV_ITEMS : CONTRACTOR_NAV_ITEMS
+}
+
+// ---- Mode ↔ Route consistency (см. задание "Header/body mode desync
+// bugfix") ----
+// Единственный source of truth для "главной страницы" каждого режима —
+// переключатель режима (useUserMode.setMode) переходит именно сюда, чтобы
+// header (mode из useState) и body (текущий route) никогда не расходились.
+// /projects — главная точка входа клиента, /marketplace — мастера (см.
+// задание, секция ПРАВИЛО НАВИГАЦИИ); НЕ /marketplace/offers и не
+// CONTRACTOR_NAV_ITEMS[0].to — тот пункт меню сознательно убран из nav
+// (см. Navigation split v2 выше), но /marketplace как публичная биржа
+// остаётся главной точкой входа мастера независимо от этого.
+const MODE_HOME_ROUTE: Record<UserMode, string> = {
+  client: '/projects',
+  contractor: '/marketplace',
+}
+
+export function getModeHomeRoute(mode: UserMode): string {
+  return MODE_HOME_ROUTE[mode]
 }
 
 // ---- Contractor Profile Gate (см. задание, секция 7 и 17) ----

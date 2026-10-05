@@ -192,7 +192,7 @@ function handleFindContractor(work: ProjectWork) {
 async function confirmPlaceOnMarketplace() {
   const work = pendingMarketplaceWork.value
   if (!work) return
-  const created = await createRequestForWork(projectId.value, work.id)
+  const created = await createRequestForWork(projectId.value, work.id, work.roomId)
   pendingMarketplaceWork.value = null
   // created.status === 'draft' здесь всегда (см. backend New()) — НЕ
   // считаем заявку опубликованной, не показываем публичный успех, а

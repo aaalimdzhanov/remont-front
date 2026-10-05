@@ -79,6 +79,10 @@
       "title": "Удалить работу?",
       "message": "Фотография будет удалена из вашего портфолио."
     },
+    "deleteContractorPhoto": {
+      "title": "Удалить фото?",
+      "message": "Фотография профиля будет удалена."
+    },
     "publishRequest": {
       "title": "Разместить работу на бирже?",
       "message": "{title} · Количество: {quantity}",
@@ -115,6 +119,20 @@
     "reviews": "Отзывы",
     "backToProjects": "Проекты",
     "backToMarketplace": "Биржа заявок"
+  },
+  "footer": {
+    "publicTitle": "Навигация",
+    "linkRequests": "Биржа заявок",
+    "linkMasters": "Мастера",
+    "linkServices": "Услуги",
+    "helpTitle": "Помощь",
+    "linkHowItWorks": "Как это работает",
+    "linkHelp": "Помощь",
+    "linkContacts": "Контакты",
+    "copyright": "© {year} Ishonchli Usta · Узбекистан",
+    "brandAriaLabel": "Ishonchli Usta — на биржу заявок",
+    "publicNavAriaLabel": "Публичная навигация",
+    "helpNavAriaLabel": "Помощь"
   },
   "auth": {
     "loginTitle": "Вход",
@@ -377,6 +395,9 @@
     "openRequestsEmptyTitle": "Сейчас открытых заявок нет",
     "openRequestsEmptyText": "Загляните позже — клиенты публикуют новые заявки на бирже постоянно.",
     "noRequestsMatchFilters": "Нет заявок, подходящих под выбранные фильтры.",
+    "foundRequestsCount": "Найдено {count} заявка | Найдено {count} заявки | Найдено {count} заявок",
+    "locationFilterLabel": "Локация",
+    "allCities": "Весь Узбекистан",
     "myRequestsHeading": "Мои заявки",
     "myRequestsLoadError": "Не удалось загрузить ваши заявки.",
     "myRequestsEmpty": "У вас пока нет заявок. Разместите работу проекта на бирже со страницы «Работы».",
@@ -406,25 +427,20 @@
     "benefitTransparentDesc": "Вы сами предлагаете цену и обсуждаете детали",
     "benefitRatingTitle": "Развивайте рейтинг",
     "benefitRatingDesc": "Отзывы клиентов остаются в вашем публичном профиле",
-    "heroContractorEyebrow": "РЕАЛЬНЫЕ ЗАКАЗЫ",
-    "heroContractorTitle": "Найдите работу для себя",
-    "heroContractorDescription": "Открытые заявки от клиентов, которым нужен ремонт и строительство.",
-    "heroContractorCta": "Смотреть заявки",
-    "heroClientEyebrow": "НУЖЕН РЕМОНТ?",
-    "heroClientTitle": "Найдите мастера для своей задачи",
-    "heroClientDescription": "Опишите работу и получите предложения от мастеров.",
-    "heroClientCta": "Найти мастера",
-    "heroProfileEyebrow": "ВАША РЕПУТАЦИЯ",
-    "heroProfileTitle": "Покажите свои услуги и рейтинг",
-    "heroProfileDescription": "Создайте публичный профиль, чтобы клиенты могли узнать о вас.",
-    "heroProfileCta": "Создать профиль",
-    "heroAriaLabel": "О сервисе Ishonchli Usta",
-    "heroTrackAriaLabel": "Слайды: свайп или стрелки влево/вправо",
-    "heroPrevSlide": "Предыдущий слайд",
-    "heroNextSlide": "Следующий слайд",
-    "heroDotsAriaLabel": "Переключение слайдов",
-    "heroSlideOf": "Слайд {n} из {total}: {eyebrow}",
-    "heroCarouselRole": "карусель"
+    "pageSubtitle": "Выбирайте подходящие задачи и отправляйте предложения на бирже.",
+    "promoAriaLabel": "Создать новый проект и найти мастера для своей задачи",
+    "promoSlide1Eyebrow": "НУЖЕН РЕМОНТ?",
+    "promoSlide1Title": "Найдите мастера для своей задачи",
+    "promoSlide1Description": "Опишите работу и получите предложения от мастеров.",
+    "promoSlide1ImageAlt": "Мастер устанавливает деревянные реечные панели в светлой комнате",
+    "promoSlide2Eyebrow": "ЕСТЬ РАБОТА?",
+    "promoSlide2Title": "Найдите клиентов для своих услуг",
+    "promoSlide2Description": "Получайте заявки и выбирайте подходящие заказы на бирже.",
+    "promoSlide2ImageAlt": "Мастер устанавливает кухонные шкафы",
+    "promoSlide3Eyebrow": "НАЧНИТЕ РЕМОНТ",
+    "promoSlide3Title": "Опишите задачу и получите предложения",
+    "promoSlide3Description": "Сравнивайте мастеров и выбирайте подходящего специалиста.",
+    "promoSlide3ImageAlt": "Мастер укладывает плитку в ванной комнате"
   },
   "marketplaceRequest": {
     "createdAt": "Создано {date}",
@@ -438,11 +454,20 @@
     "notFoundText": "Проверьте ссылку — возможно, заявка была удалена.",
     "backToMarketplace": "Вернуться на биржу",
     "quantity": "Количество: {quantity}",
+    "projectLabel": "Проект: {name}",
     "publishedAt": "Опубликовано {date} ·",
     "orderCreatedTitle": "Заказ создан",
     "creatingOrder": "Создаём заказ…",
     "retryCreateOrder": "Повторить создание заказа",
     "offerAcceptedSuccess": "Предложение принято."
+  },
+  "myRequests": {
+    "tabAll": "Все",
+    "tabActive": "Активные",
+    "tabCompleted": "Завершённые",
+    "tabDraft": "Черновики",
+    "statusTabsAriaLabel": "Фильтр заявок по статусу",
+    "noneInTab": "В этой категории пока нет заявок."
   },
   "offers": {
     "accept": "Принять",
@@ -556,7 +581,15 @@
     "editPrice": "Изменить цену",
     "deleteService": "Удалить услугу",
     "createProfileTitle": "Профиль исполнителя",
-    "createProfileHint": "Чтобы отправлять предложения по заявкам, сначала заполните короткий профиль."
+    "createProfileHint": "Чтобы отправлять предложения по заявкам, сначала заполните короткий профиль.",
+    "addPhoto": "Добавить фото",
+    "changePhoto": "Изменить фото",
+    "deletePhoto": "Удалить фото",
+    "uploadPhotoTitle": "Фото профиля",
+    "photoFormatsHint": "JPG, PNG или WebP, до 5 МБ",
+    "photoTooLarge": "Файл слишком большой. Максимальный размер — 5 МБ.",
+    "photoUploadError": "Не удалось загрузить фотографию. Попробуйте ещё раз.",
+    "photoDeleteError": "Не удалось удалить фотографию. Попробуйте ещё раз."
   },
   "portfolio": {
     "reorderAriaLabel": "Изменить порядок",

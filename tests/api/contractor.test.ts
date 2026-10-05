@@ -10,6 +10,7 @@ vi.mock('~/api/client', () => ({
 const {
   addContractorService,
   createContractor,
+  deleteContractorPhoto,
   deleteContractorService,
   deletePortfolioItem,
   getContractor,
@@ -21,11 +22,12 @@ const {
   reorderPortfolioItems,
   updateContractor,
   updateContractorService,
+  uploadContractorPhoto,
   uploadPortfolioItem,
 } = await import('~/api/contractor')
 
 const dto = {
-  id: 'c1', name: 'Азиз', description: 'Плитка', phone: '+998901234567', status: 'active', created_at: 'c1', updated_at: 'u1',
+  id: 'c1', name: 'Азиз', description: 'Плитка', phone: '+998901234567', status: 'active', profile_photo_url: null, created_at: 'c1', updated_at: 'u1',
 }
 
 const serviceDto = {
@@ -42,8 +44,14 @@ describe('contractor api methods', () => {
     const result = await getContractor()
     expect(apiFetchMock).toHaveBeenCalledWith('/api/v1/contractor')
     expect(result).toEqual({
-      id: 'c1', name: 'Азиз', description: 'Плитка', phone: '+998901234567', status: 'active', createdAt: 'c1', updatedAt: 'u1',
+      id: 'c1', name: 'Азиз', description: 'Плитка', phone: '+998901234567', status: 'active', profilePhotoUrl: null, createdAt: 'c1', updatedAt: 'u1',
     })
+  })
+
+  it('getContractor maps a real profile_photo_url through as-is (backend-generated URL, never rebuilt on frontend)', async () => {
+    apiFetchMock.mockResolvedValueOnce({ ...dto, profile_photo_url: '/uploads/contractors/c1/abc.jpg' })
+    const result = await getContractor()
+    expect(result.profilePhotoUrl).toBe('/uploads/contractors/c1/abc.jpg')
   })
 
   it('getContractorOrNull returns null on 404 (no contractor profile yet) instead of throwing', async () => {
@@ -73,6 +81,32 @@ describe('contractor api methods', () => {
       method: 'PUT',
       body: { name: 'Азиз', description: 'Плитка', phone: '+998901234567' },
     })
+  })
+})
+
+describe('contractor profile photo api methods (/api/v1/contractor/photo, см. contractor_photo_handler.go)', () => {
+  it('uploadContractorPhoto PUTs multipart/form-data with field "file" and returns the full profile', async () => {
+    const photoDto = { ...dto, profile_photo_url: '/uploads/contractors/c1/new.jpg' }
+    apiFetchMock.mockResolvedValueOnce(photoDto)
+    const file = new File([new Uint8Array(10)], 'me.jpg', { type: 'image/jpeg' })
+    const result = await uploadContractorPhoto(file)
+
+    expect(apiFetchMock).toHaveBeenCalledTimes(1)
+    const [path, options] = apiFetchMock.mock.calls[0] as [string, { method: string, body: FormData }]
+    expect(path).toBe('/api/v1/contractor/photo')
+    expect(options.method).toBe('PUT')
+    // Реальный FormData — apiFetch()/$fetch не должен получать вручную
+    // выставленный Content-Type (браузер сам ставит boundary), тот же
+    // паттерн, что и uploadPortfolioItem выше.
+    expect(options.body).toBeInstanceOf(FormData)
+    expect(options.body.get('file')).toBe(file)
+    expect(result.profilePhotoUrl).toBe('/uploads/contractors/c1/new.jpg')
+  })
+
+  it('deleteContractorPhoto DELETEs /api/v1/contractor/photo (204 No Content — apiFetch<void>, no body to map)', async () => {
+    apiFetchMock.mockResolvedValueOnce(undefined)
+    await deleteContractorPhoto()
+    expect(apiFetchMock).toHaveBeenCalledWith('/api/v1/contractor/photo', { method: 'DELETE' })
   })
 })
 
@@ -125,6 +159,7 @@ describe('Public Contractor Profile v1 — GET /api/v1/contractors/{id} (public_
     rating: 4.5,
     reviews_count: 2,
     location: { city: 'Ташкент', district: 'Юнусабад' },
+    profile_photo_url: '/uploads/contractors/c1/photo.jpg',
   }
 
   it('getPublicContractor GETs /api/v1/contractors/{id} with auth:false (public endpoint, no Authorization header)', async () => {
@@ -148,6 +183,13 @@ describe('Public Contractor Profile v1 — GET /api/v1/contractors/{id} (public_
       { workTypeId: 'wt3', workType: 'Демонтаж', priceFrom: null, priceTo: 200000 },
       { workTypeId: 'wt4', workType: 'Сборка мебели', priceFrom: null, priceTo: null },
     ])
+    expect(result.profilePhotoUrl).toBe('/uploads/contractors/c1/photo.jpg')
+  })
+
+  it('profilePhotoUrl is null when the contractor has no photo', async () => {
+    apiFetchMock.mockResolvedValueOnce({ id: 'c1', name: 'Азиз', description: '', services: [], reviews_count: 0, location: null, profile_photo_url: null })
+    const result = await getPublicContractor('c1')
+    expect(result.profilePhotoUrl).toBeNull()
   })
 
   it('nullable rating: reviews_count 0 with rating omitted (omitempty on backend) normalizes to rating: null', async () => {
@@ -166,7 +208,7 @@ describe('Public Contractor Profile v1 — GET /api/v1/contractors/{id} (public_
   it('never surfaces phone/user_id/status/timestamps — only the public allowlist', async () => {
     apiFetchMock.mockResolvedValueOnce(publicDto)
     const result = await getPublicContractor('c1')
-    expect(Object.keys(result).sort()).toEqual(['description', 'id', 'location', 'name', 'portfolio', 'rating', 'reviewsCount', 'services'].sort())
+    expect(Object.keys(result).sort()).toEqual(['description', 'id', 'location', 'name', 'portfolio', 'profilePhotoUrl', 'rating', 'reviewsCount', 'services'].sort())
     expect(result).not.toHaveProperty('phone')
     expect(result).not.toHaveProperty('userId')
     expect(result).not.toHaveProperty('status')
@@ -300,7 +342,7 @@ describe('getPublicContractors', () => {
     apiFetchMock.mockResolvedValueOnce(listDto)
     const result = await getPublicContractors()
     for (const item of result) {
-      expect(Object.keys(item).sort()).toEqual(['description', 'id', 'location', 'name', 'portfolio', 'rating', 'reviewsCount', 'services'].sort())
+      expect(Object.keys(item).sort()).toEqual(['description', 'id', 'location', 'name', 'portfolio', 'profilePhotoUrl', 'rating', 'reviewsCount', 'services'].sort())
       expect(item).not.toHaveProperty('phone')
       expect(item).not.toHaveProperty('userId')
       expect(item).not.toHaveProperty('status')

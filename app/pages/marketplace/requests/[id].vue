@@ -23,6 +23,13 @@
 // Cancel/Close самой заявки по-прежнему не здесь: тем эндпоинтам нужны
 // project_id/work_id, которых ни приватный, ни публичный ответ заявки не
 // содержит — эти действия остаются на ProjectWorkCard.vue.
+//
+// layout:'public' (Footer v1) — эта страница не использует layout:'app'
+// (свой inline back-link-header, не AppHeader, см. template ниже) — здесь
+// только Footer добавлен, никакой другой layout не даёт. См.
+// layouts/public.vue.
+definePageMeta({ layout: 'public' })
+
 const route = useRoute()
 const requestId = computed(() => (typeof route.params.id === 'string' ? route.params.id : ''))
 
@@ -216,22 +223,34 @@ async function handleWithdraw(offerId: string) {
     </div>
 
     <template v-else-if="requestDetail">
-      <h1 class="text-h1 request-page__title">
-        {{ requestDetail.workType }}
-      </h1>
-      <p class="text-secondary">
-        {{ t('marketplaceRequest.quantity', { quantity: formatQuantity(requestDetail.quantity, requestDetail.unit, t) }) }}
-      </p>
-      <p v-if="locationLabel" class="request-page__location">
-        <UiIcon name="pin" :size="14" />
-        {{ locationLabel }}
-      </p>
-      <p class="text-secondary">
-        {{ t('marketplaceRequest.publishedAt', { date: formatMarketplaceDate(requestDetail.createdAt, locale) }) }}
-        <span class="request-page__status-pill" :class="`request-page__status-pill--${requestDetail.status}`">
-          {{ marketplaceRequestStatusLabel(requestDetail.status, t) }}
-        </span>
-      </p>
+      <div class="request-page__header">
+        <!-- Мини-план проекта — только для владельца: project_id есть
+             только в приватной ListMine-форме (см. useMarketplace.ts
+             ownerRequest), публичный requestDetail его никогда не содержит
+             (сознательная privacy-граница backend). -->
+        <div v-if="ownerRequest" class="request-page__thumb">
+          <MarketplaceProjectPlanThumbnail :project-id="ownerRequest.projectId" :room-id="ownerRequest.roomId" />
+        </div>
+
+        <div class="request-page__header-info">
+          <h1 class="text-h1 request-page__title">
+            {{ requestDetail.workType }}
+          </h1>
+          <p class="text-secondary">
+            {{ t('marketplaceRequest.quantity', { quantity: formatQuantity(requestDetail.quantity, requestDetail.unit, t) }) }}
+          </p>
+          <p v-if="locationLabel" class="request-page__location">
+            <UiIcon name="pin" :size="14" />
+            {{ locationLabel }}
+          </p>
+          <p class="text-secondary">
+            {{ t('marketplaceRequest.publishedAt', { date: formatMarketplaceDate(requestDetail.createdAt, locale) }) }}
+            <span class="request-page__status-pill" :class="`request-page__status-pill--${requestDetail.status}`">
+              {{ marketplaceRequestStatusLabel(requestDetail.status, t) }}
+            </span>
+          </p>
+        </div>
+      </div>
 
       <template v-if="phase === 'owner'">
         <p v-if="acceptedMessage && !orderForThisRequest" class="request-page__success">
@@ -388,6 +407,29 @@ async function handleWithdraw(offerId: string) {
 
 @keyframes request-page-spin {
   to { transform: rotate(360deg); }
+}
+
+.request-page__header {
+  display: flex;
+  gap: var(--space-4);
+  margin-bottom: var(--space-2);
+}
+
+.request-page__header-info {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Второстепенный акцент рядом с заголовком, не рекламный баннер — заметно
+   меньше типичной ширины карточки на всех брейкпоинтах (см. задание). */
+.request-page__thumb {
+  flex-shrink: 0;
+  width: 72px;
+  height: 72px;
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-subtle);
 }
 
 .request-page__title {
@@ -550,5 +592,12 @@ async function handleWithdraw(offerId: string) {
 
 .request-page__auth-gate {
   margin-top: var(--space-6);
+}
+
+@media (min-width: 768px) {
+  .request-page__thumb {
+    width: 96px;
+    height: 96px;
+  }
 }
 </style>

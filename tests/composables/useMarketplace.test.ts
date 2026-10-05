@@ -38,6 +38,11 @@ const workCatalogApi = {
 }
 vi.mock('~/api/workCatalog', () => workCatalogApi)
 
+const projectsApi = {
+  getProject: vi.fn(),
+}
+vi.mock('~/api/projects', () => projectsApi)
+
 let useMarketplace: typeof import('~/composables/useMarketplace')['useMarketplace']
 
 beforeEach(async () => {
@@ -79,21 +84,84 @@ describe('useMarketplace — work request status cache (ProjectWorkCard)', () =>
   })
 })
 
+// Marketplace request plan thumbnail v1 — see MarketplaceProjectPlanThumbnail.vue.
+// Same dedup-by-key/loading-guard shape as checkWorkRequest above, keyed by
+// projectId (not requestId): several of the owner's own requests often
+// share one project.
+describe('useMarketplace — project preview cache (plan thumbnail)', () => {
+  const project = { id: 'p1', name: 'My house', status: 'draft', building: { schema: 1, project: {}, building: { id: 'p1', type: 'house', dimensions: { width: 10, length: 8 }, floors: [], rooms: [], walls: [], openings: [], stairs: [], roof: null, elements: [] }, calculated: {} }, createdAt: 'c1', updatedAt: 'u1', location: null }
+
+  it('loadProjectPreview fetches and caches the project by id', async () => {
+    projectsApi.getProject.mockResolvedValueOnce(project)
+    const mp = useMarketplace()
+    await mp.loadProjectPreview('p1')
+    expect(mp.projectPreviewCache.value.p1).toEqual(project)
+  })
+
+  it('does not fire a second request for the same projectId once cached', async () => {
+    projectsApi.getProject.mockResolvedValueOnce(project)
+    const mp = useMarketplace()
+    await mp.loadProjectPreview('p1')
+    await mp.loadProjectPreview('p1')
+    expect(projectsApi.getProject).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not fire a second request for the same projectId while one is already in flight', async () => {
+    let resolve: (v: unknown) => void = () => {}
+    projectsApi.getProject.mockReturnValueOnce(new Promise((r) => { resolve = r }))
+    const mp = useMarketplace()
+    const first = mp.loadProjectPreview('p1')
+    await mp.loadProjectPreview('p1') // should be a no-op while first is pending
+    expect(projectsApi.getProject).toHaveBeenCalledTimes(1)
+    resolve(project)
+    await first
+  })
+
+  it('caches null on a 404 (project deleted/not found) — an honest fallback, not an error', async () => {
+    projectsApi.getProject.mockRejectedValueOnce({ status: 404, code: 'project_not_found', message: 'not found' })
+    const mp = useMarketplace()
+    await mp.loadProjectPreview('p1')
+    expect(mp.projectPreviewCache.value.p1).toBeNull()
+  })
+
+  it('does not cache a network/500 error, so a later call can retry', async () => {
+    projectsApi.getProject.mockRejectedValueOnce({ status: 500, code: 'internal_error', message: 'boom' })
+    const mp = useMarketplace()
+    await mp.loadProjectPreview('p1')
+    expect('p1' in mp.projectPreviewCache.value).toBe(false)
+
+    projectsApi.getProject.mockResolvedValueOnce(project)
+    await mp.loadProjectPreview('p1')
+    expect(mp.projectPreviewCache.value.p1).toEqual(project)
+  })
+})
+
 describe('useMarketplace — creating a request ("Найти мастера")', () => {
   it('createRequestForWork adds to myRequests and warms the per-work cache with the real response', async () => {
     marketplaceApi.createMarketplaceRequest.mockResolvedValueOnce(privateReq)
     const mp = useMarketplace()
-    const result = await mp.createRequestForWork('p1', 'pw1')
+    const result = await mp.createRequestForWork('p1', 'pw1', 'room1')
     expect(result).toEqual(privateReq)
-    expect(mp.myRequests.value).toEqual([privateReq])
+    // myRequests needs project_id/room_id (see MarketplaceRequestListItem)
+    // for the plan thumbnail — createMarketplaceRequest's response doesn't
+    // carry either, so they're filled in from the already-known
+    // projectId/roomId arguments.
+    expect(mp.myRequests.value).toEqual([{ ...privateReq, projectId: 'p1', roomId: 'room1' }])
+  })
+
+  it('createRequestForWork records roomId: null for a project-level work item', async () => {
+    marketplaceApi.createMarketplaceRequest.mockResolvedValueOnce(privateReq)
+    const mp = useMarketplace()
+    await mp.createRequestForWork('p1', 'pw1', null)
+    expect(mp.myRequests.value[0]?.roomId).toBeNull()
   })
 
   it('guards against double-submit while a create is already in flight', async () => {
     let resolve: (v: unknown) => void = () => {}
     marketplaceApi.createMarketplaceRequest.mockReturnValueOnce(new Promise((r) => { resolve = r }))
     const mp = useMarketplace()
-    const first = mp.createRequestForWork('p1', 'w1')
-    const second = await mp.createRequestForWork('p1', 'w1')
+    const first = mp.createRequestForWork('p1', 'w1', null)
+    const second = await mp.createRequestForWork('p1', 'w1', null)
     expect(second).toBeNull()
     expect(marketplaceApi.createMarketplaceRequest).toHaveBeenCalledTimes(1)
     resolve(privateReq)
@@ -108,14 +176,14 @@ describe('useMarketplace — publishing a draft request', () => {
   it('createRequestForWork returns a draft, not an open request', async () => {
     marketplaceApi.createMarketplaceRequest.mockResolvedValueOnce(draftReq)
     const mp = useMarketplace()
-    const result = await mp.createRequestForWork('p1', 'pw1')
+    const result = await mp.createRequestForWork('p1', 'pw1', null)
     expect(result?.status).toBe('draft')
   })
 
   it('publishRequest updates myRequests/workRequestCache to the now-open request', async () => {
     marketplaceApi.createMarketplaceRequest.mockResolvedValueOnce(draftReq)
     const mp = useMarketplace()
-    await mp.createRequestForWork('p1', 'pw1')
+    await mp.createRequestForWork('p1', 'pw1', null)
 
     marketplaceApi.publishMarketplaceRequest.mockResolvedValueOnce({ ...draftReq, status: 'open' })
     const result = await mp.publishRequest('p1', 'pw1')
@@ -539,7 +607,7 @@ describe('useMarketplace — /marketplace request filters', () => {
     mp.setRequestFilter({ categoryId: 'cat1', workTypeId: 'wt1', quantityMin: 5 })
     expect(mp.requestFilters.value).toMatchObject({ categoryId: 'cat1', workTypeId: 'wt1', quantityMin: 5 })
     mp.resetRequestFilters()
-    expect(mp.requestFilters.value).toEqual({ categoryId: null, workTypeId: null, quantityMin: null, quantityMax: null, sort: 'newest' })
+    expect(mp.requestFilters.value).toEqual({ categoryId: null, workTypeId: null, quantityMin: null, quantityMax: null, sort: 'newest', city: null })
   })
 
   it('filteredOpenRequests narrows openRequests using the loaded work-type -> category map', async () => {

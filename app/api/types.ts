@@ -232,6 +232,17 @@ export interface ProjectWork {
 // проект. Ни в одну из форм НЕЛЬЗЯ добавлять от себя имя клиента/проекта/
 // комнаты — backend их сознательно не отдаёт.
 //
+// Marketplace request plan thumbnail v1: ListMine (GET /marketplace/requests,
+// "Мои заявки") теперь отдаёт СВОЮ отдельную форму —
+// MarketplaceRequestListItemDto/marketplaceRequestListItemResponse на
+// backend — с ОДНИМ дополнительным полем, project_id, поверх всех полей
+// MarketplaceRequestDto. Это единственный способ дойти до Building JSON
+// заявки (project_id -> GET /projects/{id} -> ProjectsProjectPreview) для
+// её владельца — см. useMarketplace.ts loadProjectPreview(). НЕ трогает
+// Create/Get/Publish/Cancel/Close (те по-прежнему используют
+// MarketplaceRequestDto без project_id) и НЕ трогает ни одну публичную
+// форму (project_id туда никогда не добавляется — см. абзац выше).
+//
 // location (Project Location в Marketplace v1) — есть ТОЛЬКО у двух
 // публичных форм (Open/Public), см. openMarketplaceRequestResponse/
 // publicMarketplaceRequestResponse: coarse city/district, тот же общий
@@ -254,6 +265,38 @@ export interface MarketplaceRequestDto {
 export interface MarketplaceRequest {
   id: string
   projectWorkId: string
+  quantity: number
+  unit: WorkUnit
+  status: MarketplaceRequestStatus
+  createdAt: string
+  updatedAt: string
+}
+
+// ListMine's own shape (GET /api/v1/marketplace/requests, "Мои заявки") —
+// MarketplaceRequestDto plus project_id/room_id (см. комментарий выше). Не
+// используется ни Create/Get/Publish/Cancel/Close, ни одной публичной
+// формой — только listMyMarketplaceRequests() в api/marketplace.ts.
+// room_id — null для project-level ProjectWork (см. ProjectWork.roomId) —
+// именно это поле отличает конкретную комнату одной заявки от другой: без
+// него несколько заявок одного и того же проекта показывали бы ОДИНАКОВУЮ
+// миниатюру всего здания (см. финальный отчёт, "plan thumbnail v2 — room_id").
+export interface MarketplaceRequestListItemDto {
+  id: string
+  project_work_id: string
+  project_id: string
+  room_id: string | null
+  quantity: number
+  unit: WorkUnit
+  status: MarketplaceRequestStatus
+  created_at: string
+  updated_at: string
+}
+
+export interface MarketplaceRequestListItem {
+  id: string
+  projectWorkId: string
+  projectId: string
+  roomId: string | null
   quantity: number
   unit: WorkUnit
   status: MarketplaceRequestStatus
@@ -349,12 +392,19 @@ export interface CreateContractorPayload {
   phone: string
 }
 
+// profile_photo_url (Contractor Profile Photo v1, см. contractor_photo_handler.go
+// PUT/DELETE /api/v1/contractor/photo) — публичный URL (тот же /uploads/
+// паттерн, что и PortfolioItem.image_url), null пока фото не загружено.
+// Обычный PUT /api/v1/contractor (updateContractor) никогда не трогает это
+// поле — отдельный backend-метод репозитория на фото, поэтому здесь оно
+// просто ещё одно поле снимка профиля, не отдельный кусок state.
 export interface ContractorDto {
   id: string
   name: string
   description: string
   phone: string
   status: string
+  profile_photo_url: string | null
   created_at: string
   updated_at: string
 }
@@ -365,6 +415,7 @@ export interface Contractor {
   description: string
   phone: string
   status: string
+  profilePhotoUrl: string | null
   createdAt: string
   updatedAt: string
 }
@@ -504,6 +555,9 @@ export interface PublicContractorProfileDto {
   // НЕ то же самое, что "пустое портфолио" (пустой массив) на detail-запросе
   // одного мастера (GET /contractors/{id}). Не схлопывать эти два случая.
   portfolio: PublicPortfolioItemDto[] | null
+  // profile_photo_url (Contractor Profile Photo v1) — тот же публичный URL,
+  // что и в приватном ContractorDto выше, null пока фото не загружено.
+  profile_photo_url: string | null
 }
 
 export interface PublicContractorProfile {
@@ -515,6 +569,7 @@ export interface PublicContractorProfile {
   reviewsCount: number
   location: Location | null
   portfolio: PublicPortfolioItem[] | null
+  profilePhotoUrl: string | null
 }
 
 // ---- Order (/api/v1/orders, /api/v1/marketplace-offers/{id}/order) ----

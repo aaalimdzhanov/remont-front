@@ -8,16 +8,23 @@ describe('readStoredUserMode — safe outside a browser client context', () => {
 })
 
 describe('getUserModeNavItems — 6. client / 7. contractor navigation (only real existing routes)', () => {
-  it('client mode: Проекты + Биржа + Заказы + Отзывы, all real routes', () => {
+  it('client mode: Проекты + Заявки + Заказы + Отзывы, all real routes', () => {
     const items = getUserModeNavItems('client')
-    expect(items.map(i => i.to)).toEqual(['/projects', '/marketplace', '/orders', '/reviews'])
-    expect(items.map(i => i.labelKey)).toEqual(['navigation.projects', 'navigation.marketplace', 'navigation.orders', 'navigation.reviews'])
+    // Navigation split v1: "Заявки" ведёт на /my-requests (личный список
+    // СВОИХ заявок), не на публичный /marketplace (см. userMode.ts, doc
+    // comment) — раньше вело на /marketplace.
+    expect(items.map(i => i.to)).toEqual(['/projects', '/my-requests', '/orders', '/reviews'])
+    expect(items.map(i => i.labelKey)).toEqual(['navigation.projects', 'navigation.requests', 'navigation.orders', 'navigation.reviews'])
   })
 
-  it('contractor mode: Заявки/Предложения/Заказы/Услуги/Отзывы, matching real marketplace/contractor/orders/reviews routes', () => {
+  it('contractor mode: Предложения/Заказы/Услуги/Отзывы, matching real marketplace/orders/reviews routes', () => {
     const items = getUserModeNavItems('contractor')
-    expect(items.map(i => i.to)).toEqual(['/marketplace', '/marketplace/offers', '/orders', '/marketplace/contractor', '/reviews'])
-    expect(items.map(i => i.labelKey)).toEqual(['navigation.requests', 'navigation.offers', 'navigation.orders', 'navigation.services', 'navigation.reviews'])
+    // Navigation split v2: "Заявки" (-> /marketplace) убран из nav мастера —
+    // дублировал назначение логотипа (тот уже ведёт на /marketplace для
+    // любого пользователя). /marketplace как route не удалён, просто
+    // больше не дублируется отдельным nav item.
+    expect(items.map(i => i.to)).toEqual(['/marketplace/offers', '/orders', '/marketplace/contractor', '/reviews'])
+    expect(items.map(i => i.labelKey)).toEqual(['navigation.offers', 'navigation.orders', 'navigation.services', 'navigation.reviews'])
   })
 
   it('never points at invented /client/* or /contractor/* routes (см. задание, секция ROUTING)', () => {

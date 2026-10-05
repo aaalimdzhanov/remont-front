@@ -1,15 +1,18 @@
 <script setup lang="ts">
-// Создание проекта — единственный экран, без layout='app' (тот рендерит
-// AppHeader с аватаром/меню, что не соответствует референсу "← ishonchliusta").
-// Свой header здесь — тот же принцип, что и у pages/projects/[id].vue
-// (EditorHeader): страница сама владеет всем своим экраном.
+// Создание проекта. layout:'app' — тот же общий AppHeader.vue, что и на
+// /projects/marketplace/orders/reviews (см. правку "Header consistency"):
+// раньше здесь был собственный header (back-button + логотип, без
+// AppProfileMenu/навигации), визуально отличавшийся от остального
+// authenticated-приложения. "← Проекты" как отдельная кнопка больше не
+// нужна — тот же переход уже даёт активная вкладка "Проекты" в AppModeNav
+// (route.path.startsWith('/projects'), см. utils/userMode.ts).
 //
 // Тип объекта (BuildingType) больше не спрашивается отдельным полем — это
 // НЕ new API field и не смена Building schema (createProject уже принимал
 // type раньше), просто UI больше не даёт его выбирать: единственное поле
 // экрана — название (см. задание, секция NO MULTI-STEP FLOW). Молча
 // используется 'house' по умолчанию.
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ middleware: 'auth', layout: 'app' })
 
 const { t } = useI18n()
 useHead({ title: computed(() => t('projects.newTitle')) })
@@ -46,23 +49,10 @@ async function handleCreate() {
   const id = await createProject({ name: trimmed, type: 'house', location })
   if (id) await navigateTo(`/projects/${id}`)
 }
-
-function handleBack() {
-  navigateTo('/projects')
-}
 </script>
 
 <template>
   <div class="new-project">
-    <header class="new-project__header">
-      <button type="button" class="new-project__back" :aria-label="t('projects.backToProjectsAriaLabel')" @click="handleBack">
-        <UiIcon name="chevron-left" :size="20" />
-      </button>
-      <NuxtLink to="/marketplace" class="new-project__brand">
-        <UiBrandLogo variant="header" />
-      </NuxtLink>
-    </header>
-
     <main class="new-project__content">
       <div class="new-project__intro">
         <h1 class="text-h1">
@@ -122,49 +112,13 @@ function handleBack() {
 
 <style scoped>
 .new-project {
-  min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  background: var(--color-bg);
-}
-
-.new-project__header {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-height: 56px;
-  padding: var(--space-2) var(--space-4);
-  padding-top: max(var(--space-2), env(safe-area-inset-top));
-  background: var(--color-surface);
-  border-bottom: 1px solid var(--color-border);
-}
-
-.new-project__back {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  margin-left: calc(-1 * var(--space-2));
-  border: none;
-  background: none;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  border-radius: var(--radius-input);
-}
-
-.new-project__back:hover {
-  color: var(--color-text);
-  background: var(--color-surface-subtle);
-}
-
-.new-project__brand {
-  display: flex;
-  align-items: center;
-  text-decoration: none;
-  color: inherit;
+  /* layout/app.vue: .app-shell__content — flex:1 внутри flex-column
+     .app-shell (min-height:100vh) — резолвит реальную (definite) height, от
+     которой здесь можно взять 100%, чтобы .new-project__spacer ниже по
+     прежнему прижимал submit-кнопку к низу экрана на коротком контенте. */
+  min-height: 100%;
 }
 
 .new-project__content {
@@ -174,7 +128,7 @@ function handleBack() {
   width: 100%;
   max-width: 560px;
   margin: 0 auto;
-  padding: var(--space-8) var(--space-4) max(var(--space-6), env(safe-area-inset-bottom));
+  padding: var(--space-5) var(--space-4) max(var(--space-6), env(safe-area-inset-bottom));
 }
 
 .new-project__intro {
@@ -234,14 +188,8 @@ function handleBack() {
 }
 
 @media (min-width: 768px) {
-  .new-project__header {
-    min-height: 64px;
-    padding: 0 var(--space-6);
-    padding-top: env(safe-area-inset-top);
-  }
-
   .new-project__content {
-    padding-top: var(--space-16);
+    padding-top: var(--space-8);
   }
 
   .new-project__spacer {

@@ -4,7 +4,12 @@
 // реально встречалось в открытом списке за эту сессию (requestTitleCache,
 // см. useMarketplace.ts) — MarketplaceOffer сам по себе work_type не
 // содержит, а get-by-id для заявки у backend нет вообще.
-definePageMeta({ middleware: 'auth' })
+// layout:'app' — тот же общий AppHeader.vue, что и на /orders и /reviews (см.
+// правку "Header consistency"): раньше страница рисовала собственный
+// back-link "← Биржа заявок"+AppProfileMenu+AppModeNav вместо общего header —
+// единственная точка возврата в публичную биржу теперь логотип (AppHeader),
+// не текстовая стрелка.
+definePageMeta({ middleware: 'auth', layout: 'app' })
 
 const { t } = useI18n()
 useHead({ title: computed(() => t('offers.myOffers')) })
@@ -35,16 +40,6 @@ async function handleWithdraw(offerId: string) {
 
 <template>
   <main class="my-offers-page">
-    <div class="my-offers-page__header">
-      <NuxtLink to="/marketplace" class="my-offers-page__back">
-        <UiIcon name="chevron-left" :size="18" />
-        {{ t('navigation.backToMarketplace') }}
-      </NuxtLink>
-      <AppProfileMenu />
-    </div>
-
-    <AppModeNav class="my-offers-page__mode-nav" />
-
     <h1 class="text-h1 my-offers-page__title">
       {{ t('offers.myOffers') }}
     </h1>
@@ -89,27 +84,6 @@ async function handleWithdraw(offerId: string) {
   max-width: 640px;
   margin: 0 auto;
   padding: var(--space-5) var(--space-4) var(--space-16);
-}
-
-.my-offers-page__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  margin-bottom: var(--space-3);
-}
-
-.my-offers-page__back {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  font-size: var(--font-small-size);
-  color: var(--color-text-secondary);
-  text-decoration: none;
-}
-
-.my-offers-page__mode-nav {
-  margin-bottom: var(--space-5);
 }
 
 .my-offers-page__title {

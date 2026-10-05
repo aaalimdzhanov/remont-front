@@ -138,14 +138,25 @@ export interface RequestFilters {
   quantityMin: number | null
   quantityMax: number | null
   sort: RequestSort
+  // city — /marketplace UI/UX v3 ("Биржа" restructure): та же client-side
+  // фильтрация, что и остальные поля здесь (эндпоинт open-заявок
+  // query-параметров не принимает), по location.city, который
+  // OpenMarketplaceRequest уже содержит (см. api/types.ts) — ничего нового
+  // не запрашивается. null — "весь Узбекистан" (без фильтра), не
+  // отдельный "любой город"-toggle. Канонические значения city — те же,
+  // что в utils/location.ts LOCATION_CITIES (RU-строки, не зависящие от
+  // текущего языка интерфейса — см. комментарий там).
+  city: string | null
 }
 
 export function defaultRequestFilters(): RequestFilters {
-  return { categoryId: null, workTypeId: null, quantityMin: null, quantityMax: null, sort: 'newest' }
+  return { categoryId: null, workTypeId: null, quantityMin: null, quantityMax: null, sort: 'newest', city: null }
 }
 
 // Сортировка не считается "фильтром" для бейджа (см. задание, секция
-// MOBILE FILTER UX: "Фильтры 2") — считаются только сужающие условия.
+// MOBILE FILTER UX: "Фильтры 2") — считаются только сужающие условия. city
+// тоже не считается сюда — на странице это отдельный, всегда видимый
+// селектор ("Локация"), а не часть скрытого набора за кнопкой "Фильтры".
 export function countActiveRequestFilters(filters: RequestFilters): number {
   let count = 0
   if (filters.categoryId) count += 1
@@ -169,6 +180,7 @@ export function filterOpenRequests(
     if (filters.workTypeId && r.workTypeId !== filters.workTypeId) return false
     if (filters.quantityMin !== null && r.quantity < filters.quantityMin) return false
     if (filters.quantityMax !== null && r.quantity > filters.quantityMax) return false
+    if (filters.city && r.location?.city !== filters.city) return false
     return true
   })
   return [...filtered].sort((a, b) => {
