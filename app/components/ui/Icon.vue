@@ -9,7 +9,7 @@ type IconName =
   | 'search' | 'edit' | 'user' | 'sort'
   | 'layers' | 'ceiling' | 'bolt' | 'faucet' | 'hammer' | 'roller' | 'grid' | 'refresh'
   | 'folder' | 'list' | 'fit' | 'store' | 'coins' | 'home' | 'star' | 'pin'
-  | 'camera' | 'grip'
+  | 'camera' | 'grip' | 'globe'
 
 // filled — только для 'star' (рейтинг, см. RatingStars.vue): все остальные
 // иконки в проекте всегда stroke-only (fill:none), это не меняется —
@@ -60,6 +60,7 @@ const paths: Record<IconName, string> = {
   pin: 'M12 21s7-6.5 7-11.5A7 7 0 1 0 5 9.5C5 14.5 12 21 12 21z M12 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z',
   camera: 'M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z M12 18a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
   grip: 'M9 6h.01M9 12h.01M9 18h.01M15 6h.01M15 12h.01M15 18h.01',
+  globe: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z M3 12h18 M12 3c2.5 2.7 4 5.6 4 9s-1.5 6.3-4 9c-2.5-2.7-4-5.6-4-9s1.5-6.3 4-9z',
 }
 </script>
 

@@ -15,15 +15,15 @@
 // страницы УБРАНЫ (не удалены как функциональность — см. ниже, "что не
 // изменилось").
 //
-// Промо-баннер (MarketplacePromoBanner.vue) — между заголовком/описанием и
-// табами. Promo Banner v1 (см. задание "Переработать верхний промо-блок"):
-// прежний carousel (MarketplaceHeroSlider.vue, 3 слайда, dots, стрелки,
-// scroll-snap) полностью удалён вместе со своим data-модулем
-// (utils/marketplaceHeroSlider.ts) — заменён одним статичным кликабельным
-// баннером (текст + фотография), см. doc comment в самом PromoBanner.vue.
+// Builder Hero (MarketplaceBuilderHero.vue) — между заголовком/описанием и
+// табами. Заменил промо-carousel (PromoBanner.vue + utils/
+// marketplacePromoSlides.ts, оба удалены этой задачей — "ЗАМЕНИТЬ
+// PROMOTIONAL SLIDER НА BUILDER HERO BLOCK"): вместо рекламы "найдите
+// мастера" теперь один статичный блок, продающий сам Builder (2D-план с
+// реальным рендером через Geometry Engine, см. doc comment в самом
+// BuilderHero.vue) — никакого autoplay/dots/carousel state здесь больше нет.
 // Компонент использовался только на этой странице (проверено перед
-// удалением), поэтому переписан "на месте" новым файлом без риска для
-// других страниц.
+// удалением), поэтому заменён "на месте" без риска для других страниц.
 //
 // Что НЕ изменилось: сами composables/API/маршруты/бизнес-логика заявок,
 // офферов, фильтров (только один новый client-side фильтр — city, см.
@@ -145,9 +145,9 @@ onMounted(async () => {
       </NuxtLink>
     </div>
 
-    <!-- Промо-баннер — см. doc comment в script: Promo Banner v1, статичный
-         кликабельный блок вместо прежнего carousel. -->
-    <MarketplacePromoBanner class="marketplace-page__promo-banner" />
+    <!-- Builder Hero — см. doc comment в script: статичный блок, продающий
+         Builder, вместо прежнего promo-carousel. -->
+    <MarketplaceBuilderHero class="marketplace-page__promo-banner" />
 
     <!-- Tabs — см. задание, секция 1/10: "визуально понятные переключатели",
          "НЕ две огромные кнопки", "именно tabs/navigation". -->
@@ -365,7 +365,7 @@ onMounted(async () => {
   min-height: 44px;
 }
 
-/* Позиционирует PromoBanner.vue относительно остального контента страницы,
+/* Позиционирует BuilderHero.vue относительно остального контента страницы,
    не переопределяет его собственные внутренние стили. */
 .marketplace-page__promo-banner {
   margin-top: var(--space-1);

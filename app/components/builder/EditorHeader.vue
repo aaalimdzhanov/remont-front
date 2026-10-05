@@ -16,6 +16,12 @@
 // Delete проекта сюда не относится — это project management, доступное через
 // Dashboard/project card menu. Никакого прямого fetch() здесь — только
 // вызовы useBuilding()/useProjectPersistence().
+//
+// AppLangSwitch (см. задание "Вынести переключатель языка RU/UZ из profile
+// dropdown в общий глобальный Header") — mobile уже получает его бесплатно
+// через AppHeader выше; desktop-ряд "отдельный Header" (своя разметка, не
+// AppHeader) — переключатель добавлен явно, рядом с AppProfileMenu, тем же
+// паттерном.
 const { document: buildingDocument, renameProject } = useBuilding()
 const {
   projectId,
@@ -166,6 +172,7 @@ function confirmLogout(): boolean {
         {{ saveLabel }}
       </button>
 
+      <AppLangSwitch />
       <AppProfileMenu :on-before-logout="confirmLogout" />
     </div>
   </header>

@@ -26,6 +26,13 @@
 // Builder/Work Builder header'ов (EditorHeader.vue/WorkBuilderHeader.vue),
 // поэтому mode-nav показывается everywhere этот header есть, без добавления
 // второго отдельного header'а.
+//
+// AppLangSwitch (см. задание "Вынести переключатель языка RU/UZ из profile
+// dropdown в общий глобальный Header") — рядом с AppProfileMenu, ДО него, в
+// том же .app-header__actions ряду: виден и гостю (ProfileMenu для гостя
+// показывает только Войти/Регистрация, язык должен работать независимо от
+// auth), высота ряда не меняется (.app-header__top min-height:40px уже
+// рассчитан на контент такого масштаба).
 </script>
 
 <template>
@@ -36,6 +43,7 @@
       </NuxtLink>
 
       <div class="app-header__actions">
+        <AppLangSwitch />
         <AppProfileMenu />
       </div>
     </div>
@@ -59,6 +67,15 @@
 .app-header__top {
   min-height: 40px;
   display: flex;
+  /* flex-wrap — добавлен вместе с AppLangSwitch (см. задание "АККУРАТНО
+     ДОБАВИТЬ/УНИФИЦИРОВАТЬ RU/UZ В MOBILE HEADER"): для guest на узком
+     mobile logo + switch + "Войти"/"Регистрация" (см. ProfileMenu.vue) в
+     один ряд не помещаются — а горизонтальный scroll запрещён явно. Только
+     перенос actions на вторую строку, ничего не обрезается/не скрывается;
+     authenticated-пользователя это не затрагивает — там контента меньше
+     ширины контейнера, перенос просто никогда не срабатывает. */
+  flex-wrap: wrap;
+  row-gap: var(--space-2);
   align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
@@ -74,6 +91,7 @@
 
 .app-header__actions {
   flex-shrink: 0;
+  margin-left: auto;
   display: flex;
   align-items: center;
   gap: var(--space-2);

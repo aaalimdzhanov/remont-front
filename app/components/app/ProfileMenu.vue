@@ -12,6 +12,12 @@
 // EditorHeader.vue), а Dashboard (AppHeader.vue) такой проверки не имеет —
 // поэтому по умолчанию проп всегда разрешает выход, ничего не меняя для
 // существующего использования на Dashboard.
+//
+// RU/UZ здесь больше нет (см. задание "Вынести переключатель языка RU/UZ
+// из profile dropdown в общий глобальный Header") — язык не является
+// настройкой профиля и теперь живёт в AppLangSwitch.vue, рядом с этим же
+// компонентом в AppHeader.vue, видим и гостю. Этот дропдаун — только
+// user-specific действия (режим, мои работы, выйти).
 import type { UserMode } from '~/utils/userMode'
 
 const props = withDefaults(defineProps<{ onBeforeLogout?: () => boolean | Promise<boolean> }>(), {
@@ -21,7 +27,7 @@ const props = withDefaults(defineProps<{ onBeforeLogout?: () => boolean | Promis
 const { user, isAuthenticated, logout } = useAuth()
 const { isClient, isContractor, setMode } = useUserMode()
 const route = useRoute()
-const { t, locale, setLocale } = useI18n()
+const { t } = useI18n()
 
 // Гость (см. задание "Public Marketplace v1", секция 18: "не показывать
 // private user menu ... как будто пользователь авторизован") — этот
@@ -155,29 +161,6 @@ async function handleLogout() {
         </button>
       </div>
 
-      <div class="profile-menu__section profile-menu__section--lang" role="group" :aria-label="t('navigation.language')">
-        <button
-          type="button"
-          class="profile-menu__lang-option"
-          :class="{ 'profile-menu__lang-option--active': locale === 'ru' }"
-          role="menuitemradio"
-          :aria-checked="locale === 'ru'"
-          @click="setLocale('ru')"
-        >
-          RU
-        </button>
-        <button
-          type="button"
-          class="profile-menu__lang-option"
-          :class="{ 'profile-menu__lang-option--active': locale === 'uz' }"
-          role="menuitemradio"
-          :aria-checked="locale === 'uz'"
-          @click="setLocale('uz')"
-        >
-          UZ
-        </button>
-      </div>
-
       <button type="button" class="profile-menu__logout" role="menuitem" @click="handleLogout">
         <UiIcon name="logout" :size="16" />
         {{ t('navigation.logout') }}
@@ -265,34 +248,6 @@ async function handleLogout() {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-}
-
-.profile-menu__section--lang {
-  flex-direction: row;
-  gap: var(--space-2);
-}
-
-.profile-menu__lang-option {
-  flex: 1;
-  min-height: 36px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-input);
-  background: none;
-  font-family: var(--font-family);
-  font-size: var(--font-small-size);
-  font-weight: 500;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-}
-
-.profile-menu__lang-option:hover {
-  background: var(--color-surface-subtle);
-}
-
-.profile-menu__lang-option--active {
-  border-color: var(--color-primary);
-  background: var(--color-primary-subtle);
-  color: var(--color-primary);
 }
 
 .profile-menu__section-label {

@@ -42,6 +42,8 @@ const { t } = useI18n()
         <UiIcon name="refresh" :size="14" />
         {{ isRecalculating ? t('builder.workBuilder.recalculating') : t('builder.workBuilder.recalculate') }}
       </button>
+
+      <AppLangSwitch class="work-header__lang" />
     </div>
 
     <div class="work-header__tabs">
@@ -101,6 +103,13 @@ const { t } = useI18n()
   flex-shrink: 0;
 }
 
+/* На mobile переключатель уже есть в AppHeader (см. .work-header__mobile-global
+   выше) — здесь, во втором, всегда видимом ряду, он дублировался бы. Строго
+   обратно .work-header__mobile-global по видимости (скрыт <768px, виден ≥768px). */
+.work-header__lang {
+  display: none;
+}
+
 /* Mobile: табы уходят в ProjectBottomNav — не показываем их второй раз здесь. */
 .work-header__tabs {
   display: none;
@@ -109,6 +118,10 @@ const { t } = useI18n()
 @media (min-width: 768px) {
   .work-header__mobile-global {
     display: none;
+  }
+
+  .work-header__lang {
+    display: flex;
   }
 
   .work-header__top {

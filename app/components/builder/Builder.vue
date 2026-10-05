@@ -25,6 +25,18 @@ function activateSelectTool() {
   deactivateRoomDraw()
 }
 
+// 2D = редактирование, 3D = просмотр (см. задание "ИСПРАВИТЬ UX BUILDER В
+// РЕЖИМЕ 3D"). Переключение в любую сторону сбрасывает активный
+// инструмент в Select — заходя в 3D, нельзя "унести" туда открытый
+// pending opening/room draw (иначе Plan2D, которого в 3D даже нет в DOM,
+// никогда не получит клик, которого ждёт подсказка "Нарисуйте
+// прямоугольник..." — ровно баг из задания); выходя обратно в 2D,
+// пользователь намеренно не получает старый инструмент автоматически
+// (задание, секция 4: "более предсказуемый UX") — сам решает, что делать
+// дальше. Room/Door/Window-кнопки в 3D скрыты в template ниже (v-if), сами
+// addRoom/addOpening не менялись.
+watch(viewMode, activateSelectTool)
+
 // Клавиатурные шорткаты (V/R/D/O/M/Delete/Escape) — только в 2D-режиме и
 // только пока фокус не в поле ввода (иначе, например, буква "р" при наборе
 // "Гостиная" переключала бы инструмент вместо ввода текста). W/T/Ctrl+Z не
@@ -124,8 +136,14 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
           <UiIcon name="select" :size="18" />
           {{ t('builder.select') }}
         </button>
-        <BuilderRoomTool />
-        <BuilderOpeningTool />
+        <!-- 3D = просмотр, не редактирование (см. задание "ИСПРАВИТЬ UX
+             BUILDER В РЕЖИМЕ 3D") — Помещение/Дверь/Окно скрыты, а не
+             disabled: в 3D создавать геометрию нельзя в принципе (Plan2D,
+             на клик по которому они рассчитаны, здесь даже не в DOM). -->
+        <template v-if="viewMode === '2d'">
+          <BuilderRoomTool />
+          <BuilderOpeningTool />
+        </template>
       </aside>
 
       <div class="builder__canvas-area">

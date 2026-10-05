@@ -375,6 +375,42 @@ export function useProjectPersistence() {
     }
   }
 
+  // Создаёт проект из уже нарисованного anonymous-draft (страница
+  // /projects/draft, см. задание "РАЗРЕШИТЬ НЕАВТОРИЗОВАННОМУ ПОЛЬЗОВАТЕЛЮ
+  // ИСПОЛЬЗОВАТЬ BUILDER"). В отличие от createProject() выше (всегда
+  // стартует с пустого Building — форма /projects/new), здесь документ уже
+  // полностью нарисован гостем ДО авторизации: отправляем его как есть, тем
+  // же POST /api/v1/projects, никакого нового backend-эндпоинта. location не
+  // передаётся — anonymous Builder не имеет location UI (вне скоупа задачи).
+  async function createProjectFromDraft(document: BuildingDocument): Promise<string | null> {
+    if (isCreating.value) return null // защита от двойного submit/двойного клика
+
+    isCreating.value = true
+    error.value = null
+    try {
+      const created = await apiCreateProject({
+        name: document.project.name,
+        status: document.project.status,
+        building: document,
+        location: null,
+      })
+
+      invalidateCurrentSession() // на случай, если предыдущая editor-сессия ещё не была явно закрыта
+      loadDocument(created.building)
+      projectId.value = created.id
+      lastSavedAt.value = created.updatedAt
+      savedRevision.value = documentRevision.value
+      location.value = created.location ?? null
+      savedLocationJson.value = JSON.stringify(location.value)
+      return created.id
+    } catch (err) {
+      setError(err)
+      return null
+    } finally {
+      isCreating.value = false
+    }
+  }
+
   // Удаляет проект {id}. Если это текущий открытый проект — отменяем pending
   // autosave/save ДО запроса DELETE (invalidateCurrentSession), чтобы после
   // успешного удаления никакой устаревший save не смог выполнить PUT на уже
@@ -424,6 +460,7 @@ export function useProjectPersistence() {
     refreshProjects,
     loadProject,
     createProject,
+    createProjectFromDraft,
     save,
     removeProject,
     cleanup,

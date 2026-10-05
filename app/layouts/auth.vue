@@ -12,6 +12,12 @@
 // способ навигации, тот же. Один layout — правка автоматически действует на
 // все страницы, использующие layout:'auth' (/auth/login, /auth/register и
 // любые будущие auth-страницы), без правок в каждой странице по отдельности.
+//
+// AppLangSwitch (см. задание "Вынести переключатель языка RU/UZ из profile
+// dropdown в общий глобальный Header") — этот layout не рендерит AppHeader
+// вообще (свой собственный минимальный header), поэтому переключатель
+// добавлен прямо сюда же, рядом с логотипом. Ничего в самих
+// login.vue/register.vue (SMS flow, валидация, redirect) не трогалось.
 </script>
 
 <template>
@@ -20,6 +26,7 @@
       <NuxtLink to="/marketplace" class="auth-layout__logo-link">
         <UiBrandLogo />
       </NuxtLink>
+      <AppLangSwitch />
     </header>
 
     <main class="auth-layout__content">
@@ -42,6 +49,10 @@
   width: 100%;
   max-width: 400px;
   padding-bottom: var(--space-10);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
 }
 
 /* Просто кликабельная обёртка — сама не добавляет ни отступов, ни изменений

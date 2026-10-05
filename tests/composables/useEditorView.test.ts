@@ -38,3 +38,32 @@ describe('useEditorView — dimensions toggle (used by both the "Размеры"
     expect(buttonSide.showDimensions.value).toBe(true) // and vice versa
   })
 })
+
+// 3D = view mode (см. задание "ИСПРАВИТЬ UX BUILDER В РЕЖИМЕ 3D"): Builder.vue
+// вызывает deactivateRoomDraw() (как часть activateSelectTool()) на КАЖДОЕ
+// переключение viewMode — что в 2D→3D, что обратно 3D→2D, см.
+// `watch(viewMode, activateSelectTool)`. Здесь — не сам watch (это
+// template-уровень Builder.vue, недоступный без mount), а гарантия,
+// которую этот watch использует: что deactivateRoomDraw() реально
+// сбрасывает roomDrawActive, откуда бы его ни вызвали.
+describe('useEditorView — roomDrawActive (room draw mode, reset when leaving 2D edit tools)', () => {
+  it('starts inactive', () => {
+    const { roomDrawActive } = useEditorView()
+    expect(roomDrawActive.value).toBe(false)
+  })
+
+  it('activateRoomDraw() turns it on, deactivateRoomDraw() turns it back off', () => {
+    const { roomDrawActive, activateRoomDraw, deactivateRoomDraw } = useEditorView()
+    activateRoomDraw()
+    expect(roomDrawActive.value).toBe(true)
+    deactivateRoomDraw()
+    expect(roomDrawActive.value).toBe(false)
+  })
+
+  it('deactivateRoomDraw() is a safe no-op when room draw was never active (e.g. already in Select)', () => {
+    const { roomDrawActive, deactivateRoomDraw } = useEditorView()
+    expect(roomDrawActive.value).toBe(false)
+    deactivateRoomDraw()
+    expect(roomDrawActive.value).toBe(false)
+  })
+})
