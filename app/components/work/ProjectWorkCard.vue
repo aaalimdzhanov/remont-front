@@ -11,7 +11,12 @@ const props = defineProps<{
   quantity: number
   unit: WorkUnit
   quantityMode: QuantityMode
-  status: WorkStatus
+  // undefined — Guest Work Builder (см. задание, секция STATUS ДЛЯ GUEST):
+  // работа без backend ProjectWork не имеет статуса вовсе, не "выдуманный"
+  // planned. Card в этом случае скрывает статус-пилюлю и весь
+  // статус/marketplace-блок меню (см. isGuestCard ниже) — authenticated
+  // вызывающая сторона всегда передаёт status, поведение там не меняется.
+  status?: WorkStatus
   statusUpdating: boolean
   deleting: boolean
   // undefined — ещё не проверяли (см. useMarketplace.checkWorkRequest,
@@ -81,6 +86,10 @@ function handleDeleteConfirm() {
 
 const sourceHint = computed(() => t(props.quantityMode === 'automatic' ? 'builder.workBuilder.sourceAuto' : 'builder.workBuilder.sourceManual'))
 
+// Guest-работа (нет status вообще) — скрываем весь status/marketplace-блок
+// меню, оставляя только "Удалить" (см. doc comment у status prop выше).
+const isGuestCard = computed(() => props.status === undefined)
+
 // "Заявка размещена"/"Найти мастера"/"Заказ" — см. интеграцию Marketplace в
 // pages/projects/[id]/works.vue. Статус заявки проверяется лениво (только
 // при первом открытии меню конкретной карточки, см. emit('menu-opened')),
@@ -134,7 +143,7 @@ function handleViewOrder() {
       </p>
     </div>
 
-    <span class="work-card__status" :class="`work-card__status--${status}`">
+    <span v-if="status !== undefined" class="work-card__status" :class="`work-card__status--${status}`">
       {{ statusUpdating ? '…' : statusLabel(status, t) }}
     </span>
 
@@ -144,71 +153,73 @@ function handleViewOrder() {
       </button>
 
       <div v-if="menuOpen" class="work-card__panel" role="menu">
-        <p class="text-caption text-muted work-card__panel-label">
-          {{ t('builder.workBuilder.changeStatus') }}
-        </p>
-        <button
-          v-for="option in WORK_STATUS_OPTIONS"
-          :key="option"
-          type="button"
-          class="work-card__panel-item"
-          role="menuitem"
-          :class="{ 'work-card__panel-item--active': option === status }"
-          @click="handleStatusPick(option)"
-        >
-          {{ statusLabel(option, t) }}
-        </button>
-        <div class="work-card__panel-divider" />
+        <template v-if="!isGuestCard">
+          <p class="text-caption text-muted work-card__panel-label">
+            {{ t('builder.workBuilder.changeStatus') }}
+          </p>
+          <button
+            v-for="option in WORK_STATUS_OPTIONS"
+            :key="option"
+            type="button"
+            class="work-card__panel-item"
+            role="menuitem"
+            :class="{ 'work-card__panel-item--active': option === status }"
+            @click="handleStatusPick(option)"
+          >
+            {{ statusLabel(option, t) }}
+          </button>
+          <div class="work-card__panel-divider" />
 
-        <button
-          v-if="showFindContractor"
-          type="button"
-          class="work-card__panel-item"
-          role="menuitem"
-          @click="handleFindContractor"
-        >
-          <UiIcon name="store" :size="14" />
-          {{ t('builder.workBuilder.findContractor') }}
-        </button>
-        <button
-          v-else-if="isDraftRequest"
-          type="button"
-          class="work-card__panel-item"
-          role="menuitem"
-          :disabled="publishing"
-          @click="handlePublishRequest"
-        >
-          <UiIcon name="store" :size="14" />
-          {{ publishing ? t('builder.workBuilder.publishing') : t('builder.workBuilder.draftPublish') }}
-        </button>
-        <button
-          v-else-if="showViewRequest"
-          type="button"
-          class="work-card__panel-item"
-          role="menuitem"
-          @click="handleViewRequest"
-        >
-          <UiIcon name="store" :size="14" />
-          {{ t('builder.workBuilder.requestPlacedView') }}
-        </button>
-        <button
-          v-else-if="showViewOrder"
-          type="button"
-          class="work-card__panel-item"
-          role="menuitem"
-          @click="handleViewOrder"
-        >
-          <UiIcon name="check" :size="14" />
-          {{ t('builder.workBuilder.viewOrder') }}
-        </button>
-        <p v-else-if="isClosedRequest" class="text-caption text-muted work-card__panel-loading">
-          {{ t('builder.workBuilder.orderCreated') }}
-        </p>
-        <p v-else class="text-caption text-muted work-card__panel-loading">
-          {{ t('builder.workBuilder.checkingMarketplace') }}
-        </p>
+          <button
+            v-if="showFindContractor"
+            type="button"
+            class="work-card__panel-item"
+            role="menuitem"
+            @click="handleFindContractor"
+          >
+            <UiIcon name="store" :size="14" />
+            {{ t('builder.workBuilder.findContractor') }}
+          </button>
+          <button
+            v-else-if="isDraftRequest"
+            type="button"
+            class="work-card__panel-item"
+            role="menuitem"
+            :disabled="publishing"
+            @click="handlePublishRequest"
+          >
+            <UiIcon name="store" :size="14" />
+            {{ publishing ? t('builder.workBuilder.publishing') : t('builder.workBuilder.draftPublish') }}
+          </button>
+          <button
+            v-else-if="showViewRequest"
+            type="button"
+            class="work-card__panel-item"
+            role="menuitem"
+            @click="handleViewRequest"
+          >
+            <UiIcon name="store" :size="14" />
+            {{ t('builder.workBuilder.requestPlacedView') }}
+          </button>
+          <button
+            v-else-if="showViewOrder"
+            type="button"
+            class="work-card__panel-item"
+            role="menuitem"
+            @click="handleViewOrder"
+          >
+            <UiIcon name="check" :size="14" />
+            {{ t('builder.workBuilder.viewOrder') }}
+          </button>
+          <p v-else-if="isClosedRequest" class="text-caption text-muted work-card__panel-loading">
+            {{ t('builder.workBuilder.orderCreated') }}
+          </p>
+          <p v-else class="text-caption text-muted work-card__panel-loading">
+            {{ t('builder.workBuilder.checkingMarketplace') }}
+          </p>
 
-        <div class="work-card__panel-divider" />
+          <div class="work-card__panel-divider" />
+        </template>
         <button type="button" class="work-card__panel-item work-card__panel-item--danger" role="menuitem" @click="handleDeleteRequest">
           <UiIcon name="trash" :size="14" />
           {{ t('common.delete') }}

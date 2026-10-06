@@ -1,8 +1,14 @@
 <script setup lang="ts">
 // Header страницы /projects/draft — публичный entry point в Builder.
-// [←][logo] ... [Сохранить] — см. doc comment в draft.vue.
+// [←][logo] ... [RU][user] — см. doc comment в draft.vue.
 //
-// Save — BuilderSaveButton.vue (не менялась).
+// Save — BuilderSaveButton.vue (не менялась), но больше НЕ рендерится здесь
+// (см. задание "ПЕРЕРАЗМЕСТИТЬ 'СОХРАНИТЬ ПРОЕКТ' В BUILDER"): Header
+// смешивал навигацию/язык/user с действием над Builder — теперь Save живёт
+// в control row самого Builder.vue (.builder__canvas-toolbar, рядом с
+// "Размеры"), этот файл его больше не монтирует вообще. Компонент и его save
+// handler (saveSessionAfterAuth/createProjectFromDraft) не менялись — только
+// переехало место монтирования.
 //
 // ← и logo — ОДНО и то же действие, см. задание "УПРОСТИТЬ ВЫХОД ИЗ GUEST
 // BUILDER": никакого confirm/"Покинуть редактор?" на обычном выходе —
@@ -22,8 +28,18 @@
 //
 // AppLangSwitch (см. задание "Вынести переключатель языка RU/UZ из profile
 // dropdown в общий глобальный Header") — у этой страницы нет AppHeader
-// вообще (публичный entry point, свой минимальный header), и нет
-// AppProfileMenu (гость) — переключатель добавлен явно, перед Save.
+// вообще (публичный entry point, свой минимальный header) — переключатель
+// добавлен явно, перед Save.
+//
+// AppProfileMenu (см. задание "унифицировать глобальный Header между Builder
+// и Work Builder") — раньше здесь не было ВООБЩЕ никакого user-icon/auth
+// entry point (единственный способ войти/зарегистрироваться был уйти на
+// /marketplace, где он уже есть в AppHeader.vue) — теперь тот же компонент,
+// что уже отвечает за guest/authenticated ветвление в AppHeader.vue/
+// EditorHeader.vue (см. задание "упростить Header для гостя" — сам
+// AppProfileMenu не менялся, просто ещё один потребитель уже существующего
+// компонента). Никакой новой auth-логики/redirect'а — AppProfileMenu сам
+// читает useAuth()/redirectQuery, этот файл их не трогает.
 const { document: buildingDocument } = useBuilding()
 const { t } = useI18n()
 
@@ -49,8 +65,13 @@ function handleBack() {
 
     <div class="draft-header__spacer" />
 
+    <!-- "Работы" была здесь как header-ссылка в Header — явно удалена (см.
+         задание "УДАЛИТЬ 'РАБОТЫ' ИЗ HEADER"): единственный entry point в
+         Work Builder теперь — BuilderWorksCta.vue (большая кнопка под
+         Builder canvas, см. pages/projects/draft/index.vue), намеренно без
+         второй/дублирующей точки входа здесь. -->
     <AppLangSwitch />
-    <BuilderSaveButton />
+    <AppProfileMenu />
   </header>
 </template>
 
@@ -61,9 +82,9 @@ function handleBack() {
   gap: var(--space-1);
   /* Горизонтальный padding сознательно var(--space-2), не -3 — см. задание
      "АККУРАТНО ДОБАВИТЬ/УНИФИЦИРОВАТЬ RU/UZ В MOBILE HEADER": сегментированный
-     AppLangSwitch (88-96px) шире прежних двух отдельных кнопок — на 375px
-     (←+logo+switch+"Сохранить") без этой экономии запас по ширине уходил
-     почти в ноль. Back/logo/Save не трогались. */
+     AppLangSwitch (88-96px) шире прежних двух отдельных кнопок — экономия
+     по-прежнему оставлена как есть (Save с тех пор уехал из этой строки
+     в Builder.vue, но запас по ширине лишним не бывает). */
   padding: var(--space-2);
   padding-top: max(var(--space-2), env(safe-area-inset-top));
   border-bottom: 1px solid var(--color-border);

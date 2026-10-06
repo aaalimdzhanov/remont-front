@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { categoryIcon, formatQuantity, measurementSourceLabel, statusLabel, unitLabel, workTypeIcon } from '~/utils/work'
+import { categoryIcon, formatQuantity, measurementSourceLabel, resolveCalcSubmitLabel, shouldAutoStartWorkFlow, statusLabel, unitLabel, workTypeIcon } from '~/utils/work'
 
 const t = (key: string) => key
 
@@ -96,5 +96,42 @@ describe('workTypeIcon', () => {
 
   it('falls back to the category icon when no keyword matches', () => {
     expect(workTypeIcon('some-unrecognized-slug', 'plumbing')).toBe('faucet')
+  })
+})
+
+// Критическое правило "убрать landing screen" (см. задание "ИЗМЕНИТЬ UX
+// ВХОДА В GUEST WORK BUILDER"): /projects/draft/works и /projects/:id/works
+// должны открывать WorkRoomStep сразу, без промежуточного "План работ" +
+// ручной "+ Добавить работу", если работ ещё нет и хотя бы одна комната есть.
+describe('shouldAutoStartWorkFlow', () => {
+  it('no works yet, at least one room → auto-start the add-work flow (skip the landing screen entirely)', () => {
+    expect(shouldAutoStartWorkFlow(false, true)).toBe(true)
+  })
+
+  it('no works yet, no rooms at all → do NOT auto-start (the one exception — show "Сначала добавьте помещение" instead)', () => {
+    expect(shouldAutoStartWorkFlow(false, false)).toBe(false)
+  })
+
+  it('works already exist → never auto-start, regardless of room count (show the real Work List)', () => {
+    expect(shouldAutoStartWorkFlow(true, true)).toBe(false)
+    expect(shouldAutoStartWorkFlow(true, false)).toBe(false)
+  })
+})
+
+// WorkCalculationStep.vue submit button — 3 distinct states (see задание
+// "КНОПКА 'ДОБАВИТЬ РАБОТУ'"): a failed calculation must not silently leave
+// the button reading "Добавить работу" as if nothing happened.
+describe('resolveCalcSubmitLabel', () => {
+  it('idle (no attempt yet, no error) → "Добавить работу"', () => {
+    expect(resolveCalcSubmitLabel(false, false, t)).toBe('builder.workBuilder.addWork')
+  })
+
+  it('loading takes priority over everything else', () => {
+    expect(resolveCalcSubmitLabel(true, false, t)).toBe('common.adding')
+    expect(resolveCalcSubmitLabel(true, true, t)).toBe('common.adding')
+  })
+
+  it('a failed calculation shows a distinct retry label, not the original "Добавить работу"', () => {
+    expect(resolveCalcSubmitLabel(false, true, t)).toBe('builder.workBuilder.retryCalculation')
   })
 })

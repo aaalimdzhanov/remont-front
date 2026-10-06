@@ -164,6 +164,32 @@ export interface WorkType {
   sortOrder: number
 }
 
+// ---- Work Calculation (/api/v1/work-calculations) ----
+// Публичный read-only расчёт (см. задание "Guest Work Builder") — считает
+// quantity из присланного building БЕЗ создания Project/ProjectWork. building
+// в запросе — ВЕСЬ BuildingDocument (та же форма, что уже уходит в
+// CreateProjectPayload.building/ProjectDto.building), не только внутренний
+// Building — у BuildingDocument есть calculated, у Building — нет, а задание
+// прямо предупреждает "building.calculated НЕ является source of truth".
+export interface WorkCalculationResultDto {
+  quantity: number
+  unit: WorkUnit
+  quantity_mode: QuantityMode
+}
+
+export interface WorkCalculationResult {
+  quantity: number
+  unit: WorkUnit
+  quantityMode: QuantityMode
+}
+
+// Guest vs Authenticated Work Builder (см. useGuestWorkBuilder.ts) — одна и
+// та же UI/selection-логика (useWorkBuilder), два разных способа
+// persistence. Используется только тремя presentational-компонентами, которым
+// нужно скрыть ProjectWork-only элементы (status/marketplace) для guest-работ —
+// сам useWorkBuilder() об этом типе не знает и не должен.
+export type WorkBuilderMode = 'guest' | 'authenticated'
+
 // ---- ProjectWork (/api/v1/projects/{id}/works) ----
 // room_id — тот же room.id из Building JSON проекта (backend читает его как
 // произвольную строку, не UUID, см. миграцию 008) либо null для работы,

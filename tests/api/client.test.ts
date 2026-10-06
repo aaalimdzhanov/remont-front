@@ -50,10 +50,21 @@ describe('toApiError', () => {
   })
 
   it('leaves unmapped backend codes (e.g. project errors) untouched', () => {
-    const err = { response: { status: 400, _data: { error: { code: 'invalid_building', message: 'building.rooms[0].id: is required' } } } }
+    const err = { response: { status: 404, _data: { error: { code: 'project_not_found', message: 'project not found' } } } }
     const result = toApiError(err)
-    expect(result.code).toBe('invalid_building')
-    expect(result.message).toBe('building.rooms[0].id: is required')
+    expect(result.code).toBe('project_not_found')
+    expect(result.message).toBe('project not found')
+  })
+
+  it.each([
+    ['manual_quantity_required', 'Для этой работы количество нужно указать вручную.'],
+    ['invalid_building', 'Не удалось рассчитать работу. Проверьте план помещения.'],
+    ['room_not_found', 'Комната больше не существует. Выберите другую комнату.'],
+  ])('maps work-calculation error code %s to a human RU message (Guest Work Builder)', (code, expected) => {
+    const err = { response: { status: 400, _data: { error: { code, message: 'some raw backend text' } } } }
+    const result = toApiError(err)
+    expect(result.code).toBe(code)
+    expect(result.message).toBe(expected)
   })
 
   it('classifies a 400 without an error envelope with a readable message', () => {

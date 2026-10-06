@@ -50,6 +50,34 @@ useHead({ title: computed(() => t('builder.workBuilder.pageTitle', { name: build
 type Phase = 'loading' | 'not-found' | 'error' | 'ready'
 const phase = ref<Phase>('loading')
 
+// Guest → Authenticated (см. useGuestWorkBuilder.saveSessionAfterAuth doc
+// comment, секция AUTH TRANSITION): если часть guest-работ не прикрепилась
+// как ProjectWork при переносе из черновика, SaveButton приходит сюда с
+// ?saveIssues=N — читаем один раз при заходе, не реактивно (баннер можно
+// закрыть, повторный заход на страницу уже без этого query не должен снова
+// его показывать).
+const saveIssuesCount = ref(Number(route.query.saveIssues) || 0)
+
+const hasWorks = computed(() => projectWorks.value.length > 0)
+const roomsExist = computed(() => buildingDocument.value.building.rooms.length > 0)
+
+// Убрали промежуточный landing screen ("План работ" + benefits + ручная "+
+// Добавить работу") — см. задание "ИЗМЕНИТЬ UX ВХОДА В GUEST WORK BUILDER"
+// (применено симметрично и к authenticated-странице, не только к guest):
+// если работ ещё нет и хотя бы одна комната есть — сразу открываем
+// WorkRoomStep, без лишнего клика. Если комнат нет вообще — см. блок
+// "noRoomsBlocking" ниже в template (единственное исключение, задание,
+// секция EMPTY PROJECT / NO ROOMS). watch(currentStep,...) — та же причина,
+// что и в guest-версии: срабатывает и при возврате на 'list' после отмены
+// flow, пока список всё ещё пуст.
+function maybeAutoStart() {
+  if (shouldAutoStartWorkFlow(hasWorks.value, roomsExist.value)) startAddWork()
+}
+
+watch(currentStep, (step) => {
+  if (step === 'list') maybeAutoStart()
+})
+
 onMounted(async () => {
   const id = projectId.value
   if (!id) {
@@ -66,7 +94,7 @@ onMounted(async () => {
     return
   }
   phase.value = 'ready'
-  void loadProjectWorks(id)
+  void loadProjectWorks(id).then(maybeAutoStart)
   void loadCatalog()
   void loadWorkTypeCatalog()
   // Для "Заказ · посмотреть" на закрытых заявках (см. ProjectWorkCard.vue) —
@@ -81,7 +109,6 @@ onBeforeUnmount(() => {
   cleanupOrders()
 })
 
-const hasWorks = computed(() => projectWorks.value.length > 0)
 const selectedCategory = computed(() => categories.value.find(c => c.id === selectedCategoryId.value) ?? null)
 
 const scopeLabel = computed(() => {
@@ -141,13 +168,27 @@ function handleDone() {
   resetFlow()
 }
 
+// Пока работ ещё нет, 'list' фактически недостижим (см. watch(currentStep,
+// maybeAutoStart) выше) — goBack()/resetFlow() туда "мимо" просто бы тут же
+// отправили обратно на 'room' тем же watcher'ом, визуально выглядя как "кнопка
+// ничего не делает". Поэтому в этом случае Back/Close ведут туда же, куда и
+// задание прямо требует для самого первого шага (см. секция ПОВЕДЕНИЕ BACK):
+// обратно в Plan, а не в пустой 'list'.
 function handleGoBack() {
   createdWork.value = null
+  if (!hasWorks.value && currentStep.value === 'room') {
+    navigateTo(`/projects/${projectId.value}`)
+    return
+  }
   goBack()
 }
 
 function handleClose() {
   createdWork.value = null
+  if (!hasWorks.value) {
+    navigateTo(`/projects/${projectId.value}`)
+    return
+  }
   resetFlow()
 }
 
@@ -272,12 +313,20 @@ function handleViewOrder(orderId: string) {
       <WorkBuilderHeader
         :project-id="projectId"
         :project-name="buildingDocument.project.name"
+        back-href="/projects"
         :has-works="hasWorks"
         :is-recalculating="isRecalculating"
         @recalculate="handleRecalculate"
       />
 
       <div class="works-page__body">
+        <p v-if="saveIssuesCount > 0" class="works-page__banner-error">
+          {{ t('builder.workBuilder.saveIssuesWarning', { count: saveIssuesCount }, saveIssuesCount) }}
+          <button type="button" :aria-label="t('common.hide')" @click="saveIssuesCount = 0">
+            <UiIcon name="close" :size="14" />
+          </button>
+        </p>
+
         <p v-if="recalculateError" class="works-page__banner-error">
           {{ t('builder.workBuilder.recalculateError') }}
           <button type="button" @click="handleRecalculate">
@@ -309,9 +358,7 @@ function handleViewOrder(orderId: string) {
           </button>
         </div>
 
-        <WorkEmptyState v-else-if="!hasWorks" @add="startAddWork" />
-
-        <template v-else>
+        <template v-else-if="hasWorks">
           <WorkSummary :works="projectWorks" />
 
           <div v-for="group in groupedWorks" :key="group.roomId ?? '__project__'" class="works-page__group">
@@ -349,6 +396,23 @@ function handleViewOrder(orderId: string) {
             <span class="works-page__fab-label">{{ t('builder.workBuilder.addWork') }}</span>
           </button>
         </template>
+
+        <!-- !hasWorks && !roomsExist — единственное исключение (см. задание,
+             секция EMPTY PROJECT / NO ROOMS): когда есть хотя бы комната,
+             maybeAutoStart() (см. script) уже переключил currentStep на
+             'room' сразу после загрузки, минуя этот экран целиком. -->
+        <div v-else-if="!roomsExist" class="works-page__state">
+          <UiIcon name="room" :size="28" class="works-page__state-icon" />
+          <p class="text-h3">
+            {{ t('builder.workBuilder.noRoomsBlockingTitle') }}
+          </p>
+          <p class="text-secondary">
+            {{ t('builder.workBuilder.noRoomsBlockingDescription') }}
+          </p>
+          <NuxtLink :to="`/projects/${projectId}`" class="btn btn-primary">
+            {{ t('builder.workBuilder.goToPlan') }}
+          </NuxtLink>
+        </div>
       </div>
     </template>
 
@@ -560,6 +624,10 @@ function handleViewOrder(orderId: string) {
   gap: var(--space-3);
   padding: var(--space-8) var(--space-4);
   text-align: center;
+}
+
+.works-page__state-icon {
+  color: var(--color-text-muted);
 }
 
 .works-page__group {

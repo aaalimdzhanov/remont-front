@@ -34,7 +34,7 @@
 //
 // CTA ведёт на /projects/draft — публичный Builder entry point (см. задание
 // "РАЗРЕШИТЬ НЕАВТОРИЗОВАННОМУ ПОЛЬЗОВАТЕЛЮ ИСПОЛЬЗОВАТЬ BUILDER",
-// app/pages/projects/draft.vue), БЕЗ middleware:'auth' — гость сразу
+// app/pages/projects/draft/index.vue), БЕЗ middleware:'auth' — гость сразу
 // попадает в Builder, а не на /auth/login. Было /projects/new
 // (authenticated-only форма создания) — эта задача сознательно сменила
 // целевой route именно здесь, не трогая сам /projects/new (он остаётся для

@@ -7,9 +7,14 @@
 // Для 'manual' — наоборот: quantity здесь исключительно пользовательский
 // ввод, backend его не пересчитывает.
 import type { Building } from '~/types/building'
-import type { ProjectWork, WorkType } from '~/api/types'
+import type { WorkType, WorkUnit } from '~/api/types'
 import { calculateRoomArea } from '~/geometry/calculations'
 
+// result — ТОЛЬКО quantity/unit (не весь ProjectWork): Guest Work Builder
+// передаёт сюда локальный объект без status/id/timestamps (см.
+// useGuestWorkBuilder.addWork) — ProjectWork по-прежнему структурно подходит
+// (authenticated-вызывающая сторона не меняется), просто тип сузили до того,
+// что этот компонент реально читает.
 const props = defineProps<{
   workType: WorkType
   building: Building
@@ -17,7 +22,7 @@ const props = defineProps<{
   isProjectLevel: boolean
   isCreating: boolean
   createError: string | null
-  result: ProjectWork | null
+  result: { quantity: number, unit: WorkUnit } | null
 }>()
 
 const emit = defineEmits<{ confirm: [quantity?: number], done: [] }>()
@@ -54,6 +59,12 @@ function handleSubmit() {
     emit('confirm')
   }
 }
+
+// См. resolveCalcSubmitLabel() в utils/work.ts — до этой правки подпись не
+// менялась при ошибке, оставаясь "Добавить работу" даже после явного сбоя
+// (задание, секция "КНОПКА 'ДОБАВИТЬ РАБОТУ'": loading/success/error — 3
+// разные подписи, не 2).
+const submitLabel = computed(() => resolveCalcSubmitLabel(props.isCreating, !!props.createError, t))
 </script>
 
 <template>
@@ -108,7 +119,7 @@ function handleSubmit() {
         :disabled="isCreating || (isManual && manualQuantityInvalid)"
         @click="handleSubmit"
       >
-        {{ isCreating ? t('common.adding') : t('builder.workBuilder.addWork') }}
+        {{ submitLabel }}
       </button>
     </template>
 

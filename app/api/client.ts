@@ -45,6 +45,11 @@ const KNOWN_ERROR_KEYS: Record<string, string> = {
   contractor_service_already_exists: 'errors.contractor_service_already_exists',
   work_type_not_found: 'errors.work_type_not_found',
   work_type_inactive: 'errors.work_type_inactive',
+  // Work Calculation (/api/v1/work-calculations, см. Guest Work Builder) —
+  // коды один-в-один из публичного calculation endpoint'а.
+  manual_quantity_required: 'errors.manual_quantity_required',
+  invalid_building: 'errors.invalid_building',
+  room_not_found: 'errors.room_not_found',
   invalid_price: 'errors.invalid_price',
   invalid_price_range: 'errors.invalid_price_range',
   // Order (см. order_handler.go writeOrderError) — коды один-в-один.

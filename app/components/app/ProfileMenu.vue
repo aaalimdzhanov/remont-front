@@ -34,6 +34,17 @@ const { t } = useI18n()
 // компонент теперь рендерится и на публичном /marketplace, поэтому режим
 // без сессии — не гипотетический случай. redirectQuery — вернуться на
 // текущую страницу после входа (см. utils/authRedirect.ts).
+//
+// Guest Header simplification (см. задание "упростить Header для гостя"):
+// раньше гость видел "Войти"/"Регистрация" как два отдельных инлайн-NuxtLink
+// рядом с языковым переключателем — теперь это тот же avatar-button +
+// dropdown-panel паттерн, что уже был у authenticated-ветки ниже (open/
+// toggle/close/rootEl/click-outside/Escape — весь этот state и его обработчики
+// уже были общими для всего компонента, не per-branch, поэтому guest-ветка
+// просто стала вторым потребителем уже существующего механизма, без новой
+// логики). route/redirect/navigation не изменились: те же два NuxtLink на
+// /auth/login и /auth/register с тем же redirectQuery, просто теперь внутри
+// панели, а не инлайн.
 const redirectQuery = computed(() => ({ redirect: route.fullPath }))
 
 const open = ref(false)
@@ -87,13 +98,35 @@ async function handleLogout() {
 </script>
 
 <template>
-  <div v-if="!isAuthenticated" class="profile-menu profile-menu--guest">
-    <NuxtLink :to="{ path: '/auth/login', query: redirectQuery }" class="btn btn-secondary btn-sm">
-      {{ t('navigation.login') }}
-    </NuxtLink>
-    <NuxtLink :to="{ path: '/auth/register', query: redirectQuery }" class="btn btn-primary btn-sm">
-      {{ t('navigation.register') }}
-    </NuxtLink>
+  <div v-if="!isAuthenticated" ref="rootEl" class="profile-menu">
+    <button
+      type="button"
+      class="profile-menu__avatar"
+      :aria-label="t('navigation.guestMenuAriaLabel')"
+      :aria-expanded="open"
+      @click="toggle"
+    >
+      <UiIcon name="user" :size="18" />
+    </button>
+
+    <div v-if="open" class="profile-menu__panel" role="menu">
+      <NuxtLink
+        :to="{ path: '/auth/login', query: redirectQuery }"
+        class="profile-menu__link"
+        role="menuitem"
+        @click="close"
+      >
+        {{ t('navigation.login') }}
+      </NuxtLink>
+      <NuxtLink
+        :to="{ path: '/auth/register', query: redirectQuery }"
+        class="profile-menu__link"
+        role="menuitem"
+        @click="close"
+      >
+        {{ t('navigation.register') }}
+      </NuxtLink>
+    </div>
   </div>
 
   <div v-else ref="rootEl" class="profile-menu">
@@ -172,15 +205,6 @@ async function handleLogout() {
 <style scoped>
 .profile-menu {
   position: relative;
-}
-
-.profile-menu--guest {
-  display: flex;
-  gap: var(--space-2);
-}
-
-.profile-menu--guest .btn {
-  min-height: 44px;
 }
 
 .profile-menu__avatar {

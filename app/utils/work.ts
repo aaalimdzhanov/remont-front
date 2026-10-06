@@ -29,6 +29,30 @@ export function statusLabel(status: WorkStatus, t: (key: string) => string): str
 
 export const WORK_STATUS_OPTIONS: WorkStatus[] = ['planned', 'in_progress', 'completed']
 
+// "Пропустить" промежуточный landing screen ("План работ" + benefits + ручная
+// "+ Добавить работу") — см. задание "ИЗМЕНИТЬ UX ВХОДА В GUEST WORK BUILDER".
+// Вынесено отдельной чистой функцией (тот же приём, что isWorksRouteActive/
+// resolveWorksCtaHref в utils/projectNavigation.ts) — чтобы это ключевое
+// решение (единственное место, которое определяет "дыра эта или нет"
+// WorkRoomStep's immediate) можно было юнит-тестировать без монтирования
+// страницы (в проекте нет @vue/test-utils). Используется и guest
+// (projects/draft/works.vue), и authenticated (projects/[id]/works.vue)
+// страницами — одна и та же бизнес-логика, оба режима.
+export function shouldAutoStartWorkFlow(hasWorks: boolean, roomsExist: boolean): boolean {
+  return !hasWorks && roomsExist
+}
+
+// WorkCalculationStep.vue "Добавить работу" submit button — 3 состояния (см.
+// задание "КНОПКА 'ДОБАВИТЬ РАБОТУ'"). Кнопка остаётся кликабельной и после
+// ошибки НАРОЧНО (повторный клик — это retry: каждый клик заново запускает
+// calculateWorkQuantity/addWork, устаревший/кешированный quantity никогда не
+// переиспользуется) — здесь меняется только подпись, не доступность.
+export function resolveCalcSubmitLabel(isCreating: boolean, hasError: boolean, t: (key: string) => string): string {
+  if (isCreating) return t('common.adding')
+  if (hasError) return t('builder.workBuilder.retryCalculation')
+  return t('builder.workBuilder.addWork')
+}
+
 // Иконка категории по её slug (см. миграцию 006_create_work_catalog.sql на
 // backend — эти 8 slug'ов реальные, не выдуманные). 'room' — нейтральный
 // fallback для категории, которую backend может добавить позже.

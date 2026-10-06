@@ -3,17 +3,26 @@
 // currentStep==='list' — во время add-flow вместо этого блока показывается
 // свой шаговый заголовок, см. pages/projects/[id]/works.vue).
 //
-// Mobile (<768px): добавлен глобальный ряд (AppHeader.vue, тот же logo+
-// AppProfileMenu, что и на Dashboard/Builder) — до этого у Work Builder не
-// было вообще никакого способа выйти из аккаунта на mobile. Табы
-// План/Работы/Расчёты на mobile уходят в ProjectBottomNav (низ экрана), не
-// дублируются здесь же наверху — см. задание "mobile cleanup".
-// Desktop (≥768px): без изменений — тот же верхний ряд + табы, что и раньше.
+// Global/Page Header split (см. задание "финально унифицировать Header"):
+// AppHeader.vue (logo+AppLangSwitch+AppProfileMenu+AppModeNav — тот же
+// компонент, что и на Dashboard) теперь это GLOBAL HEADER на ВСЕХ ширинах, не
+// только на mobile, как было раньше (тогда на desktop лого/язык/user были
+// внутри .work-header__top — сделано осознанно в предыдущей итерации, но
+// visually мешало странице выглядеть единообразно с Builder). .work-header
+// ниже — чистый PAGE HEADER: Back + название ("Черновик") + Пересчитать +
+// Сохранить — никаких global-элементов здесь больше нет вообще, ни на одной
+// ширине. Табы План/Работы/Расчёты на mobile уходят в ProjectBottomNav (низ
+// экрана), не дублируются здесь же наверху — см. задание "mobile cleanup".
 defineProps<{
   projectId: string
   projectName: string
   hasWorks: boolean
   isRecalculating: boolean
+  // Guest Work Builder (projectId="draft" — см. задание): "← Проекты" не
+  // имеет смысла для гостя (/projects требует auth) — куда ведёт "←" решает
+  // вызывающая страница, а не хардкод здесь.
+  backHref: string
+  backAriaLabel?: string
 }>()
 
 defineEmits<{ recalculate: [] }>()
@@ -22,11 +31,16 @@ const { t } = useI18n()
 </script>
 
 <template>
-  <AppHeader class="work-header__mobile-global" />
+  <!-- GLOBAL HEADER — logo + language + user, на всех ширинах (не только
+       mobile, см. doc comment выше). Тот же компонент, что и на Dashboard —
+       не копируем его markup сюда вручную. -->
+  <AppHeader />
 
+  <!-- PAGE HEADER — Back + название + page-specific действия (Пересчитать,
+       Сохранить). Никаких global-элементов (logo/язык/user) здесь нет. -->
   <div class="work-header">
     <div class="work-header__top">
-      <NuxtLink to="/projects" class="work-header__back" :aria-label="t('projects.backToProjectsAriaLabel')">
+      <NuxtLink :to="backHref" class="work-header__back" :aria-label="backAriaLabel ?? t('projects.backToProjectsAriaLabel')">
         <UiIcon name="chevron-left" :size="20" />
       </NuxtLink>
       <p class="work-header__name">
@@ -43,7 +57,17 @@ const { t } = useI18n()
         {{ isRecalculating ? t('builder.workBuilder.recalculating') : t('builder.workBuilder.recalculate') }}
       </button>
 
-      <AppLangSwitch class="work-header__lang" />
+      <!-- Unify Save entry point (см. задание "унифицировать 'Сохранить
+           проект' между Public Builder и Work Builder") — тот же
+           WorkSaveButton.vue, что раньше был отдельной большой кнопкой
+           внизу content'а (см. doc comment там и в pages/projects/draft/
+           works.vue) — никакой новой save-логики, просто другое место
+           монтирования. Самоограничивается через projectId===null внутри
+           самого компонента, поэтому на authenticated-странице (projectId
+           задан) рендерит пустоту — WorkBuilderHeader не должен сам решать
+           guest/authenticated, он просто всегда монтирует компонент,
+           который уже умеет молчать, когда сохранять нечего. -->
+      <WorkSaveButton class="work-header__save" />
     </div>
 
     <div class="work-header__tabs">
@@ -103,11 +127,8 @@ const { t } = useI18n()
   flex-shrink: 0;
 }
 
-/* На mobile переключатель уже есть в AppHeader (см. .work-header__mobile-global
-   выше) — здесь, во втором, всегда видимом ряду, он дублировался бы. Строго
-   обратно .work-header__mobile-global по видимости (скрыт <768px, виден ≥768px). */
-.work-header__lang {
-  display: none;
+.work-header__save {
+  flex-shrink: 0;
 }
 
 /* Mobile: табы уходят в ProjectBottomNav — не показываем их второй раз здесь. */
@@ -116,14 +137,6 @@ const { t } = useI18n()
 }
 
 @media (min-width: 768px) {
-  .work-header__mobile-global {
-    display: none;
-  }
-
-  .work-header__lang {
-    display: flex;
-  }
-
   .work-header__top {
     min-height: 64px;
     padding: 0 var(--space-6);

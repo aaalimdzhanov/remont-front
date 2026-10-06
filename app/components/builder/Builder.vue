@@ -169,26 +169,39 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             </button>
           </div>
 
-          <!-- "Размеры" — та же showDimensions/toggleDimensions из
-               useEditorView(), что и клавиша M (см. onKeydown выше) и что
-               раньше показывалась отдельной кнопкой в левой панели
-               инструментов: один и тот же state, просто здесь ей место
-               рядом с переключателем вида, а не среди инструментов
-               рисования. Building JSON (техническая деталь архитектуры)
-               сюда больше не выводится — пользователь не должен её видеть,
-               сам документ никуда не делся (см. useBuilding()). -->
-          <button
-            type="button"
-            class="builder__dimensions-toggle"
-            :class="{ 'builder__dimensions-toggle--active': showDimensions }"
-            :aria-label="t('builder.dimensionsAriaLabel')"
-            :aria-pressed="showDimensions"
-            @click="toggleDimensions"
-          >
-            <UiIcon v-if="showDimensions" name="check" :size="14" />
-            <UiIcon v-else name="dimension" :size="16" />
-            {{ t('builder.dimensions') }}
-          </button>
+          <div class="builder__toolbar-actions">
+            <!-- "Размеры" — та же showDimensions/toggleDimensions из
+                 useEditorView(), что и клавиша M (см. onKeydown выше) и что
+                 раньше показывалась отдельной кнопкой в левой панели
+                 инструментов: один и тот же state, просто здесь ей место
+                 рядом с переключателем вида, а не среди инструментов
+                 рисования. Building JSON (техническая деталь архитектуры)
+                 сюда больше не выводится — пользователь не должен её видеть,
+                 сам документ никуда не делся (см. useBuilding()). -->
+            <button
+              type="button"
+              class="builder__dimensions-toggle"
+              :class="{ 'builder__dimensions-toggle--active': showDimensions }"
+              :aria-label="t('builder.dimensionsAriaLabel')"
+              :aria-pressed="showDimensions"
+              @click="toggleDimensions"
+            >
+              <UiIcon v-if="showDimensions" name="check" :size="14" />
+              <UiIcon v-else name="dimension" :size="16" />
+              {{ t('builder.dimensions') }}
+            </button>
+
+            <!-- Save переехал сюда из DraftHeader.vue (см. задание
+                 "ПЕРЕРАЗМЕСТИТЬ 'СОХРАНИТЬ ПРОЕКТ' В BUILDER") — тот же
+                 BuilderSaveButton.vue, не менявшийся: тот же save handler
+                 (saveSessionAfterAuth/createProjectFromDraft), тот же
+                 auth-redirect. Компонент сам решает, показываться ли
+                 (v-if="projectId === null" внутри него) — на authenticated
+                 /projects/{id} (Builder.vue тот же компонент для обоих
+                 режимов) здесь ничего не рендерится, EditorHeader.vue со
+                 своим save-статусом не затронут. -->
+            <BuilderSaveButton />
+          </div>
         </div>
 
         <BuilderPlan2D v-if="viewMode === '2d'" class="builder__plan" />
@@ -205,6 +218,15 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 
         <BuilderStatusBar v-if="viewMode === '2d'" />
       </div>
+
+      <!-- Entry point в Work Builder (см. задание "Поднять кнопку
+           непосредственно под Builder canvas") — следующий логичный шаг сразу
+           после плана, ДО "Выберите объект"/"Расчёты" в сайдбаре, а не после
+           них. BuilderWorksCta.vue сам по себе не содержит ничего, кроме
+           навигации/i18n (см. doc comment в том файле) — здесь только его
+           место в сетке (см. .builder__works-cta-slot ниже), геометрия/
+           canvas/tools этим не затронуты. -->
+      <BuilderWorksCta class="builder__works-cta-slot" />
 
       <div class="builder__sidebar">
         <!-- На мобильном (см. @media 640px ниже) эта же панель становится
@@ -264,9 +286,19 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
   gap: var(--space-4);
 }
 
+/* grid-template-rows: 2 строки — canvas/toolbar/statusbar сверху, CTA сразу
+   под ним (см. .builder__works-cta-slot) — tools/sidebar растянуты на обе
+   строки (grid-row: 1 / 3), чтобы по-прежнему визуально стоять РЯДОМ с
+   canvas+CTA целиком, а не только рядом с одной из двух строк. Явные
+   grid-column/grid-row ниже обязательны именно из-за этого — без них
+   auto-placement расставил бы 4 grid-элемента (tools, canvas-area, CTA,
+   sidebar) по порядку DOM в 3 колонки × N строк "построчно" и CTA занял бы
+   место sidebar в первой строке, а sidebar уехал бы во вторую колонку второй
+   строки — совсем не та раскладка. */
 .builder__workspace {
   display: grid;
   grid-template-columns: 168px 1fr 260px;
+  grid-template-rows: auto auto;
   gap: var(--space-5);
   align-items: start;
 }
@@ -278,6 +310,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
   padding: var(--space-3);
   position: sticky;
   top: var(--space-4);
+  grid-column: 1;
+  grid-row: 1 / 3;
 }
 
 .builder__canvas-area {
@@ -285,6 +319,25 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
   flex-direction: column;
   gap: var(--space-4);
   min-width: 0;
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.builder__works-cta-slot {
+  grid-column: 2;
+  grid-row: 2;
+  min-width: 0;
+  /* Финальная визуальная полировка (см. задание) — промежуток CTA → "Выберите
+     объект" складывается из ДВУХ раздельных значений: grid-gap этого
+     workspace (var(--space-5)=20px, var(--space-3)=12px <640px — см. ниже) и
+     собственного верхнего padding(var(--space-8)=32px) у approved
+     .properties__empty (main.css) — тот padding не трогаем, он общий для
+     ЛЮБОГО "ничего не выбрано" состояния properties-панели, не только
+     соседства с этой кнопкой. Отрицательный margin-bottom здесь — точечная,
+     токен-based поправка только для стыка CTA→дальше (не меняет gap между
+     остальными элементами workspace): итог ~36px на <640px, ~44px на
+     ≥640px — оба в целевом диапазоне 32–48px. */
+  margin-bottom: calc(-1 * var(--space-2));
 }
 
 .builder__canvas-toolbar {
@@ -292,6 +345,18 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
+}
+
+/* "Размеры" + Save как одна группа на правом краю toolbar'а (см. задание
+   "ПЕРЕРАЗМЕСТИТЬ 'СОХРАНИТЬ ПРОЕКТ' В BUILDER") — обёртка нужна, чтобы
+   justify-content:space-between у .builder__canvas-toolbar по-прежнему
+   развёл ровно ДВЕ стороны (2D/3D слева, {Размеры, Save} справа), а не
+   растащил все три элемента по отдельности (что развело бы Размеры в
+   середину строки). */
+.builder__toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 .builder__view-switch {
@@ -351,6 +416,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
   gap: var(--space-4);
   position: sticky;
   top: var(--space-4);
+  grid-column: 3;
+  grid-row: 1 / 3;
 }
 
 .builder__sheet-close {
@@ -388,9 +455,23 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
   font-weight: 500;
 }
 
+/* <1100px: раскладка стеком, в порядке DOM (tools → canvas-area → CTA →
+   sidebar — именно этот порядок и был целью, см. задание) — явные
+   grid-column/grid-row из desktop-версии выше обязательно сбрасываются в
+   auto, иначе 2-строчная desktop-сетка осталась бы активной и в один столбец
+   не схлопнулась бы так, как нужно. */
 @media (max-width: 1100px) {
   .builder__workspace {
     grid-template-columns: 1fr;
+    grid-template-rows: none;
+  }
+
+  .builder__tools,
+  .builder__canvas-area,
+  .builder__works-cta-slot,
+  .builder__sidebar {
+    grid-column: auto;
+    grid-row: auto;
   }
 
   .builder__tools {
