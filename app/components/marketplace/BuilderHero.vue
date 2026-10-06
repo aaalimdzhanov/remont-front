@@ -25,12 +25,44 @@
 // SVG-rect отдельными <text> в одном и том же viewBox — координаты те же
 // самые, что у rect'ов, доп. совмещения не требуется.
 //
-// Вкладки "2D план"/"3D вид", вертикальный toolbar и курсор-индикатор — чисто
-// декоративная "рамка приложения" вокруг plan (см. задание, секция "ВАЖНЫЙ
-// МОМЕНТ": "можно показать небольшие UI элементы... но это ТОЛЬКО
-// визуальный preview"). Это <span>/aria-hidden, без @click и без hover-
-// состояний, намекающих на интерактивность — ничего не переключает и не
-// отправляет, весь блок помечен aria-hidden="true" целиком.
+// Вертикальный toolbar и курсор-индикатор — чисто декоративная "рамка
+// приложения" вокруг plan (см. задание, секция "ВАЖНЫЙ МОМЕНТ": "можно
+// показать небольшие UI элементы... но это ТОЛЬКО визуальный preview"). Это
+// <span>/aria-hidden, без @click и без hover-состояний, намекающих на
+// интерактивность — ничего не переключает и не отправляет.
+//
+// 3-slide Builder Preview slider (см. задание "Marketplace Builder Preview →
+// 3-слайдовый визуальный slider"): раньше тут был один статичный 2D-план с
+// чисто декоративной парой текстовых вкладок "2D план"/"3D вид" НАД ним
+// (aria-hidden, без @click). Теперь это настоящий 3-слайдовый slider —
+// 2D / 3D / реальный проект — и эти же две строки ("2D план"/"3D вид", те же
+// существующие i18n-ключи, НЕ новые) стали подписями слайдов 1 и 2 вместо
+// статичной пары вкладок. Контент:
+//  - Slide 1 (2D) — ТОТ ЖЕ SVG-рендер через buildBuildingPreview(), что и
+//    был (см. demoBuilding/preview ниже) — ни одна цифра/геометрия не
+//    изменилась, просто теперь это "слайд 1", а не единственный вид;
+//  - Slide 2 (3D) — готовый локальный 3D-рендер плана, см. public/banner/
+//    (не Three.js, не второй Geometry Engine — просто другой локальный
+//    asset, тем же способом, что и slide 3, см. задание "вместо второго
+//    слайда подставь public/banner/banner-3d.png"). Оригинал banner-3d.png
+//    (1.8 МБ, 1536×1024) оставлен как есть, пересжат офлайн (Pillow,
+//    1200×800, JPEG q82) в banner-3d-preview.jpg (~106 КБ). object-fit:
+//    contain, не cover (см. CSS) — по периметру изображения подписи комнат,
+//    обрезка краёв их бы срезала;
+//  - Slide 3 (реальный проект) — локальный JPEG-asset (см. public/banner/),
+//    НЕ внешний URL. Оригинал public/banner/room.png (2 МБ, 1672×941)
+//    оставлен как есть, пересжат офлайн (Pillow, 1200×675, JPEG q80) в
+//    room-preview.jpg (~125 КБ) — см. задание, секция PERFORMANCE: "не
+//    грузить огромные оригиналы". (Более ранний вариант этого слайда
+//    использовал public/banner/banner-1.png/banner-1-preview.jpg — тот
+//    asset остался в репозитории неиспользуемым, не удалён.)
+//
+// Dots (НЕ arrows, см. задание, секция 5 "СТРЕЛОК НЕ ДОЛЖНО БЫТЬ") — реальные
+// <button> с aria-current/aria-label, autoplay 4500ms (приостанавливается
+// при prefers-reduced-motion, см. onMounted) и touch-swipe с явным различением
+// горизонтального/вертикального жеста (см. onTouchMove) — вертикальный scroll
+// страницы никогда не блокируется. Ничего из этого не трогает Building JSON/
+// useBuilding/Geometry Engine/Three.js — чисто presentational slider state.
 //
 // CTA ведёт на /projects/draft — публичный Builder entry point (см. задание
 // "РАЗРЕШИТЬ НЕАВТОРИЗОВАННОМУ ПОЛЬЗОВАТЕЛЮ ИСПОЛЬЗОВАТЬ BUILDER",
@@ -143,6 +175,95 @@ const roomLabels: DemoRoomLabel[] = demoBuilding.rooms.map((room) => {
 // те же иконки, что уже есть в существующем Work Builder (app/components/
 // ui/Icon.vue), просто статично перечисленные, без второго набора SVG-путей.
 const toolbarIcons = ['select', 'edit', 'wall', 'door', 'window', 'dimension'] as const
+
+// ---- 3-slide Builder Preview slider (см. doc comment выше) ----
+const SLIDE_COUNT = 3
+const AUTOPLAY_MS = 4500
+const slideLabelKeys = ['marketplace.builderHeroTab2d', 'marketplace.builderHeroTab3d', 'marketplace.builderHeroTabReal'] as const
+
+const activeSlide = ref(0)
+const prefersReducedMotion = ref(false)
+
+let autoplayTimer: ReturnType<typeof setInterval> | null = null
+
+function stepSlide(delta: number) {
+  activeSlide.value = (activeSlide.value + delta + SLIDE_COUNT) % SLIDE_COUNT
+}
+
+function stopAutoplay() {
+  if (autoplayTimer !== null) {
+    clearInterval(autoplayTimer)
+    autoplayTimer = null
+  }
+}
+
+// prefers-reduced-motion (см. задание, секция ACCESSIBILITY) — ни autoplay,
+// ни CSS-transition между слайдами не запускаются вовсе, а не просто
+// "ускоряются": сам прыжок между состояниями остаётся, анимация — нет.
+function startAutoplay() {
+  stopAutoplay()
+  if (prefersReducedMotion.value) return
+  autoplayTimer = setInterval(() => stepSlide(1), AUTOPLAY_MS)
+}
+
+// Ручное взаимодействие (точка/swipe) не "мешает" автоплею (см. задание,
+// секция AUTOPLAY), а просто перезапускает тот же таймер с нуля — иначе
+// слайд, который пользователь только что выбрал сам, мог бы тут же
+// смениться автоматически через долю секунды.
+function goToSlide(index: number) {
+  activeSlide.value = index
+  startAutoplay()
+}
+
+// ---- Touch swipe — см. задание, секция SWIPE: "если пользователь скроллит
+// страницу вертикально, slider НЕ должен перехватывать вертикальный жест".
+// preventDefault() вызывается ТОЛЬКО после того, как горизонтальное
+// намерение жеста уже однозначно подтверждено (|dx| ощутимо больше |dy|) —
+// до этого момента обычный вертикальный scroll проходит насквозь нетронутым. ----
+const SWIPE_INTENT_PX = 10
+const SWIPE_COMMIT_PX = 40
+let touchStartX = 0
+let touchStartY = 0
+let isHorizontalSwipe = false
+
+function onTouchStart(event: TouchEvent) {
+  const touch = event.touches[0]
+  if (!touch) return
+  touchStartX = touch.clientX
+  touchStartY = touch.clientY
+  isHorizontalSwipe = false
+}
+
+function onTouchMove(event: TouchEvent) {
+  const touch = event.touches[0]
+  if (!touch) return
+  const dx = touch.clientX - touchStartX
+  const dy = touch.clientY - touchStartY
+  if (!isHorizontalSwipe && Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > SWIPE_INTENT_PX) {
+    isHorizontalSwipe = true
+  }
+  if (isHorizontalSwipe) event.preventDefault()
+}
+
+function onTouchEnd(event: TouchEvent) {
+  if (!isHorizontalSwipe) return
+  const touch = event.changedTouches[0]
+  if (!touch) return
+  const dx = touch.clientX - touchStartX
+  if (Math.abs(dx) > SWIPE_COMMIT_PX) stepSlide(dx < 0 ? 1 : -1)
+  startAutoplay()
+}
+
+onMounted(() => {
+  if (typeof window !== 'undefined' && window.matchMedia) {
+    prefersReducedMotion.value = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  }
+  startAutoplay()
+})
+
+onBeforeUnmount(() => {
+  stopAutoplay()
+})
 </script>
 
 <template>
@@ -174,38 +295,93 @@ const toolbarIcons = ['select', 'edit', 'wall', 'door', 'window', 'dimension'] a
         </div>
       </div>
 
-      <div class="builder-hero__preview" aria-hidden="true">
-        <div class="builder-hero__tabs">
-          <span class="builder-hero__tab builder-hero__tab--active">{{ t('marketplace.builderHeroTab2d') }}</span>
-          <span class="builder-hero__tab">{{ t('marketplace.builderHeroTab3d') }}</span>
+      <div class="builder-hero__preview">
+        <div
+          class="builder-hero__slider"
+          @touchstart="onTouchStart"
+          @touchmove="onTouchMove"
+          @touchend="onTouchEnd"
+        >
+          <div
+            class="builder-hero__track"
+            :class="{ 'builder-hero__track--instant': prefersReducedMotion }"
+            :style="{ transform: `translateX(-${activeSlide * 100}%)` }"
+          >
+            <!-- Slide 1 — 2D: тот же SVG-рендер через buildBuildingPreview(), что и был (см. doc comment в script) -->
+            <div class="builder-hero__slide" :aria-hidden="activeSlide === 0 ? undefined : 'true'">
+              <span class="builder-hero__slide-label">{{ t('marketplace.builderHeroTab2d') }}</span>
+              <div class="builder-hero__canvas" aria-hidden="true">
+                <div class="builder-hero__toolbar">
+                  <span
+                    v-for="(icon, index) in toolbarIcons"
+                    :key="icon"
+                    class="builder-hero__tool"
+                    :class="{ 'builder-hero__tool--active': index === 0 }"
+                  >
+                    <UiIcon :name="icon" :size="13" />
+                  </span>
+                </div>
+
+                <svg :viewBox="viewBox" preserveAspectRatio="xMidYMid meet" class="builder-hero__plan">
+                  <rect v-for="(r, i) in preview.roomRects" :key="`room-${i}`" :x="r.x" :y="r.y" :width="r.width" :height="r.height" class="builder-hero__room" />
+                  <rect v-for="(r, i) in preview.wallRects" :key="`wall-${i}`" :x="r.x" :y="r.y" :width="r.width" :height="r.height" class="builder-hero__wall" />
+                  <rect v-for="(r, i) in preview.windowRects" :key="`window-${i}`" :x="r.x" :y="r.y" :width="r.width" :height="r.height" class="builder-hero__window" />
+                  <rect v-for="(r, i) in preview.doorRects" :key="`door-${i}`" :x="r.x" :y="r.y" :width="r.width" :height="r.height" class="builder-hero__door" />
+                  <template v-for="label in roomLabels" :key="label.nameKey">
+                    <text :x="label.cx" :y="label.cy - 0.18" text-anchor="middle" class="builder-hero__room-name">{{ t(label.nameKey) }}</text>
+                    <text :x="label.cx" :y="label.cy + 0.3" text-anchor="middle" class="builder-hero__room-area">{{ label.area.toFixed(1) }} {{ t('builder.unit.m2') }}</text>
+                  </template>
+                  <path
+                    d="M2.3 1.3 L2.3 1.9 L2.47 1.75 L2.6 2.08 L2.75 2.02 L2.62 1.69 L2.84 1.65 Z"
+                    class="builder-hero__cursor"
+                  />
+                </svg>
+              </div>
+            </div>
+
+            <!-- Slide 2 — 3D: готовый локальный 3D-рендер плана (см. doc comment в script) -->
+            <div class="builder-hero__slide" :aria-hidden="activeSlide === 1 ? undefined : 'true'">
+              <span class="builder-hero__slide-label">{{ t('marketplace.builderHeroTab3d') }}</span>
+              <div class="builder-hero__canvas">
+                <img
+                  src="/banner/banner-3d-preview.jpg"
+                  :alt="t('marketplace.builderHero3dAlt')"
+                  class="builder-hero__plan builder-hero__3d-image"
+                  width="1200"
+                  height="800"
+                  loading="lazy"
+                >
+              </div>
+            </div>
+
+            <!-- Slide 3 — реальный проект: локальный asset, см. doc comment в script -->
+            <div class="builder-hero__slide" :aria-hidden="activeSlide === 2 ? undefined : 'true'">
+              <span class="builder-hero__slide-label">{{ t('marketplace.builderHeroTabReal') }}</span>
+              <div class="builder-hero__canvas">
+                <img
+                  src="/banner/room-preview.jpg"
+                  :alt="t('marketplace.builderHeroRealProjectAlt')"
+                  class="builder-hero__plan builder-hero__real-image"
+                  width="1200"
+                  height="675"
+                  loading="lazy"
+                >
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div class="builder-hero__canvas">
-          <div class="builder-hero__toolbar">
-            <span
-              v-for="(icon, index) in toolbarIcons"
-              :key="icon"
-              class="builder-hero__tool"
-              :class="{ 'builder-hero__tool--active': index === 0 }"
-            >
-              <UiIcon :name="icon" :size="13" />
-            </span>
-          </div>
-
-          <svg :viewBox="viewBox" preserveAspectRatio="xMidYMid meet" class="builder-hero__plan">
-            <rect v-for="(r, i) in preview.roomRects" :key="`room-${i}`" :x="r.x" :y="r.y" :width="r.width" :height="r.height" class="builder-hero__room" />
-            <rect v-for="(r, i) in preview.wallRects" :key="`wall-${i}`" :x="r.x" :y="r.y" :width="r.width" :height="r.height" class="builder-hero__wall" />
-            <rect v-for="(r, i) in preview.windowRects" :key="`window-${i}`" :x="r.x" :y="r.y" :width="r.width" :height="r.height" class="builder-hero__window" />
-            <rect v-for="(r, i) in preview.doorRects" :key="`door-${i}`" :x="r.x" :y="r.y" :width="r.width" :height="r.height" class="builder-hero__door" />
-            <template v-for="label in roomLabels" :key="label.nameKey">
-              <text :x="label.cx" :y="label.cy - 0.18" text-anchor="middle" class="builder-hero__room-name">{{ t(label.nameKey) }}</text>
-              <text :x="label.cx" :y="label.cy + 0.3" text-anchor="middle" class="builder-hero__room-area">{{ label.area.toFixed(1) }} {{ t('builder.unit.m2') }}</text>
-            </template>
-            <path
-              d="M2.3 1.3 L2.3 1.9 L2.47 1.75 L2.6 2.08 L2.75 2.02 L2.62 1.69 L2.84 1.65 Z"
-              class="builder-hero__cursor"
-            />
-          </svg>
+        <div class="builder-hero__dots" role="group" :aria-label="t('marketplace.builderHeroSliderAriaLabel')">
+          <button
+            v-for="(labelKey, index) in slideLabelKeys"
+            :key="labelKey"
+            type="button"
+            class="builder-hero__dot"
+            :class="{ 'builder-hero__dot--active': index === activeSlide }"
+            :aria-label="t('marketplace.builderHeroGoToSlide', { name: t(labelKey) })"
+            :aria-current="index === activeSlide ? 'true' : undefined"
+            @click="goToSlide(index)"
+          />
         </div>
       </div>
     </div>
@@ -377,26 +553,87 @@ const toolbarIcons = ['select', 'edit', 'wall', 'door', 'window', 'dimension'] a
   padding: var(--space-2);
 }
 
-.builder-hero__tabs {
-  align-self: flex-start;
-  display: flex;
-  gap: 2px;
-  padding: 2px;
-  border-radius: 999px;
-  background: var(--color-border);
+/* ---- 3-slide slider: track/slides/dots (см. doc comment в script) ---- */
+.builder-hero__slider {
+  overflow: hidden;
+  border-radius: var(--radius-input);
+  /* touch-action: pan-y — горизонтальный swipe обрабатывает JS (onTouchMove/
+     onTouchEnd), но браузер должен по умолчанию уметь прокручивать страницу
+     вертикально ДО того, как JS вообще определит намерение жеста (см.
+     задание, секция SWIPE: "вертикальный scroll НЕ должен перехватываться") —
+     это объявление, а не замена JS-проверке, оба работают вместе. */
+  touch-action: pan-y;
 }
 
-.builder-hero__tab {
+.builder-hero__track {
+  display: flex;
+  transition: transform 380ms ease;
+}
+
+.builder-hero__track--instant {
+  transition: none;
+}
+
+.builder-hero__slide {
+  position: relative;
+  flex: 0 0 100%;
+  min-width: 0;
+}
+
+/* Подпись слайда — та же пилюля, что раньше была статичной парой вкладок
+   2D/3D НАД preview (см. doc comment в script) — теперь одна на каждый
+   слайд, поверх левого верхнего угла, читаема и на фото (slide 3). */
+.builder-hero__slide-label {
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-2);
+  z-index: 1;
   padding: 3px var(--space-2);
   border-radius: 999px;
+  background: var(--color-surface);
   font-size: 10px;
   font-weight: 600;
-  color: var(--color-text-secondary);
+  color: var(--color-graphite);
+  box-shadow: var(--shadow-card);
 }
 
-.builder-hero__tab--active {
-  background: var(--color-surface);
-  color: var(--color-graphite);
+.builder-hero__dots {
+  align-self: center;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.builder-hero__dot {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.builder-hero__dot::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-border-strong);
+  transition: background-color 200ms ease, transform 200ms ease;
+}
+
+.builder-hero__dot--active::before {
+  background: var(--color-primary);
+  transform: scale(1.3);
+}
+
+.builder-hero__dot:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: 50%;
 }
 
 .builder-hero__canvas {
@@ -440,6 +677,29 @@ const toolbarIcons = ['select', 'edit', 'wall', 'door', 'window', 'dimension'] a
   min-width: 0;
   width: 100%;
   height: 170px;
+}
+
+/* Slide 2 (3D) — готовый локальный 3D-рендер плана (см. doc comment в
+   script) — object-fit:contain, не cover: в отличие от slide 3 (обычное
+   декоративное фото, где обрезка по краям не теряет смысл), здесь по всему
+   периметру изображения стоят подписи комнат (Гостиная/Спальня/...) —
+   обрезка могла бы их срезать, поэтому вся картинка всегда видна целиком. */
+.builder-hero__3d-image {
+  display: block;
+  object-fit: contain;
+  border-radius: var(--radius-input);
+}
+
+/* Slide 3 (реальный проект) — ТОТ ЖЕ "canvas"-фрейм (padding/border/радиус),
+   что у остальных 2 слайдов (см. .builder-hero__canvas выше) — НЕ убираем
+   padding: если бы высота canvas'а здесь отличалась (например, без padding)
+   от slide 1/2, общая высота slider'а скакала бы при переключении (см.
+   задание, секция 10 "ВСЕ СЛАЙДЫ ОДИНАКОВОГО РАЗМЕРА" — критично). Просто
+   нет toolbar/border у самого изображения внутри той же рамки. */
+.builder-hero__real-image {
+  display: block;
+  object-fit: cover;
+  border-radius: var(--radius-input);
 }
 
 .builder-hero__room { fill: #F2EFE9; }
@@ -513,6 +773,21 @@ const toolbarIcons = ['select', 'edit', 'wall', 'door', 'window', 'dimension'] a
 
   .builder-hero__plan {
     height: 280px;
+  }
+}
+
+/* См. задание, секция ACCESSIBILITY — помимо JS-проверки (prefersReducedMotion
+   отключает сам autoplay/transition через .builder-hero__track--instant),
+   это прямая CSS-гарантия на случай, если переключение всё же произойдёт
+   (dot click/swipe по-прежнему работают при reduced-motion — отключается
+   именно анимация, не сама функциональность). */
+@media (prefers-reduced-motion: reduce) {
+  .builder-hero__track {
+    transition: none;
+  }
+
+  .builder-hero__dot::before {
+    transition: none;
   }
 }
 </style>
