@@ -149,6 +149,12 @@ onMounted(async () => {
          Builder, вместо прежнего promo-carousel. -->
     <MarketplaceBuilderHero class="marketplace-page__promo-banner" />
 
+    <!-- Второй, менее заметный CTA — "Сколько будет стоить мой ремонт?" (см.
+         RenovationEstimateCard.vue). Тот же flex-container .marketplace-page
+         (gap: var(--space-4)) расставляет отступ, отдельного wrapper'а не
+         требуется. -->
+    <MarketplaceRenovationEstimateCard />
+
     <!-- Tabs — см. задание, секция 1/10: "визуально понятные переключатели",
          "НЕ две огромные кнопки", "именно tabs/navigation". -->
     <nav class="marketplace-page__tabs" :aria-label="t('marketplace.sectionAriaLabel')">

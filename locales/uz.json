@@ -232,6 +232,8 @@
     "select": "Belgilash",
     "dimensionsAriaLabel": "O'lchamlarni ko'rsatish yoki yashirish (M)",
     "dimensions": "O'lchamlar",
+    "undoAriaLabel": "Bekor qilish (Ctrl+Z)",
+    "redoAriaLabel": "Qaytarish (Ctrl+Shift+Z)",
     "loading3d": "3D yuklanmoqda…",
     "closePropertiesAriaLabel": "Xususiyatlar panelini yopish",
     "calculationsTitle": "Hisob-kitoblar",
@@ -467,7 +469,17 @@
     "builderHeroRoomBedroom": "Yotoq xona",
     "builderHeroRoomKitchen": "Oshxona",
     "builderHeroRoomHallway": "Dahliz",
-    "builderHeroRoomBathroom": "Hammom"
+    "builderHeroRoomBathroom": "Hammom",
+    "renovationEstimateTitle": "Mening ta'mirlashim qanchaga tushadi?",
+    "renovationEstimateDescription": "5 ta savolga javob bering — 2 daqiqada taxminiy hisob-kitobni oling.",
+    "renovationEstimateCta": "Narxni hisoblash",
+    "renovationEstimateNote": "Ro'yxatdan o'tmasdan",
+    "renovationEstimatePriceValue": "≈ 85–110",
+    "renovationEstimatePriceUnit": "mln so'm",
+    "renovationEstimatePricePerM2Value": "≈ 1.3–1.7",
+    "renovationEstimatePricePerM2Unit": "mln so'm/m²",
+    "renovationEstimatePageTitle": "Ta'mirlash narxini hisoblagich",
+    "renovationEstimatePageComingSoon": "Tez orada bu yerda ta'mirlashning taxminiy hisob-kitobi paydo bo'ladi."
   },
   "marketplaceRequest": {
     "createdAt": "Yaratildi: {date}",

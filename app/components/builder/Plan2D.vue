@@ -25,6 +25,8 @@ const {
   isRoomIntersecting,
   isOpeningIntersecting,
   wouldRectIntersectRooms,
+  beginHistoryBatch,
+  commitHistoryBatch,
 } = useBuilding()
 const { zoom, panX, panY, showDimensions, fitToken, cursorPosition, roomDrawActive, deactivateRoomDraw, requestFit } = useEditorView()
 const { t } = useI18n()
@@ -113,6 +115,10 @@ function onRoomPointerDown(event: PointerEvent, room: Room) {
     offsetX: pos.x - room.geometry.position.x,
     offsetZ: pos.z - room.geometry.position.z,
   }
+  // beginHistoryBatch/commitHistoryBatch (см. useBuilding) — весь drag-жест
+  // должен стать ОДНОЙ history-записью, а не одной на каждый moveRoom()
+  // из onRoomPointerMove ниже (задание "UNDO/REDO В 2D BUILDER", секция 5).
+  beginHistoryBatch()
   ;(event.currentTarget as Element).setPointerCapture(event.pointerId)
 }
 
@@ -148,6 +154,7 @@ function onRoomPointerUp(event: PointerEvent) {
     moveRoom(room.id, snappedX, snappedZ)
   }
   drag.value = null
+  commitHistoryBatch()
 }
 
 function onBackgroundClick() {
@@ -485,6 +492,8 @@ function onOpeningPointerDown(event: PointerEvent, wall: Wall, opening: Opening)
     pointerId: event.pointerId,
     grabOffset: projection - opening.position.offset,
   }
+  // Один history entry на весь drag — см. комментарий в onRoomPointerDown.
+  beginHistoryBatch()
   ;(event.currentTarget as Element).setPointerCapture(event.pointerId)
 }
 
@@ -508,6 +517,7 @@ function onOpeningPointerUp(event: PointerEvent) {
     moveOpening(opening.id, snapToGrid(opening.position.offset))
   }
   openingDrag.value = null
+  commitHistoryBatch()
 }
 
 // ---- Размерные линии (dimension annotations) ----

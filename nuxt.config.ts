@@ -70,5 +70,6 @@ export default defineNuxtConfig({
     '/reviews': { ssr: false },
     '/reviews/**': { ssr: false },
     '/my-requests': { ssr: false },
+    '/renovation-estimate': { ssr: false },
   },
 })

@@ -232,6 +232,8 @@
     "select": "Выделить",
     "dimensionsAriaLabel": "Показать или скрыть размеры (M)",
     "dimensions": "Размеры",
+    "undoAriaLabel": "Отменить (Ctrl+Z)",
+    "redoAriaLabel": "Повторить (Ctrl+Shift+Z)",
     "loading3d": "Загрузка 3D…",
     "closePropertiesAriaLabel": "Закрыть панель свойств",
     "calculationsTitle": "Расчёты",
@@ -467,7 +469,17 @@
     "builderHeroRoomBedroom": "Спальня",
     "builderHeroRoomKitchen": "Кухня",
     "builderHeroRoomHallway": "Прихожая",
-    "builderHeroRoomBathroom": "С/У"
+    "builderHeroRoomBathroom": "С/У",
+    "renovationEstimateTitle": "Сколько будет стоить мой ремонт?",
+    "renovationEstimateDescription": "Ответьте на 5 вопросов — получите предварительный расчёт за 2 минуты.",
+    "renovationEstimateCta": "Рассчитать стоимость",
+    "renovationEstimateNote": "Без регистрации",
+    "renovationEstimatePriceValue": "≈ 85–110",
+    "renovationEstimatePriceUnit": "млн сум",
+    "renovationEstimatePricePerM2Value": "≈ 1.3–1.7",
+    "renovationEstimatePricePerM2Unit": "млн сум/м²",
+    "renovationEstimatePageTitle": "Калькулятор стоимости ремонта",
+    "renovationEstimatePageComingSoon": "Скоро здесь появится предварительный расчёт ремонта."
   },
   "marketplaceRequest": {
     "createdAt": "Создано {date}",

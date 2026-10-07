@@ -6,7 +6,7 @@
 // из vue (это чистая reactivity, framework-agnostic), useState — минимальный
 // шim с тем же контрактом (ключ -> ленивая инициализация -> общий ref),
 // useRuntimeConfig — статический стаб, $fetch каждый тест мокает сам.
-import { computed, ref, watch } from 'vue'
+import { computed, ref, toRaw, watch } from 'vue'
 import { vi } from 'vitest'
 
 const stateStore = new Map<string, ReturnType<typeof ref>>()
@@ -28,6 +28,7 @@ export function resetShimState() {
 vi.stubGlobal('ref', ref)
 vi.stubGlobal('computed', computed)
 vi.stubGlobal('watch', watch)
+vi.stubGlobal('toRaw', toRaw)
 vi.stubGlobal('useState', useStateShim)
 vi.stubGlobal('useRuntimeConfig', () => ({ public: { apiBaseUrl: 'http://backend.test' } }))
 

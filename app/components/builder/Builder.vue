@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const { hasBuilding, createBuilding, cancelPlacingOpening, deleteSelected, selectedObject, clearSelection, pendingOpeningType } = useBuilding()
+const { hasBuilding, createBuilding, cancelPlacingOpening, deleteSelected, selectedObject, clearSelection, pendingOpeningType, canUndo, canRedo, undo, redo } = useBuilding()
 const { showDimensions, toggleDimensions, roomDrawActive, deactivateRoomDraw } = useEditorView()
 const { t } = useI18n()
 
@@ -39,9 +39,10 @@ watch(viewMode, activateSelectTool)
 
 // Клавиатурные шорткаты (V/R/D/O/M/Delete/Escape) — только в 2D-режиме и
 // только пока фокус не в поле ввода (иначе, например, буква "р" при наборе
-// "Гостиная" переключала бы инструмент вместо ввода текста). W/T/Ctrl+Z не
-// назначены — в редакторе нет инструмента стен, текстовых аннотаций и истории
-// отмены (см. итоговый отчёт — это осознанно отложено, а не забыто).
+// "Гостиная" переключала бы инструмент вместо ввода текста). W/T не назначены
+// — в редакторе нет инструмента стен и текстовых аннотаций. Undo/Redo
+// (Cmd/Ctrl+Z, Cmd/Ctrl+Shift+Z, Ctrl+Y) — ниже, отдельно: в отличие от
+// V/R/D/O/M работают и в 3D (Building один и тот же независимо от вида).
 function isTypingTarget(target: EventTarget | null) {
   if (!(target instanceof HTMLElement)) return false
   if (target.isContentEditable) return true
@@ -53,8 +54,31 @@ function triggerTool(tool: string) {
 }
 
 function onKeydown(event: KeyboardEvent) {
+  if (isTypingTarget(event.target)) return
+
+  // Cmd/Ctrl+Z / Cmd/Ctrl+Shift+Z / Ctrl+Y — должны перехватываться раньше
+  // общего "return при любом modifier key" ниже (иначе он бы их глушил), и
+  // раньше проверки 2D-режима (Undo/Redo не привязаны к виду). Native
+  // browser undo внутри input/textarea уже не трогается — isTypingTarget
+  // выше возвращает раньше, этот блок до него не доходит.
+  if ((event.metaKey || event.ctrlKey) && !event.altKey) {
+    if (!event.shiftKey && (event.key === 'z' || event.key === 'Z')) {
+      event.preventDefault()
+      undo()
+      return
+    }
+    if (
+      (event.shiftKey && (event.key === 'z' || event.key === 'Z'))
+      || (!event.shiftKey && (event.key === 'y' || event.key === 'Y'))
+    ) {
+      event.preventDefault()
+      redo()
+      return
+    }
+  }
+
   if (viewMode.value !== '2d') return
-  if (isTypingTarget(event.target) || event.metaKey || event.ctrlKey || event.altKey) return
+  if (event.metaKey || event.ctrlKey || event.altKey) return
 
   switch (event.key) {
     case 'v':
@@ -148,25 +172,55 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 
       <div class="builder__canvas-area">
         <div class="builder__canvas-toolbar">
-          <div class="builder__view-switch">
-            <button
-              type="button"
-              class="builder__view-btn"
-              :class="{ 'builder__view-btn--active': viewMode === '2d' }"
-              @click="viewMode = '2d'"
-            >
-              <UiIcon name="grid-2d" :size="16" />
-              2D
-            </button>
-            <button
-              type="button"
-              class="builder__view-btn"
-              :class="{ 'builder__view-btn--active': viewMode === '3d' }"
-              @click="viewMode = '3d'"
-            >
-              <UiIcon name="cube-3d" :size="16" />
-              3D
-            </button>
+          <div class="builder__toolbar-left">
+            <!-- Undo/Redo — секция 11 задания: рядом с остальными Builder
+                 controls (не в Global Header), слева от 2D/3D (приоритет
+                 "editing controls -> view controls" из той же секции). Кнопки
+                 остаются на месте и в disabled-состоянии (не скрываются),
+                 чтобы layout не прыгал — секция 12. -->
+            <div class="builder__history-actions">
+              <button
+                type="button"
+                class="builder__history-btn"
+                :disabled="!canUndo"
+                :aria-label="t('builder.undoAriaLabel')"
+                :title="t('builder.undoAriaLabel')"
+                @click="undo"
+              >
+                <UiIcon name="undo" :size="16" />
+              </button>
+              <button
+                type="button"
+                class="builder__history-btn"
+                :disabled="!canRedo"
+                :aria-label="t('builder.redoAriaLabel')"
+                :title="t('builder.redoAriaLabel')"
+                @click="redo"
+              >
+                <UiIcon name="redo" :size="16" />
+              </button>
+            </div>
+
+            <div class="builder__view-switch">
+              <button
+                type="button"
+                class="builder__view-btn"
+                :class="{ 'builder__view-btn--active': viewMode === '2d' }"
+                @click="viewMode = '2d'"
+              >
+                <UiIcon name="grid-2d" :size="16" />
+                2D
+              </button>
+              <button
+                type="button"
+                class="builder__view-btn"
+                :class="{ 'builder__view-btn--active': viewMode === '3d' }"
+                @click="viewMode = '3d'"
+              >
+                <UiIcon name="cube-3d" :size="16" />
+                3D
+              </button>
+            </div>
           </div>
 
           <div class="builder__toolbar-actions">
@@ -357,6 +411,46 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
   display: flex;
   align-items: center;
   gap: var(--space-2);
+}
+
+.builder__toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.builder__history-actions {
+  display: flex;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-button);
+  overflow: hidden;
+}
+
+.builder__history-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.builder__history-btn + .builder__history-btn {
+  border-left: 1px solid var(--color-border);
+}
+
+.builder__history-btn:hover:not(:disabled) {
+  background: var(--color-primary-subtle);
+  color: var(--color-text);
+}
+
+.builder__history-btn:disabled {
+  color: var(--color-text-muted);
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .builder__view-switch {

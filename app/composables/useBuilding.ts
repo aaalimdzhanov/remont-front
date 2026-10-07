@@ -22,6 +22,36 @@ function snapRoomSize(value: number): number {
   return Math.max(MIN_ROOM_SIZE, snapToGrid(value))
 }
 
+// ---- Undo/Redo (история состояния Building) ----
+// Snapshot-based history, не diff-based: past/future хранят глубокие клоны
+// ВСЕГО BuildingDocument (единая история, см. задание "UNDO/REDO В 2D
+// BUILDER" — явно запрещает отдельные history per room/wall/opening). Это
+// editor state, не часть схемы Building JSON и не отправляется на backend —
+// хранится рядом с document/documentRevision ниже, а не в самом документе.
+const MAX_HISTORY_SIZE = 50
+
+// Батч для drag-перетаскиваний (move room/opening): модуль-level, а не внутри
+// useBuilding(), чтобы beginHistoryBatch/commitHistoryBatch и обёрнутые
+// мутаторы всегда видели один и тот же счётчик независимо от того, из какого
+// конкретного вызова useBuilding() они были получены (историческая реактивность
+// самого Building — document/documentRevision — уже и так общая через
+// useState; эти три переменные — чистый control-flow, им реактивность не нужна).
+let historyBatchDepth = 0
+let historyBatchSnapshot: BuildingDocument | null = null
+let historyBatchRevisionBefore = 0
+
+// structuredClone — встроенный structured-clone (не JSON.stringify/parse):
+// BuildingDocument — только plain-данные (числа/строки/массивы/вложенные
+// объекты, без Date/Map/Set/функций, см. app/types/building.ts), поэтому
+// это безопасно и дешевле ручной рекурсии. toRaw() обязателен: document —
+// Vue ref, document.value отдаёт reactive Proxy, а structuredClone не умеет
+// клонировать Proxy напрямую (падает с DataCloneError) — toRaw() снимает
+// обёртку до исходного plain-объекта (вложенные поля и так всегда были
+// plain-данными в самом target, Proxy — только у обёртки доступа).
+function cloneBuildingDocument(doc: BuildingDocument): BuildingDocument {
+  return structuredClone(toRaw(doc))
+}
+
 // Экспортируется отдельно (не только как приватный дефолт useState) —
 // нужен persistence-слою для "New Project" (создать пустой Building JSON и
 // сразу сохранить его на backend, получив канонический id).
@@ -89,9 +119,18 @@ export function useBuilding() {
   // по стене создаст проём выбранного типа именно на ней.
   const pendingOpeningType = useState<OpeningType | null>('pending-opening-type', () => null)
 
+  // past/future — глубокие клоны BuildingDocument, не ссылки (см. комментарий
+  // выше про structuredClone). Не персистятся (не localStorage, не backend) —
+  // после hard refresh история пуста, это ожидаемо (см. задание, секция 15).
+  const historyPast = useState<BuildingDocument[]>('building-history-past', () => [])
+  const historyFuture = useState<BuildingDocument[]>('building-history-future', () => [])
+
   const hasBuilding = computed(
     () => document.value.building.dimensions.width > 0 && document.value.building.dimensions.length > 0,
   )
+
+  const canUndo = computed(() => historyPast.value.length > 0)
+  const canRedo = computed(() => historyFuture.value.length > 0)
 
   const selectedRoom = computed<Room | null>(
     () => document.value.building.rooms.find(room => room.id === selectedRoomId.value) ?? null,
@@ -245,15 +284,106 @@ export function useBuilding() {
     documentRevision.value++
   }
 
+  // Коммитит один snapshot "до мутации" в historyPast и очищает historyFuture
+  // (задание, секция 3: любое новое действие после Undo обязано обрезать
+  // Redo). Лимит MAX_HISTORY_SIZE — удаляем самые старые записи, не растим
+  // массив бесконечно (секция 6).
+  function recordHistorySnapshot(before: BuildingDocument) {
+    const kept = historyPast.value.length >= MAX_HISTORY_SIZE
+      ? historyPast.value.slice(historyPast.value.length - MAX_HISTORY_SIZE + 1)
+      : historyPast.value
+    historyPast.value = [...kept, before]
+    historyFuture.value = []
+  }
+
+  // Начало/конец одного пользовательского drag-жеста (move room/opening) —
+  // Plan2D вызывает beginHistoryBatch() на pointerdown и commitHistoryBatch()
+  // на pointerup, вокруг множества промежуточных moveRoom/moveOpening на
+  // каждый pointermove. Результат — один history entry на весь drag, а не
+  // один на каждое mousemove (задание, секция 5 — явный запрет на второе).
+  function beginHistoryBatch() {
+    if (historyBatchDepth === 0) {
+      historyBatchSnapshot = cloneBuildingDocument(document.value)
+      historyBatchRevisionBefore = documentRevision.value
+    }
+    historyBatchDepth++
+  }
+
+  function commitHistoryBatch() {
+    if (historyBatchDepth === 0) return
+    historyBatchDepth--
+    if (historyBatchDepth === 0 && historyBatchSnapshot) {
+      // revision не изменился => drag ничего реально не подвинул (например,
+      // pointerdown без pointermove) — не создаём пустую history-запись.
+      if (documentRevision.value !== historyBatchRevisionBefore) {
+        recordHistorySnapshot(historyBatchSnapshot)
+      }
+      historyBatchSnapshot = null
+    }
+  }
+
+  // Оборачивает мутатор снапшотом "до": снимает клон документа перед вызовом,
+  // вызывает мутатор, коммитит клон в historyPast только если documentRevision
+  // реально изменился (у большинства мутаторов есть ранний return на
+  // невалидный id — в этом случае мутации не было и история не нужна). Внутри
+  // активного батча (см. выше) отдельный snapshot на каждый вызов не снимается
+  // — он уже снят один раз в начале батча.
+  function withHistory<Args extends unknown[]>(mutator: (...args: Args) => void): (...args: Args) => void {
+    return (...args: Args) => {
+      if (historyBatchDepth > 0) {
+        mutator(...args)
+        return
+      }
+      const before = cloneBuildingDocument(document.value)
+      const revisionBefore = documentRevision.value
+      mutator(...args)
+      if (documentRevision.value !== revisionBefore) {
+        recordHistorySnapshot(before)
+      }
+    }
+  }
+
+  function undo() {
+    const previous = historyPast.value[historyPast.value.length - 1]
+    if (!previous) return
+    historyFuture.value = [...historyFuture.value, cloneBuildingDocument(document.value)]
+    historyPast.value = historyPast.value.slice(0, -1)
+    document.value = previous
+    selectedRoomId.value = null
+    selectedWallId.value = null
+    selectedOpeningId.value = null
+    pendingOpeningType.value = null
+    touch()
+  }
+
+  function redo() {
+    const next = historyFuture.value[historyFuture.value.length - 1]
+    if (!next) return
+    historyPast.value = [...historyPast.value, cloneBuildingDocument(document.value)]
+    historyFuture.value = historyFuture.value.slice(0, -1)
+    document.value = next
+    selectedRoomId.value = null
+    selectedWallId.value = null
+    selectedOpeningId.value = null
+    pendingOpeningType.value = null
+    touch()
+  }
+
   // Заменяет весь Building JSON целиком (после load/create/save с backend).
   // Не мутатор в обычном смысле — не увеличивает documentRevision и
   // сбрасывает selection (id из предыдущего проекта не имеют смысла в новом).
+  // Сбрасывает историю: Undo не должен "перепрыгивать" в состояние ДРУГОГО
+  // документа (другой проект/черновик) — задание, секция 9, initial state.
   function loadDocument(next: BuildingDocument) {
     document.value = next
     selectedRoomId.value = null
     selectedWallId.value = null
     selectedOpeningId.value = null
     pendingOpeningType.value = null
+    historyPast.value = []
+    historyFuture.value = []
+    historyBatchDepth = 0
+    historyBatchSnapshot = null
   }
 
   // Синхронизирует только canonical project.id внутри документа (например,
@@ -536,7 +666,7 @@ export function useBuilding() {
     documentRevision,
     loadDocument,
     syncCanonicalProjectId,
-    renameProject,
+    renameProject: withHistory(renameProject),
     selectedRoomId,
     selectedRoom,
     selectedWallId,
@@ -545,31 +675,37 @@ export function useBuilding() {
     selectedOpening,
     selectedObject,
     pendingOpeningType,
-    createBuilding,
-    addRoom,
-    moveRoom,
-    resizeRoom,
-    renameRoom,
-    setRoomType,
-    setFloorHeight,
-    removeRoom,
+    createBuilding: withHistory(createBuilding),
+    addRoom: withHistory(addRoom),
+    moveRoom: withHistory(moveRoom),
+    resizeRoom: withHistory(resizeRoom),
+    renameRoom: withHistory(renameRoom),
+    setRoomType: withHistory(setRoomType),
+    setFloorHeight: withHistory(setFloorHeight),
+    removeRoom: withHistory(removeRoom),
     selectRoom,
     selectWall,
     selectOpening,
     clearSelection,
-    deleteSelected,
+    deleteSelected: withHistory(deleteSelected),
     beginPlacingOpening,
     cancelPlacingOpening,
-    addOpening,
-    moveOpening,
-    resizeOpening,
-    setOpeningSillHeight,
-    setDoorSwingDirection,
-    removeOpening,
+    addOpening: withHistory(addOpening),
+    moveOpening: withHistory(moveOpening),
+    resizeOpening: withHistory(resizeOpening),
+    setOpeningSillHeight: withHistory(setOpeningSillHeight),
+    setDoorSwingDirection: withHistory(setDoorSwingDirection),
+    removeOpening: withHistory(removeOpening),
     isRoomIntersecting,
     getIntersectingRoomNames,
     wouldRectIntersectRooms,
     isOpeningIntersecting,
     getIntersectingOpeningLabels,
+    canUndo,
+    canRedo,
+    undo,
+    redo,
+    beginHistoryBatch,
+    commitHistoryBatch,
   }
 }
