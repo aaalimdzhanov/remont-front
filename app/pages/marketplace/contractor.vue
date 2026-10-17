@@ -37,7 +37,7 @@ const {
   catalogCategories, catalogCategoriesLoading, catalogWorkTypes,
   loadContractor, updateContractorProfile, createContractorProfile,
   uploadContractorPhoto, deleteContractorPhoto,
-  loadServices, addService, updateService, deleteService,
+  loadServices, addService, updateService, deleteService, setServiceStatus,
   loadPortfolio, uploadPortfolio, deletePortfolio, reorderPortfolio,
   loadFilterCatalog,
 } = useMarketplace()
@@ -98,11 +98,41 @@ const showAddServiceSheet = ref(false)
 const editingService = ref<ContractorService | null>(null)
 const deletingService = ref<ContractorService | null>(null)
 
-const existingWorkTypeIds = computed(() => services.value.map(s => s.workTypeId))
+// Активные исключаются из выбора в sheet (backend вернёт 409), отключённые —
+// наоборот, предлагаются к включению (см. AddServiceSheet.vue).
+const activeWorkTypeIds = computed(() => services.value.filter(s => s.isActive).map(s => s.workTypeId))
+const inactiveServices = computed(() => services.value.filter(s => !s.isActive))
+
+// Подсказка про публичную видимость показывается ТОЛЬКО когда активных
+// услуг нет вовсе. Обратное утверждение ("профиль виден клиентам") тут
+// намеренно не выводится: публичная видимость = is_active услуги И
+// is_active её вида работ в общем каталоге, а второй флаг owner-facing
+// ответ backend'а не отдаёт (нет ни publicly_visible, ни признака
+// активности work type) — значит гарантировать публикацию фронтенд не
+// вправе.
+const hasActiveService = computed(() => services.value.some(s => s.isActive))
 
 async function handleAddService(payload: { workTypeId: string, priceFrom: number | null, priceTo: number | null }) {
   const created = await addService({ work_type_id: payload.workTypeId, price_from: payload.priceFrom, price_to: payload.priceTo })
   if (created) showAddServiceSheet.value = false
+}
+
+// Реактивация — тот же POST /contractor/services: backend находит
+// отключённую запись по (contractor_id, work_type_id), включает её и
+// возвращает 200 с ПРЕЖНИМИ ценами. Цены из тела он на этой ветке
+// игнорирует, но отправляем текущие (а не null), чтобы ничего не потерять,
+// даже если поведение backend когда-нибудь изменится.
+async function handleReactivateService(service: ContractorService) {
+  const saved = await addService({
+    work_type_id: service.workTypeId,
+    price_from: service.priceFrom,
+    price_to: service.priceTo,
+  })
+  if (saved) showAddServiceSheet.value = false
+}
+
+async function handleToggleService(service: ContractorService, nextIsActive: boolean) {
+  await setServiceStatus(service.id, nextIsActive)
 }
 
 async function handleEditServiceSubmit(payload: { priceFrom: number | null, priceTo: number | null }) {
@@ -321,8 +351,16 @@ async function handleConfirmDeletePhoto() {
             :busy="serviceActionId === service.id"
             @edit="editingService = service"
             @delete="deletingService = service"
+            @toggle="handleToggleService(service, $event)"
           />
         </div>
+
+        <!-- Мягкая подсказка, а не обещание публикации — см. doc comment
+             у hasActiveService в script. -->
+        <p v-if="!servicesLoading && !servicesError && !hasActiveService" class="contractor-page__visibility-hint">
+          <UiIcon name="alert" :size="16" />
+          <span>{{ t('contractorProfile.noActiveServicesHint') }}</span>
+        </p>
       </section>
 
       <section v-if="contractor" class="contractor-page__portfolio">
@@ -391,10 +429,12 @@ async function handleConfirmDeletePhoto() {
       :open="showAddServiceSheet"
       :categories="catalogCategories"
       :work-types="catalogWorkTypes"
-      :existing-work-type-ids="existingWorkTypeIds"
+      :active-work-type-ids="activeWorkTypeIds"
+      :inactive-services="inactiveServices"
       :submitting="isAddingService"
       :error="addServiceError?.message ?? null"
       @submit="handleAddService"
+      @reactivate="handleReactivateService"
       @cancel="showAddServiceSheet = false"
     />
 
@@ -651,6 +691,27 @@ async function handleConfirmDeletePhoto() {
   border: 1px dashed var(--color-border-strong);
   border-radius: var(--radius-card);
   background: var(--color-surface-subtle);
+}
+
+/* Ненавязчивая подсказка (см. задание, секция 4) — не ошибка и не баннер
+   на пол-экрана: обычная строка с иконкой в warning-тонах дизайн-системы. */
+.contractor-page__visibility-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
+  padding: var(--space-3);
+  border-radius: var(--radius-input);
+  background: var(--color-warning-subtle);
+  color: var(--color-text-secondary);
+  font-size: var(--font-small-size);
+  line-height: 1.4;
+}
+
+.contractor-page__visibility-hint .icon {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--color-warning);
 }
 
 .contractor-page__portfolio {

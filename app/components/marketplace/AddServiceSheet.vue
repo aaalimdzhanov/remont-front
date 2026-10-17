@@ -6,26 +6,34 @@
 // При смене категории несовместимый выбранный WorkType сбрасывается (см.
 // задание, секция WorkType selection: "Если категория изменена — сбросить
 // несовместимый WorkType").
-import type { WorkCategory, WorkType } from '~/api/types'
+import type { ContractorService, WorkCategory, WorkType } from '~/api/types'
+import { availableWorkTypesForCategory, findInactiveServiceForWorkType } from '~/utils/contractorService'
 
 const props = defineProps<{
   open: boolean
   categories: WorkCategory[]
   workTypes: WorkType[]
-  // work_type_id уже добавленных услуг — исключаются из списка выбора, чтобы
-  // не пытаться создать дубликат, который backend всё равно отклонит 409
-  // (см. contractor_service_already_exists) — здесь просто более честный UX.
-  existingWorkTypeIds: string[]
+  // work_type_id уже ВКЛЮЧЁННЫХ услуг — исключаются из списка выбора: для
+  // них backend вернёт 409 contractor_service_already_exists, добавлять
+  // нечего.
+  activeWorkTypeIds: string[]
+  // Уже добавленные, но ОТКЛЮЧЁННЫЕ услуги — наоборот, показываются в
+  // списке (раньше скрывались вместе с активными, и вид работ выглядел
+  // "навсегда недоступным"). Выбор такой услуги переводит sheet в режим
+  // реактивации: тот же POST включит её обратно, сохранив прежние цены,
+  // поэтому поля цены в этом режиме не показываются.
+  inactiveServices: ContractorService[]
   submitting: boolean
   error: string | null
 }>()
 
 const emit = defineEmits<{
   submit: [payload: { workTypeId: string, priceFrom: number | null, priceTo: number | null }]
+  reactivate: [service: ContractorService]
   cancel: []
 }>()
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 const selectedCategoryId = ref('')
 const selectedWorkTypeId = ref('')
@@ -46,10 +54,13 @@ watch(() => props.open, (isOpen) => {
   if (isOpen) resetForm()
 })
 
-const availableWorkTypesForCategory = computed(() => {
-  if (!selectedCategoryId.value) return []
-  return props.workTypes.filter(w => w.categoryId === selectedCategoryId.value && !props.existingWorkTypeIds.includes(w.id))
-})
+const availableWorkTypes = computed(() => availableWorkTypesForCategory(props.workTypes, selectedCategoryId.value, props.activeWorkTypeIds))
+
+// Выбран вид работы, который уже есть у мастера в отключённом состоянии →
+// режим "Включить" вместо "Добавить" (цены сохранятся на backend).
+const reactivatingService = computed<ContractorService | null>(
+  () => findInactiveServiceForWorkType(props.inactiveServices, selectedWorkTypeId.value),
+)
 
 function handleCategoryChange(event: Event) {
   selectedCategoryId.value = (event.target as HTMLSelectElement).value
@@ -69,15 +80,20 @@ const priceFromValid = computed(() => priceFromEmpty.value || isValidPriceValue(
 const priceToValid = computed(() => priceToEmpty.value || isValidPriceValue(priceToInput.value))
 const rangeValid = computed(() => isPriceRangeValid(priceFromNumber.value, priceToNumber.value))
 
-const isValid = computed(() =>
-  selectedWorkTypeId.value !== ''
-  && priceFromValid.value
-  && priceToValid.value
-  && rangeValid.value,
-)
+// В режиме реактивации поля цены вообще не показываются, поэтому их
+// валидность не участвует в проверке — достаточно выбранного вида работы.
+const isValid = computed(() => {
+  if (selectedWorkTypeId.value === '') return false
+  if (reactivatingService.value) return true
+  return priceFromValid.value && priceToValid.value && rangeValid.value
+})
 
 function handleSubmit() {
   if (!isValid.value || props.submitting) return
+  if (reactivatingService.value) {
+    emit('reactivate', reactivatingService.value)
+    return
+  }
   emit('submit', { workTypeId: selectedWorkTypeId.value, priceFrom: priceFromNumber.value, priceTo: priceToNumber.value })
 }
 </script>
@@ -110,11 +126,11 @@ function handleSubmit() {
               <option value="" disabled>
                 {{ selectedCategoryId ? t('contractorProfile.selectWorkType') : t('contractorProfile.selectCategoryFirst') }}
               </option>
-              <option v-for="workType in availableWorkTypesForCategory" :key="workType.id" :value="workType.id">
-                {{ workType.name }}
+              <option v-for="workType in availableWorkTypes" :key="workType.id" :value="workType.id">
+                {{ findInactiveServiceForWorkType(inactiveServices, workType.id) ? t('contractorProfile.workTypeDisabledOption', { workType: workType.name }) : workType.name }}
               </option>
             </select>
-            <span v-if="selectedCategoryId && availableWorkTypesForCategory.length === 0" class="text-caption text-muted">
+            <span v-if="selectedCategoryId && availableWorkTypes.length === 0" class="text-caption text-muted">
               {{ t('contractorProfile.allWorkTypesAdded') }}
             </span>
           </label>
@@ -123,7 +139,16 @@ function handleSubmit() {
             {{ t('contractorProfile.unitLabel', { unit: unitLabel(selectedWorkType.unit, t) }) }}
           </p>
 
-          <div class="add-service-sheet__price-row">
+          <!-- Режим реактивации: цены не редактируются — backend при
+               включении сохраняет уже сохранённые значения (см. doc comment
+               в script), поэтому показываем их read-only, а не поля ввода. -->
+          <p v-if="reactivatingService" class="add-service-sheet__reactivate-note">
+            {{ t('contractorProfile.reactivateHint', {
+              price: formatPriceRange(reactivatingService.priceFrom, reactivatingService.priceTo, t, locale, t('common.currency')),
+            }) }}
+          </p>
+
+          <div v-if="!reactivatingService" class="add-service-sheet__price-row">
             <label class="field">
               <span class="field__label">{{ t('contractorProfile.priceFromLabel') }}</span>
               <input
@@ -154,7 +179,7 @@ function handleSubmit() {
             </label>
           </div>
 
-          <p v-if="!rangeValid" class="add-service-sheet__hint">
+          <p v-if="!reactivatingService && !rangeValid" class="add-service-sheet__hint">
             {{ t('errors.invalid_price_range') }}
           </p>
 
@@ -163,7 +188,12 @@ function handleSubmit() {
           </p>
 
           <button type="submit" class="btn btn-primary add-service-sheet__submit" :disabled="!isValid || submitting">
-            {{ submitting ? t('common.adding') : t('contractorProfile.addServiceSubmit') }}
+            <template v-if="submitting">
+              {{ reactivatingService ? t('common.saving') : t('common.adding') }}
+            </template>
+            <template v-else>
+              {{ reactivatingService ? t('contractorProfile.enableServiceSubmit') : t('contractorProfile.addServiceSubmit') }}
+            </template>
           </button>
         </form>
       </div>
@@ -235,6 +265,15 @@ function handleSubmit() {
   margin: 0;
   color: var(--color-error);
   font-size: var(--font-caption-size);
+}
+
+.add-service-sheet__reactivate-note {
+  margin: 0;
+  padding: var(--space-3);
+  border-radius: var(--radius-input);
+  background: var(--color-primary-subtle);
+  color: var(--color-text-secondary);
+  font-size: var(--font-small-size);
 }
 
 .add-service-sheet__error {

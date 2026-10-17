@@ -19,6 +19,7 @@ import type {
   PublicPortfolioItem,
   PublicPortfolioItemDto,
   ReorderPortfolioPayload,
+  SetContractorServiceStatusPayload,
   UpdateContractorServicePayload,
 } from './types'
 
@@ -43,6 +44,7 @@ function toContractorService(dto: ContractorServiceDto): ContractorService {
     unit: dto.unit,
     priceFrom: dto.price_from,
     priceTo: dto.price_to,
+    isActive: dto.is_active,
     createdAt: dto.created_at,
     updatedAt: dto.updated_at,
   }
@@ -103,8 +105,30 @@ export async function listContractorServices(): Promise<ContractorService[]> {
   return items.map(toContractorService)
 }
 
+// Тот же POST и создаёт новую услугу (201), и РЕАКТИВИРУЕТ ранее
+// отключённую (200) — backend сам выбирает ветку по UNIQUE(contractor_id,
+// work_type_id) (см. contractorservice/service.go: Create → ErrAlreadyExists
+// → ReactivateForContractor). Тело ответа в обоих случаях одинаковое
+// (contractorServiceResponse), поэтому отдельный "reactivate"-клиент не
+// нужен и status code читать не требуется. ВАЖНО: на ветке реактивации
+// price_from/price_to из запроса backend ВАЛИДИРУЕТ, но не применяет —
+// UPDATE ... SET is_active = TRUE не трогает колонки цен. Менять цену
+// можно только через updateContractorService() (PUT).
 export async function addContractorService(payload: AddContractorServicePayload): Promise<ContractorService> {
   const dto = await apiFetch<ContractorServiceDto>('/api/v1/contractor/services', { method: 'POST', body: payload })
+  return toContractorService(dto)
+}
+
+// PATCH /api/v1/contractor/services/{id}/status — включить/выключить услугу,
+// НЕ удаляя её и не трогая цены (см. contractor_service_handler.go SetStatus:
+// меняется только is_active/updated_at). Отключение разрешено всегда;
+// включение может вернуть 409 work_type_inactive, если вид работ убрали из
+// общего каталога.
+export async function setContractorServiceStatus(id: string, isActive: boolean): Promise<ContractorService> {
+  const dto = await apiFetch<ContractorServiceDto>(`/api/v1/contractor/services/${encodeURIComponent(id)}/status`, {
+    method: 'PATCH',
+    body: { is_active: isActive } satisfies SetContractorServiceStatusPayload,
+  })
   return toContractorService(dto)
 }
 

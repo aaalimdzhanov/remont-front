@@ -25,6 +25,7 @@ const contractorApi = {
   addContractorService: vi.fn(),
   updateContractorService: vi.fn(),
   deleteContractorService: vi.fn(),
+  setContractorServiceStatus: vi.fn(),
   listPortfolioItems: vi.fn(),
   uploadPortfolioItem: vi.fn(),
   deletePortfolioItem: vi.fn(),
@@ -417,7 +418,7 @@ describe('useMarketplace — contractor profile gate', () => {
 })
 
 describe('useMarketplace — ContractorService list (Мои услуги)', () => {
-  const service = { id: 's1', workTypeId: 'wt1', workType: 'Поклейка обоев', unit: 'm2' as const, priceFrom: 150000, priceTo: 300000, createdAt: 'c1', updatedAt: 'u1' }
+  const service = { id: 's1', workTypeId: 'wt1', workType: 'Поклейка обоев', unit: 'm2' as const, priceFrom: 150000, priceTo: 300000, isActive: true, createdAt: 'c1', updatedAt: 'u1' }
 
   it('loadServices populates services from listContractorServices', async () => {
     contractorApi.listContractorServices.mockResolvedValueOnce([service])
@@ -469,6 +470,96 @@ describe('useMarketplace — ContractorService list (Мои услуги)', () =
     expect(ok).toBe(false)
     expect(mp.services.value).toEqual([service])
     expect(mp.serviceActionError.value?.code).toBe('contractor_service_not_found')
+  })
+
+  // addService — один и тот же POST создаёт НОВУЮ услугу (другой work_type)
+  // или РЕАКТИВИРУЕТ отключённую (backend находит существующую строку по
+  // UNIQUE(contractor_id, work_type_id) и возвращает её тот же id — см.
+  // app/api/contractor.ts). upsert по id в composable не даёт списку
+  // задвоиться на реактивации.
+  it('addService upserts by id instead of appending a duplicate when reactivating an existing service', async () => {
+    const mp = useMarketplace()
+    mp.services.value = [{ ...service, isActive: false }]
+    contractorApi.addContractorService.mockResolvedValueOnce({ ...service, isActive: true })
+
+    const result = await mp.addService({ work_type_id: 'wt1', price_from: 150000, price_to: 300000 })
+
+    expect(result?.isActive).toBe(true)
+    expect(mp.services.value).toHaveLength(1)
+    expect(mp.services.value[0]).toEqual({ ...service, isActive: true })
+  })
+
+  it('addService still appends when the work type is genuinely new (no existing id to match)', async () => {
+    const mp = useMarketplace()
+    const other = { ...service, id: 's1' }
+    mp.services.value = [other]
+    const created = { ...service, id: 's2', workTypeId: 'wt2', workType: 'Укладка плитки' }
+    contractorApi.addContractorService.mockResolvedValueOnce(created)
+
+    await mp.addService({ work_type_id: 'wt2', price_from: null, price_to: null })
+
+    expect(mp.services.value).toEqual([other, created])
+  })
+
+  describe('setServiceStatus (PATCH .../status — включение/отключение)', () => {
+    it('optimistically flips isActive immediately, then confirms with the backend response', async () => {
+      const mp = useMarketplace()
+      mp.services.value = [service]
+      let resolveFn!: (v: typeof service) => void
+      contractorApi.setContractorServiceStatus.mockReturnValueOnce(new Promise((resolve) => { resolveFn = resolve }))
+
+      const promise = mp.setServiceStatus('s1', false)
+      // Оптимистично — до ответа backend — уже отражено в списке.
+      expect(mp.services.value[0]!.isActive).toBe(false)
+      expect(mp.serviceActionId.value).toBe('s1')
+
+      resolveFn({ ...service, isActive: false })
+      const ok = await promise
+      expect(ok).toBe(true)
+      expect(mp.services.value[0]!.isActive).toBe(false)
+      expect(mp.serviceActionId.value).toBeNull()
+    })
+
+    it('rolls back to the PREVIOUS state of that one service on error, and surfaces a message', async () => {
+      const mp = useMarketplace()
+      mp.services.value = [service] // isActive: true
+      contractorApi.setContractorServiceStatus.mockRejectedValueOnce({ status: 500, code: 'internal_error', message: 'Внутренняя ошибка сервера.' })
+
+      const ok = await mp.setServiceStatus('s1', false)
+
+      expect(ok).toBe(false)
+      expect(mp.services.value[0]).toEqual(service) // rolled back, including isActive:true
+      expect(mp.serviceActionError.value?.code).toBe('internal_error')
+    })
+
+    it('does not delete the service or alter its prices — only is_active round-trips', async () => {
+      const mp = useMarketplace()
+      mp.services.value = [service]
+      contractorApi.setContractorServiceStatus.mockResolvedValueOnce({ ...service, isActive: false })
+
+      await mp.setServiceStatus('s1', false)
+
+      expect(mp.services.value).toHaveLength(1)
+      expect(mp.services.value[0]!.priceFrom).toBe(150000)
+      expect(mp.services.value[0]!.priceTo).toBe(300000)
+    })
+
+    it('ignores a second toggle while one is already in flight (serviceActionId guard, same pattern as update/delete)', async () => {
+      const mp = useMarketplace()
+      mp.services.value = [service]
+      let resolveFn!: (v: typeof service) => void
+      contractorApi.setContractorServiceStatus.mockReturnValueOnce(new Promise((resolve) => { resolveFn = resolve }))
+
+      const first = mp.setServiceStatus('s1', false)
+      const second = mp.setServiceStatus('s1', true) // fired while the first is still pending
+
+      resolveFn({ ...service, isActive: false })
+      const [firstOk, secondOk] = await Promise.all([first, second])
+
+      expect(firstOk).toBe(true)
+      expect(secondOk).toBe(false)
+      expect(contractorApi.setContractorServiceStatus).toHaveBeenCalledTimes(1)
+    })
   })
 })
 

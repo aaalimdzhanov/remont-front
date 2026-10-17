@@ -20,6 +20,7 @@ const {
   listContractorServices,
   listPortfolioItems,
   reorderPortfolioItems,
+  setContractorServiceStatus,
   updateContractor,
   updateContractorService,
   uploadContractorPhoto,
@@ -31,7 +32,7 @@ const dto = {
 }
 
 const serviceDto = {
-  id: 's1', work_type_id: 'wt1', work_type: 'Поклейка обоев', unit: 'm2', price_from: 150000, price_to: 300000, created_at: 'c1', updated_at: 'u1',
+  id: 's1', work_type_id: 'wt1', work_type: 'Поклейка обоев', unit: 'm2', price_from: 150000, price_to: 300000, is_active: true, created_at: 'c1', updated_at: 'u1',
 }
 
 beforeEach(() => {
@@ -111,13 +112,14 @@ describe('contractor profile photo api methods (/api/v1/contractor/photo, см. 
 })
 
 describe('contractor service api methods (/api/v1/contractor/services, см. contractor_service_handler.go)', () => {
-  it('listContractorServices GETs /api/v1/contractor/services and maps to camelCase', async () => {
-    apiFetchMock.mockResolvedValueOnce([serviceDto])
+  it('listContractorServices GETs /api/v1/contractor/services and maps to camelCase, including is_active', async () => {
+    apiFetchMock.mockResolvedValueOnce([serviceDto, { ...serviceDto, id: 's2', is_active: false }])
     const result = await listContractorServices()
     expect(apiFetchMock).toHaveBeenCalledWith('/api/v1/contractor/services')
-    expect(result).toEqual([{
-      id: 's1', workTypeId: 'wt1', workType: 'Поклейка обоев', unit: 'm2', priceFrom: 150000, priceTo: 300000, createdAt: 'c1', updatedAt: 'u1',
-    }])
+    expect(result).toEqual([
+      { id: 's1', workTypeId: 'wt1', workType: 'Поклейка обоев', unit: 'm2', priceFrom: 150000, priceTo: 300000, isActive: true, createdAt: 'c1', updatedAt: 'u1' },
+      { id: 's2', workTypeId: 'wt1', workType: 'Поклейка обоев', unit: 'm2', priceFrom: 150000, priceTo: 300000, isActive: false, createdAt: 'c1', updatedAt: 'u1' },
+    ])
   })
 
   it('addContractorService POSTs work_type_id/price_from/price_to exactly', async () => {
@@ -127,6 +129,19 @@ describe('contractor service api methods (/api/v1/contractor/services, см. con
       method: 'POST',
       body: { work_type_id: 'wt1', price_from: 150000, price_to: 300000 },
     })
+  })
+
+  // Reactivation — тот же POST, backend отвечает 200 вместо 201, но для
+  // apiFetch<T>() тело ответа выглядит одинаково в обоих случаях (апи-слой
+  // не видит статус-код, только распарсенный JSON) — поэтому клиент не
+  // различает 200/201 сам, просто мапит DTO как обычно. Главное здесь —
+  // прежние цены доходят до фронтенда нетронутыми.
+  it('addContractorService (reactivate path, backend returns 200) maps the preserved prices through unchanged', async () => {
+    apiFetchMock.mockResolvedValueOnce({ ...serviceDto, is_active: true, price_from: 150000, price_to: 300000 })
+    const result = await addContractorService({ work_type_id: 'wt1', price_from: 999, price_to: 999 })
+    expect(result.isActive).toBe(true)
+    expect(result.priceFrom).toBe(150000)
+    expect(result.priceTo).toBe(300000)
   })
 
   it('updateContractorService PUTs only price_from/price_to to /{id} — no work_type_id in the payload (immutable)', async () => {
@@ -142,6 +157,36 @@ describe('contractor service api methods (/api/v1/contractor/services, см. con
     apiFetchMock.mockResolvedValueOnce(undefined)
     await deleteContractorService('s1')
     expect(apiFetchMock).toHaveBeenCalledWith('/api/v1/contractor/services/s1', { method: 'DELETE' })
+  })
+
+  describe('setContractorServiceStatus (PATCH /api/v1/contractor/services/{id}/status, см. SetStatus handler)', () => {
+    it('PATCHes exactly {is_active:false} to disable, maps the response back', async () => {
+      apiFetchMock.mockResolvedValueOnce({ ...serviceDto, is_active: false })
+      const result = await setContractorServiceStatus('s1', false)
+      expect(apiFetchMock).toHaveBeenCalledWith('/api/v1/contractor/services/s1/status', {
+        method: 'PATCH',
+        body: { is_active: false },
+      })
+      expect(result.isActive).toBe(false)
+      // Отключение не трогает цены (см. doc comment в api/contractor.ts).
+      expect(result.priceFrom).toBe(150000)
+      expect(result.priceTo).toBe(300000)
+    })
+
+    it('PATCHes exactly {is_active:true} to enable', async () => {
+      apiFetchMock.mockResolvedValueOnce({ ...serviceDto, is_active: true })
+      await setContractorServiceStatus('s1', true)
+      expect(apiFetchMock).toHaveBeenCalledWith('/api/v1/contractor/services/s1/status', {
+        method: 'PATCH',
+        body: { is_active: true },
+      })
+    })
+
+    it('propagates backend errors unchanged (e.g. 409 work_type_inactive when enabling a retired work type)', async () => {
+      const apiError = { status: 409, code: 'work_type_inactive', message: 'work type retired' }
+      apiFetchMock.mockRejectedValueOnce(apiError)
+      await expect(setContractorServiceStatus('s1', true)).rejects.toEqual(apiError)
+    })
   })
 })
 

@@ -465,6 +465,22 @@ export interface UpdateContractorServicePayload {
   price_to: number | null
 }
 
+// is_active — включена ли услуга у самого мастера (см. contractorServiceResponse
+// в contractor_service_dto.go). GET /api/v1/contractor/services возвращает и
+// включённые, и отключённые (ListByContractor без фильтра по is_active) —
+// разделение на активные/отключённые делает фронтенд.
+//
+// publicly_visible в ответе backend'а НЕ СУЩЕСТВУЕТ (проверено: ни одного
+// json-тега во всём remont-back; IsPubliclyVisible() — внутренний
+// доменный метод, наружу не сериализуется). Поэтому поля здесь нет и
+// вычислять его из is_active нельзя: публичная видимость = is_active
+// услуги И is_active её вида работ в общем каталоге, а второй флаг
+// owner-facing ответ не отдаёт вообще. Единственный сигнал о retired
+// work type — 409 work_type_inactive при попытке включить.
+export interface SetContractorServiceStatusPayload {
+  is_active: boolean
+}
+
 export interface ContractorServiceDto {
   id: string
   work_type_id: string
@@ -472,6 +488,7 @@ export interface ContractorServiceDto {
   unit: WorkUnit
   price_from: number | null
   price_to: number | null
+  is_active: boolean
   created_at: string
   updated_at: string
 }
@@ -483,6 +500,7 @@ export interface ContractorService {
   unit: WorkUnit
   priceFrom: number | null
   priceTo: number | null
+  isActive: boolean
   createdAt: string
   updatedAt: string
 }

@@ -35,6 +35,7 @@ import {
   listContractorServices,
   listPortfolioItems,
   reorderPortfolioItems as apiReorderPortfolioItems,
+  setContractorServiceStatus as apiSetContractorServiceStatus,
   updateContractor as apiUpdateContractor,
   updateContractorService as apiUpdateContractorService,
   uploadContractorPhoto as apiUploadContractorPhoto,
@@ -476,19 +477,53 @@ export function useMarketplace() {
     }
   }
 
+  // Один и тот же POST и создаёт услугу, и реактивирует ранее отключённую
+  // (см. addContractorService в api/contractor.ts). Во втором случае backend
+  // возвращает УЖЕ СУЩЕСТВУЮЩУЮ запись (тот же id, прежние цены), поэтому
+  // здесь upsert по id, а не безусловный append: иначе реактивация
+  // нарисовала бы в списке вторую карточку той же услуги.
   async function addService(payload: AddContractorServicePayload): Promise<ContractorService | null> {
     if (isAddingService.value) return null
     isAddingService.value = true
     addServiceError.value = null
     try {
-      const created = await apiAddContractorService(payload)
-      services.value = [...services.value, created]
-      return created
+      const saved = await apiAddContractorService(payload)
+      const existingIndex = services.value.findIndex(s => s.id === saved.id)
+      services.value = existingIndex === -1
+        ? [...services.value, saved]
+        : services.value.map(s => (s.id === saved.id ? saved : s))
+      return saved
     } catch (err) {
       setErr(addServiceError, err)
       return null
     } finally {
       isAddingService.value = false
+    }
+  }
+
+  // Включение/отключение услуги (PATCH .../status). Оптимистично: флаг в
+  // списке переключается сразу, при ошибке — откат к ПРЕЖНЕМУ состоянию
+  // именно этой услуги (не к общему перезапросу списка), плюс показывается
+  // сообщение. serviceActionId — тот же single-flight guard, что у
+  // update/delete: пока запрос летит, повторное переключение игнорируется.
+  async function setServiceStatus(id: string, isActive: boolean): Promise<boolean> {
+    if (serviceActionId.value) return false
+    const previous = services.value.find(s => s.id === id)
+    if (!previous) return false
+
+    serviceActionId.value = id
+    serviceActionError.value = null
+    services.value = services.value.map(s => (s.id === id ? { ...s, isActive } : s))
+    try {
+      const updated = await apiSetContractorServiceStatus(id, isActive)
+      services.value = services.value.map(s => (s.id === id ? updated : s))
+      return true
+    } catch (err) {
+      services.value = services.value.map(s => (s.id === id ? previous : s))
+      setErr(serviceActionError, err)
+      return false
+    } finally {
+      serviceActionId.value = null
     }
   }
 
@@ -904,6 +939,7 @@ export function useMarketplace() {
     addService,
     updateService,
     deleteService,
+    setServiceStatus,
     loadPortfolio,
     uploadPortfolio,
     deletePortfolio,
