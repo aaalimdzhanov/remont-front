@@ -742,3 +742,60 @@ export interface Review {
   createdAt: string
   updatedAt: string
 }
+
+// ---- Renovation Estimate (POST /api/v1/renovation-estimates) ----
+// Публичный stateless-калькулятор предварительной стоимости (см.
+// RenovationEstimateCard.vue на /marketplace — ведёт сюда). Без auth,
+// ничего не создаёт/не сохраняет (см. remont-back
+// internal/delivery/handler/renovation_estimate_handler.go — "needs no
+// Authorization header, touches no database table"). Ровно 5 полей запроса,
+// без города/района — backend-pricing модель сейчас их не поддерживает.
+export type RenovationPropertyType = 'apartment' | 'house'
+export type RenovationCondition = 'shell' | 'pre_finish' | 'secondary' | 'major_repair'
+export type RenovationFinishLevel = 'economy' | 'standard' | 'premium'
+export type RenovationWorkType = 'walls' | 'floor' | 'ceiling' | 'electricity' | 'plumbing' | 'doors' | 'other'
+
+export interface RenovationEstimateRequestDto {
+  property_type: RenovationPropertyType
+  area: number
+  condition: RenovationCondition
+  finish_level: RenovationFinishLevel
+  works: RenovationWorkType[]
+}
+
+// v2 (LABOR + MATERIALS pricing model, PostgreSQL rates, estimate_version:2)
+// добавил labor/materials breakdown — старые плоские min_amount/max_amount/
+// *_per_m2 backend продолжает отдавать как и раньше (не удалены), поэтому
+// это расширение DTO, а не замена: любой уже написанный код, читающий
+// только верхнеуровневые суммы, остаётся рабочим.
+export interface RenovationEstimateAmountRangeDto {
+  min_amount: number
+  max_amount: number
+}
+
+export interface RenovationEstimateResultDto {
+  min_amount: number
+  max_amount: number
+  currency: string
+  min_amount_per_m2: number
+  max_amount_per_m2: number
+  labor: RenovationEstimateAmountRangeDto
+  materials: RenovationEstimateAmountRangeDto
+  estimate_version: number
+}
+
+export interface RenovationEstimateAmountRange {
+  minAmount: number
+  maxAmount: number
+}
+
+export interface RenovationEstimateResult {
+  minAmount: number
+  maxAmount: number
+  currency: string
+  minAmountPerM2: number
+  maxAmountPerM2: number
+  labor: RenovationEstimateAmountRange
+  materials: RenovationEstimateAmountRange
+  estimateVersion: number
+}

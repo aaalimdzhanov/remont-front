@@ -87,6 +87,24 @@ const KNOWN_ERROR_KEYS: Record<string, string> = {
   // что уже показывает httpStatusMessage(500) как fallback без тела ответа).
   unsupported_media_type: 'errors.invalid_image_type',
   internal_error: 'errors.internal',
+  // Renovation Estimate v2 (см. renovation_estimate_handler.go writeError,
+  // errorEnvelope {"error":{"code","message"}}) — коды один-в-один.
+  // Фронтенд валидирует эти же поля ДО отправки (см.
+  // isValidRenovationArea()/canProceed в renovation-estimate.vue), поэтому
+  // 400-коды здесь — защита от расхождения правил, а не основной UX.
+  invalid_property_type: 'errors.invalid_property_type',
+  invalid_area: 'errors.invalid_area',
+  area_too_small_for_work: 'errors.area_too_small_for_work',
+  invalid_condition: 'errors.invalid_condition',
+  invalid_finish_level: 'errors.invalid_finish_level',
+  no_work_types: 'errors.no_work_types',
+  invalid_work_type: 'errors.invalid_work_type',
+  duplicate_work_type: 'errors.duplicate_work_type',
+  request_too_large: 'errors.request_too_large',
+  // Пустой/битый прайс-каталог в Postgres (см. PricingCatalog.Validate()) —
+  // отдельный от internal_error смысл: не "сервер сломан", а "расчёт сейчас
+  // недоступен, попробуйте позже" (см. задание).
+  renovation_pricing_unavailable: 'errors.renovation_pricing_unavailable',
 }
 
 // Резолвит i18n-ключ в текущую локализованную строку. Вызывается только на
@@ -101,7 +119,9 @@ function httpStatusMessage(status: number): string {
     case 400: return t('errors.badRequest')
     case 404: return t('errors.notFound')
     case 409: return t('errors.conflict')
+    case 413: return t('errors.request_too_large')
     case 500: return t('errors.internal')
+    case 503: return t('errors.serviceUnavailable')
     default: return t('errors.requestFailed', { status })
   }
 }

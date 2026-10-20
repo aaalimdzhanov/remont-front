@@ -73,6 +73,48 @@ describe('toApiError', () => {
     expect(result.message).toBe('Некорректные данные запроса.')
   })
 
+  it.each([
+    ['invalid_property_type', 'Выберите тип недвижимости.'],
+    ['invalid_area', 'Укажите корректную площадь — от 1 до 1000 м².'],
+    ['area_too_small_for_work', 'Площадь слишком мала для выбранных работ.'],
+    ['invalid_condition', 'Выберите состояние помещения.'],
+    ['invalid_finish_level', 'Выберите уровень ремонта.'],
+    ['no_work_types', 'Выберите хотя бы одну работу.'],
+    ['invalid_work_type', 'Один из выбранных видов работ недоступен.'],
+    ['duplicate_work_type', 'Один из видов работ выбран дважды.'],
+  ])('maps renovation-estimate 400 code %s to a human RU message (see remont-back renovation_estimate_handler.go)', (code, expected) => {
+    const err = { response: { status: 400, _data: { error: { code, message: 'raw backend text' } } } }
+    const result = toApiError(err)
+    expect(result.code).toBe(code)
+    expect(result.message).toBe(expected)
+  })
+
+  it('maps renovation_pricing_unavailable (503, empty/broken pricing catalog) to a friendly retry message, not a raw backend code', () => {
+    const err = { response: { status: 503, _data: { error: { code: 'renovation_pricing_unavailable', message: 'pricing catalog invalid' } } } }
+    const result = toApiError(err)
+    expect(result.code).toBe('renovation_pricing_unavailable')
+    expect(result.message).toBe('Сейчас не удалось рассчитать стоимость. Попробуйте немного позже.')
+  })
+
+  it('maps request_too_large (413, see maxRenovationEstimateBodyBytes) to a human message', () => {
+    const err = { response: { status: 413, _data: { error: { code: 'request_too_large', message: 'Request body is too large' } } } }
+    const result = toApiError(err)
+    expect(result.code).toBe('request_too_large')
+    expect(result.message).toBe('Запрос слишком большой.')
+  })
+
+  it('falls back to a generic 413 message when the body is missing/malformed', () => {
+    const result = toApiError({ response: { status: 413, _data: undefined } })
+    expect(result.status).toBe(413)
+    expect(result.message).toBe('Запрос слишком большой.')
+  })
+
+  it('falls back to a generic "service unavailable" message for a 503 with no recognizable error code (not renovation-specific wording)', () => {
+    const result = toApiError({ response: { status: 503, _data: undefined } })
+    expect(result.status).toBe(503)
+    expect(result.message).toBe('Сервис временно недоступен. Попробуйте немного позже.')
+  })
+
   it('classifies a request that never reached the server as a network error', () => {
     const result = toApiError(new TypeError('Failed to fetch'))
     expect(result.status).toBe(0)
